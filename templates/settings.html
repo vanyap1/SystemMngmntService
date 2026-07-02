@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — {{ page_title }}</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #111; color: #ddd;
+            font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; min-height: 100vh;
+            display: flex; flex-direction: column; }
+
+        /* ── Topbar ── */
+        #topbar { background: #1c1c1c; border-bottom: 1px solid #2a2a2a;
+            padding: 10px 24px; display: flex; align-items: center; gap: 12px;
+            position: sticky; top: 0; z-index: 100; }
+        .brand { font-size: 15px; font-weight: 600; color: #e0e0e0; flex: 1; }
+        .sub   { font-size: 12px; color: #444; }
+
+        /* ── Layout ── */
+        .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px; flex: 1;
+            display: flex; flex-direction: column; gap: 18px; }
+
+        /* ── Section card ── */
+        .sec { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; overflow: hidden; }
+        .sec-head { background: #222; border-bottom: 1px solid #2a2a2a;
+            padding: 9px 16px; font-size: 11px; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase; color: #888; }
+        .sec-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+        /* ── Field ── */
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field label { font-size: 11px; color: #666; }
+        .field .hint  { font-size: 10px; color: #444; margin-top: 2px; }
+
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        /* ── Inputs ── */
+        input[type=text], input[type=password], input[type=number] {
+            background: #111; border: 1px solid #333; color: #ddd;
+            border-radius: 5px; padding: 7px 10px; font-size: 13px; outline: none; width: 100%; }
+        input:focus { border-color: #4a4a4a; }
+        input[type=checkbox] { width: 15px; height: 15px; accent-color: #4ec9b0; cursor: pointer; }
+        .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ccc; }
+
+        /* ── Path picker ── */
+        .path-wrap { position: relative; }
+        .path-input-row { display: flex; gap: 6px; }
+        .path-input-row input { flex: 1; }
+        .btn-browse { background: #1e2a1e; border: 1px solid #2e5e2e; color: #6dbf85;
+            border-radius: 5px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+            white-space: nowrap; flex-shrink: 0; }
+        .btn-browse:hover { filter: brightness(1.2); }
+
+        /* ── Directory dropdown ── */
+        .dir-dropdown { position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+            background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 6px;
+            z-index: 200; max-height: 260px; overflow-y: auto; display: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+        .dir-dropdown.open { display: block; }
+        .dir-dropdown::-webkit-scrollbar { width: 5px; }
+        .dir-dropdown::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .dir-header { display: flex; align-items: center; gap: 8px;
+            padding: 7px 10px; border-bottom: 1px solid #2a2a2a;
+            font-size: 11px; color: #555; position: sticky; top: 0;
+            background: #1a1a1a; z-index: 1; }
+        .dir-header .cur-path { flex: 1; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; color: #9cdcfe; font-family: monospace; font-size: 11px; }
+        .dir-up { padding: 2px 6px; background: #222; border: 1px solid #333;
+            color: #aaa; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .dir-up:hover { color: #fff; border-color: #555; }
+        .dir-item { padding: 7px 12px; cursor: pointer; font-size: 12px;
+            color: #ccc; display: flex; align-items: center; gap: 8px;
+            border-bottom: 1px solid #1f1f1f; }
+        .dir-item:last-child { border-bottom: none; }
+        .dir-item:hover { background: #242424; }
+        .dir-item .dico { color: #e8a838; font-size: 13px; flex-shrink: 0; }
+        .dir-select { padding: 6px 10px; background: #0d3a1a; border-top: 1px solid #2a3a2a;
+            font-size: 11px; color: #6dbf85; cursor: pointer; text-align: center; }
+        .dir-select:hover { background: #133d20; }
+
+        /* ── Buttons ── */
+        .actions { display: flex; gap: 10px; align-items: center; }
+        .btn-save { background: #0d3a6e; border: 1px solid #1a5fa0; color: #7ec8f5;
+            border-radius: 5px; padding: 8px 20px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: filter .15s; }
+        .btn-save:hover { filter: brightness(1.2); }
+        .btn-back { background: transparent; border: 1px solid #333; color: #666;
+            border-radius: 5px; padding: 8px 16px; font-size: 13px;
+            text-decoration: none; cursor: pointer; }
+        .btn-back:hover { color: #ccc; border-color: #555; }
+        #save-status { font-size: 12px; }
+        #save-status.ok    { color: #4ec9b0; }
+        #save-status.error { color: #f44747; }
+    </style>
+</head>
+<body>
+
+<div id="topbar">
+    <span class="brand">{{ app_title }}</span>
+    <span class="sub">Settings</span>
+    <a href="/" class="btn-back" style="font-size:12px">← Main</a>
+</div>
+
+<div class="wrap">
+
+    <!-- ── General ── -->
+    <div class="sec">
+        <div class="sec-head">General</div>
+        <div class="sec-body">
+            <div class="field-row">
+                <div class="field">
+                    <label>App Title</label>
+                    <input type="text" id="app_title" value="{{ cfg.app_title }}">
+                </div>
+                <div class="field">
+                    <label>Page Title (browser tab)</label>
+                    <input type="text" id="page_title" value="{{ cfg.page_title }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Paths ── -->
+    <div class="sec">
+        <div class="sec-head">Paths</div>
+        <div class="sec-body">
+            <div class="field">
+                <label>Project Directory (target_dir)</label>
+                <div class="path-wrap">
+                    <div class="path-input-row">
+                        <input type="text" id="target_dir" value="{{ cfg.target_dir }}">
+                        <button class="btn-browse" onclick="openBrowser('target_dir')">📁 Browse</button>
+                    </div>
+                    <div class="dir-dropdown" id="browser-target_dir"></div>
+                </div>
+                <span class="hint">The project directory that will be managed and archived</span>
+            </div>
+            <div class="field">
+                <label>Backup Directory (backup_dir)</label>
+                <div class="path-wrap">
+                    <div class="path-input-row">
+                        <input type="text" id="backup_dir" value="{{ cfg.backup_dir }}">
+                        <button class="btn-browse" onclick="openBrowser('backup_dir')">📁 Browse</button>
+                    </div>
+                    <div class="dir-dropdown" id="browser-backup_dir"></div>
+                </div>
+                <span class="hint">Where backup archives will be stored</span>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>Archive Name</label>
+                    <input type="text" id="archive_name" value="{{ cfg.archive_name }}">
+                    <span class="hint">e.g. myproject-backup.tar.gz</span>
+                </div>
+                <div class="field">
+                    <label>Upload Temp Name</label>
+                    <input type="text" id="upload_tmp_name" value="{{ cfg.upload_tmp_name }}">
+                    <span class="hint">Temp filename for uploaded archives</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Service ── -->
+    <div class="sec">
+        <div class="sec-head">Service</div>
+        <div class="sec-body">
+            <div class="field">
+                <label>Service Name (systemd)</label>
+                <input type="text" id="service_name" value="{{ cfg.service_name }}"
+                       placeholder="myservice.service">
+                <span class="hint">Exact name as shown in <code style="color:#9cdcfe">systemctl status</code></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Network ── -->
+    <div class="sec">
+        <div class="sec-head">Network</div>
+        <div class="sec-body">
+            <div class="field-row">
+                <div class="field">
+                    <label>Host</label>
+                    <input type="text" id="host" value="{{ cfg.host }}" placeholder="0.0.0.0">
+                </div>
+                <div class="field">
+                    <label>Port</label>
+                    <input type="number" id="port" value="{{ cfg.port }}" min="1" max="65535">
+                </div>
+            </div>
+            <span class="hint" style="margin-top:-8px">⚠ Changes take effect after restarting the Update Manager process</span>
+        </div>
+    </div>
+
+    <!-- ── Auth ── -->
+    <div class="sec">
+        <div class="sec-head">Authentication (Code Editor)</div>
+        <div class="sec-body">
+            <div class="check-row">
+                <input type="checkbox" id="auth_enabled"
+                       {% if cfg.auth and cfg.auth.enabled %}checked{% endif %}>
+                <label for="auth_enabled" style="font-size:13px;color:#ccc;cursor:pointer">
+                    Require login to access Code Editor
+                </label>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" id="auth_username"
+                           value="{{ cfg.auth.username if cfg.auth else '' }}"
+                           autocomplete="off">
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" id="auth_password"
+                           value="{{ cfg.auth.password if cfg.auth else '' }}"
+                           autocomplete="new-password">
+                    <span class="hint">Leave blank to keep existing password</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Actions ── -->
+    <div class="actions">
+        <button class="btn-save" onclick="saveSettings()">💾 Save Settings</button>
+        <a href="/" class="btn-back">Cancel</a>
+        <span id="save-status"></span>
+    </div>
+
+</div>
+
+<script>
+    // ── Directory browser ───────────────────────────────────────────────────────
+    let activeBrowserField = null;
+
+    function openBrowser(fieldId) {
+        const currentPath = document.getElementById(fieldId).value || '/';
+        activeBrowserField = fieldId;
+        loadDir(fieldId, currentPath);
+        const dd = document.getElementById('browser-' + fieldId);
+        // Close all others
+        document.querySelectorAll('.dir-dropdown').forEach(d => {
+            if (d !== dd) d.classList.remove('open');
+        });
+        dd.classList.toggle('open');
+    }
+
+    function loadDir(fieldId, path) {
+        fetch('/api/browse?path=' + encodeURIComponent(path))
+            .then(r => r.json())
+            .then(d => renderDir(fieldId, d))
+            .catch(() => {});
+    }
+
+    function renderDir(fieldId, d) {
+        const dd = document.getElementById('browser-' + fieldId);
+        let h = `<div class="dir-header">`;
+        if (d.parent !== null)
+            h += `<button class="dir-up" onclick="loadDir('${fieldId}', '${esc(d.parent)}')">↑ Up</button>`;
+        h += `<span class="cur-path">${esc(d.path)}</span></div>`;
+        if (!d.dirs.length) {
+            h += `<div class="dir-item" style="color:#555">No subdirectories</div>`;
+        } else {
+            d.dirs.forEach(name => {
+                const full = (d.path === '/' ? '' : d.path) + '/' + name;
+                h += `<div class="dir-item" onclick="loadDir('${fieldId}', '${esc(full)}')">` +
+                     `<span class="dico">📁</span>${esc(name)}</div>`;
+            });
+        }
+        h += `<div class="dir-select" onclick="selectDir('${fieldId}', '${esc(d.path)}')">` +
+             `✔ Select: <strong>${esc(d.path)}</strong></div>`;
+        dd.innerHTML = h;
+        dd.classList.add('open');
+    }
+
+    function selectDir(fieldId, path) {
+        document.getElementById(fieldId).value = path;
+        document.getElementById('browser-' + fieldId).classList.remove('open');
+    }
+
+    function esc(s) {
+        return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+                        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Close browser on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.path-wrap'))
+            document.querySelectorAll('.dir-dropdown').forEach(d => d.classList.remove('open'));
+    });
+
+    // ── Save ────────────────────────────────────────────────────────────────────
+    function saveSettings() {
+        const pw = document.getElementById('auth_password').value;
+        const payload = {
+            app_title:       document.getElementById('app_title').value.trim(),
+            page_title:      document.getElementById('page_title').value.trim(),
+            target_dir:      document.getElementById('target_dir').value.trim(),
+            backup_dir:      document.getElementById('backup_dir').value.trim(),
+            archive_name:    document.getElementById('archive_name').value.trim(),
+            upload_tmp_name: document.getElementById('upload_tmp_name').value.trim(),
+            service_name:    document.getElementById('service_name').value.trim(),
+            host:            document.getElementById('host').value.trim(),
+            port:            parseInt(document.getElementById('port').value) || 81,
+            auth: {
+                enabled:  document.getElementById('auth_enabled').checked,
+                username: document.getElementById('auth_username').value.trim(),
+            },
+        };
+        if (pw) payload.auth.password = pw;
+
+        const status = document.getElementById('save-status');
+        status.textContent = 'Saving…';
+        status.className = '';
+
+        fetch('/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                status.textContent = '✓ Saved successfully';
+                status.className = 'ok';
+                // Clear password field after save
+                document.getElementById('auth_password').value = '';
+            } else {
+                status.textContent = '✗ ' + (d.error || 'Error');
+                status.className = 'error';
+            }
+            setTimeout(() => status.textContent = '', 4000);
+        })
+        .catch(err => {
+            status.textContent = '✗ ' + err.message;
+            status.className = 'error';
+        });
+    }
+
+    // Ctrl+S
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveSettings(); }
+    });
+</script>
+</body>
+</html>

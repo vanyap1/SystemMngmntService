@@ -1,0 +1,16 @@
+{
+    "app_title": "SystemMngmntService",
+    "page_title": "SystemMngmntService",
+    "target_dir": "/home/vanya",
+    "backup_dir": "/home/vanya",
+    "archive_name": "pythonKivy_template.tar.gz",
+    "upload_tmp_name": "uploaded_update.tar.gz",
+    "service_name": "watchdogService.service",
+    "auth": {
+        "enabled": true,
+        "username": "vanya",
+        "password": "198808"
+    },
+    "port": 80,
+    "host": "0.0.0.0"
+}
