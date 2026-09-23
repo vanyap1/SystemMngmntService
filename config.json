@@ -1,11 +1,11 @@
 {
     "app_title": "SystemMngmntService",
     "page_title": "SystemMngmntService",
-    "target_dir": "/home/vanya",
+    "target_dir": "/home/vanya/NAS/pyProjects",
     "backup_dir": "/home/vanya",
     "archive_name": "pythonKivy_template.tar.gz",
     "upload_tmp_name": "uploaded_update.tar.gz",
-    "service_name": "watchdogService.service",
+    "service_name": "oled.service",
     "auth": {
         "enabled": true,
         "username": "vanya",
