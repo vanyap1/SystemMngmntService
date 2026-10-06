@@ -1,10 +1,11 @@
 import os
 import re
 import json
+import glob
 import subprocess
 from datetime import datetime
 from functools import wraps
-from flask import Flask, render_template, render_template_string, request, redirect, send_file, flash, jsonify, session
+from flask import Flask, render_template, render_template_string, request, redirect, send_file, flash, jsonify, session, Response
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_flash_messages"
@@ -13,6 +14,8 @@ app.secret_key = "super_secret_key_for_flash_messages"
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 with open(_CONFIG_PATH, 'r', encoding='utf-8') as _f:
     CFG = json.load(_f)
+
+_MACROS_PATH = os.path.join(os.path.dirname(__file__), 'macros.json')
 
 TARGET_DIR   = CFG['target_dir']
 BACKUP_DIR   = CFG['backup_dir']
@@ -45,9 +48,10 @@ def require_editor_auth(f):
     return decorated
 
 _LOGIN_HTML = '''
-<!DOCTYPE html><html lang="uk"><head>
+<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Login \u2014 {{ page_title }}</title>
+<title>{% if device_name %}{{ device_name }} \u2014 {% endif %}Login \u2014 {{ page_title }}</title>
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:#111;color:#ddd;font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -76,7 +80,7 @@ input:focus{border-color:#4a4a4a}
 .back a:hover{color:#7ec8f5}
 </style></head><body>
 <div id="topbar">
-  <span class="brand">{{ app_title }}</span>
+  <span class="brand">{% if device_name %}{{ device_name }} &mdash; {% endif %}{{ app_title }}</span>
   <span class="sub">{{ service_name }}</span>
 </div>
 <div class="center">
@@ -100,6 +104,14 @@ input:focus{border-color:#4a4a4a}
 </body></html>
 '''
 
+@app.route('/favicon.png')
+@app.route('/favicon.ico')
+def favicon():
+    fav = os.path.join(os.path.dirname(__file__), 'templates', 'favicon.png')
+    if os.path.exists(fav):
+        return send_file(fav, mimetype='image/png')
+    return '', 404
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -115,7 +127,18 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('editor_authed', None)
+    session.pop('logged_in', None)
     return redirect('/')
+
+@app.route('/api/power/<action>', methods=['POST'])
+@require_auth(is_api=True)
+def api_power(action):
+    if action not in ['reboot', 'poweroff', 'shutdown']:
+        return jsonify({'error': 'Invalid power action'}), 400
+    cmd = 'sudo systemctl reboot' if action == 'reboot' else 'sudo systemctl poweroff'
+    subprocess.Popen(f"sleep 1 && {cmd}", shell=True)
+    msg = 'Reboot initiated...' if action == 'reboot' else 'Shutdown initiated...'
+    return jsonify({'success': True, 'message': msg})
 
 def run_command(command):
     try:
@@ -127,13 +150,69 @@ def run_command(command):
     except subprocess.CalledProcessError as e:
         return f"Error!\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}"
 
+DEFAULT_MACROS = [
+    {
+        "name": "Git Status",
+        "command": "git status",
+        "tooltip": "Check Git repository status",
+        "icon": "fa-brands fa-git-alt",
+        "color": "#162638"
+    },
+    {
+        "name": "Disk Free",
+        "command": "df -h",
+        "tooltip": "Free disk space",
+        "icon": "fa-solid fa-hard-drive",
+        "color": "#162638"
+    },
+    {
+        "name": "Top Mem",
+        "command": "ps aux --sort=-%mem | head -n 15",
+        "tooltip": "Top memory consuming processes",
+        "icon": "fa-solid fa-microchip",
+        "color": "#162638"
+    },
+    {
+        "name": "Uptime",
+        "command": "uptime",
+        "tooltip": "System uptime",
+        "icon": "fa-solid fa-clock",
+        "color": "#162638"
+    }
+]
+
+def load_macros():
+    """Load macros from macros.json, creating the file with defaults if missing."""
+    if not os.path.exists(_MACROS_PATH):
+        try:
+            with open(_MACROS_PATH, 'w', encoding='utf-8') as f:
+                json.dump(DEFAULT_MACROS, f, indent=4, ensure_ascii=False)
+        except Exception:
+            pass
+        return DEFAULT_MACROS
+    try:
+        with open(_MACROS_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+            return []
+    except Exception:
+        return []
+
+def save_macros(macros_data):
+    """Save macros list to macros.json."""
+    with open(_MACROS_PATH, 'w', encoding='utf-8') as f:
+        json.dump(macros_data, f, indent=4, ensure_ascii=False)
+
 def _ctx():
     """Common template context from config."""
     return {
         'app_title':    CFG.get('app_title', 'Update Manager'),
         'page_title':   CFG.get('page_title', CFG.get('app_title', 'Update Manager')),
+        'device_name':  CFG.get('device_name', ''),
         'service_name': SERVICE_NAME,
         'archive_name': ARCHIVE_NAME,
+        'macros':       load_macros(),
     }
 
 @app.route('/')
@@ -444,6 +523,156 @@ def api_exec():
     except Exception as e:
         return jsonify({'stdout': '', 'stderr': str(e), 'returncode': -1})
 
+@app.route('/api/macros', methods=['GET'])
+@require_auth(is_api=True)
+def api_get_macros():
+    return jsonify(load_macros())
+
+@app.route('/api/macros', methods=['POST'])
+@require_auth(is_api=True)
+def api_save_macros():
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'No data provided'}), 400
+    raw_list = data if isinstance(data, list) else data.get('macros', [])
+    if not isinstance(raw_list, list):
+        return jsonify({'error': 'Macros must be a list'}), 400
+    clean = []
+    for item in raw_list:
+        if not isinstance(item, dict):
+            continue
+        clean.append({
+            'name': str(item.get('name', '')).strip(),
+            'command': str(item.get('command', '')).strip(),
+            'tooltip': str(item.get('tooltip', '')).strip(),
+            'icon': str(item.get('icon', '')).strip(),
+            'color': str(item.get('color', '')).strip()
+        })
+    try:
+        save_macros(clean)
+        return jsonify({'success': True, 'macros': clean})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+_active_video_procs = {}
+
+def get_device_resolutions(device):
+    if not re.match(r'^/dev/video\d+$', device) or not os.path.exists(device):
+        return ['1280x720', '640x480', '320x240']
+    try:
+        proc = subprocess.run(
+            ['ffmpeg', '-f', 'v4l2', '-list_formats', 'all', '-i', device],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=4
+        )
+        out = proc.stderr
+        resolutions = set()
+        for line in out.splitlines():
+            if 'Raw' in line or 'Compressed' in line or 'video4linux2' in line:
+                matches = re.findall(r'\b(\d{3,5}x\d{3,5})\b', line)
+                resolutions.update(matches)
+        sorted_res = sorted(
+            list(resolutions),
+            key=lambda r: int(r.split('x')[0]) * int(r.split('x')[1]),
+            reverse=True
+        )
+        return sorted_res or ['1280x720', '640x480', '320x240']
+    except Exception:
+        return ['1280x720', '640x480', '320x240']
+
+def generate_video_stream(device_path, stream_id, resolution='640x480'):
+    cmd = [
+        'ffmpeg', '-f', 'v4l2',
+        '-video_size', resolution,
+        '-i', device_path,
+        '-r', '25', '-q:v', '5',
+        '-f', 'mpjpeg', '-boundary_tag', 'frame', '-'
+    ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    _active_video_procs[stream_id] = proc
+    try:
+        while True:
+            chunk = proc.stdout.read(4096)
+            if not chunk:
+                break
+            yield chunk
+    except GeneratorExit:
+        pass
+    finally:
+        _active_video_procs.pop(stream_id, None)
+        try:
+            proc.terminate()
+            proc.wait(timeout=0.5)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+
+@app.route('/api/video_devices')
+@require_auth(is_api=True)
+def api_video_devices():
+    devices = []
+    for path in sorted(glob.glob('/dev/video*')):
+        bname = os.path.basename(path)
+        name_file = f"/sys/class/video4linux/{bname}/name"
+        card_name = ''
+        if os.path.exists(name_file):
+            try:
+                with open(name_file, 'r', encoding='utf-8') as f:
+                    card_name = f.read().strip()
+            except Exception:
+                pass
+        label = f"{path} ({card_name})" if card_name else path
+        devices.append({'path': path, 'name': card_name, 'label': label})
+    return jsonify({'devices': devices})
+
+
+@app.route('/api/video_resolutions')
+@require_auth(is_api=True)
+def api_video_resolutions():
+    device = request.args.get('device', '/dev/video1')
+    res_list = get_device_resolutions(device)
+    return jsonify({'device': device, 'resolutions': res_list})
+
+
+@app.route('/api/video_feed')
+@require_auth(is_api=False)
+def api_video_feed():
+    device = request.args.get('device', '/dev/video1')
+    stream_id = request.args.get('sid', 'default')
+    resolution = request.args.get('size', '640x480')
+    if not re.match(r'^/dev/video\d+$', device):
+        return "Invalid device", 400
+    if not os.path.exists(device):
+        return "Device not found", 404
+    if not re.match(r'^\d{3,5}x\d{3,5}$', resolution):
+        resolution = '640x480'
+    return Response(generate_video_stream(device, stream_id, resolution),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/api/video_stop', methods=['POST'])
+@require_auth(is_api=True)
+def api_video_stop():
+    data = request.get_json() or {}
+    stream_id = data.get('stream_id')
+    if stream_id and stream_id in _active_video_procs:
+        p = _active_video_procs.pop(stream_id)
+        try:
+            p.terminate()
+        except Exception:
+            pass
+    elif not stream_id:
+        for p in list(_active_video_procs.values()):
+            try:
+                p.terminate()
+            except Exception:
+                pass
+        _active_video_procs.clear()
+    return jsonify({'success': True})
+
+
 @app.route('/download_backup/<path:filename>')
 def download_backup(filename):
     fname = os.path.basename(filename)
@@ -570,7 +799,7 @@ def settings_save():
         return jsonify({'error': 'No data'}), 400
     try:
         # Update CFG in-place (only allowed keys)
-        allowed = ['app_title', 'page_title', 'target_dir', 'backup_dir',
+        allowed = ['app_title', 'page_title', 'device_name', 'target_dir', 'backup_dir',
                    'archive_name', 'upload_tmp_name', 'service_name', 'host', 'port']
         for key in allowed:
             if key in data:
@@ -596,4 +825,4 @@ def settings_save():
 
 
 if __name__ == '__main__':
-    app.run(host=CFG.get('host', '0.0.0.0'), port=CFG.get('port', 81))
+    app.run(host=CFG.get('host', '0.0.0.0'), port=CFG.get('port', 80), threaded=True)

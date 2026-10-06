@@ -1,11 +1,12 @@
 {
     "app_title": "SystemMngmntService",
     "page_title": "SystemMngmntService",
-    "target_dir": "/home/vanya/NAS/pyProjects",
+    "device_name": "OrangePi 3 LTS",
+    "target_dir": "/home/vanya/pythonKivy_template",
     "backup_dir": "/home/vanya",
     "archive_name": "pythonKivy_template.tar.gz",
     "upload_tmp_name": "uploaded_update.tar.gz",
-    "service_name": "oled.service",
+    "service_name": "guiService.service",
     "auth": {
         "enabled": true,
         "username": "vanya",

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings — {{ page_title }}</title>
+    <title>{% if device_name %}{{ device_name }} — {% endif %}Settings — {{ page_title }}</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #111; color: #ddd;
@@ -97,7 +98,7 @@
 <body>
 
 <div id="topbar">
-    <span class="brand">{{ app_title }}</span>
+    <span class="brand">{% if device_name %}{{ device_name }} — {% endif %}{{ app_title }}</span>
     <span class="sub">Settings</span>
     <a href="/" class="btn-back" style="font-size:12px">← Main</a>
 </div>
@@ -117,6 +118,11 @@
                     <label>Page Title (browser tab)</label>
                     <input type="text" id="page_title" value="{{ cfg.page_title }}">
                 </div>
+            </div>
+            <div class="field" style="margin-top:12px">
+                <label>Device Name</label>
+                <input type="text" id="device_name" value="{{ cfg.device_name or '' }}" placeholder="e.g. OrangePi 3 LTS or Server-1">
+                <span class="hint">Displayed in the browser tab title for quick machine identification</span>
             </div>
         </div>
     </div>
@@ -297,6 +303,7 @@
         const payload = {
             app_title:       document.getElementById('app_title').value.trim(),
             page_title:      document.getElementById('page_title').value.trim(),
+            device_name:     document.getElementById('device_name').value.trim(),
             target_dir:      document.getElementById('target_dir').value.trim(),
             backup_dir:      document.getElementById('backup_dir').value.trim(),
             archive_name:    document.getElementById('archive_name').value.trim(),

@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Editor — {{ app_title }}</title>
+    <title>{% if device_name %}{{ device_name }} — {% endif %}Code Editor — {{ app_title }}</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; overflow: hidden; background: #1e1e1e; color: #cccccc;
@@ -38,8 +40,10 @@
             white-space: nowrap; overflow: hidden; color: #ccc; gap: 5px; }
         .tree-row:hover { background: #2a2d2e; }
         .tree-row.selected { background: #094771; color: #fff; }
-        .tree-row .arrow { width: 12px; font-size: 9px; flex-shrink: 0; color: #888; }
-        .tree-row .ico { width: 16px; text-align: center; flex-shrink: 0; font-size: 13px; }
+        .tree-row .arrow { width: 14px; font-size: 9px; flex-shrink: 0; color: #777;
+            display: inline-flex; align-items: center; justify-content: center; }
+        .tree-row .ico { width: 18px; text-align: center; flex-shrink: 0; font-size: 13px;
+            display: inline-flex; align-items: center; justify-content: center; }
         .tree-row .lbl { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
         .tree-children { display: none; }
         .tree-children.open { display: block; }
@@ -62,7 +66,7 @@
             font-size: 12px; color: #999; background: #2d2d2d; flex-shrink: 0; overflow: hidden; }
         .tab:hover { background: #2a2d2e; color: #ccc; }
         .tab.active { background: #1e1e1e; color: #ccc; border-top-color: #007acc; }
-        .tab .tab-ico { font-size: 12px; flex-shrink: 0; }
+        .tab .tab-ico { font-size: 12px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 16px; }
         .tab .tab-name { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;
             white-space: nowrap; }
         .tab .tab-dirty { color: #e8a838; font-size: 11px; flex-shrink: 0; }
@@ -98,6 +102,211 @@
         .btn-logout  { background: transparent; border-color: #3a3a3a; color: #555; }
         .btn-logout:hover { color: #e08080; border-color: #7d2e2e; filter: none; }
         .btn-sm { padding: 3px 8px; font-size: 12px; }
+
+        /* ── Power dropdown ── */
+        .power-dropdown-wrap { position: relative; display: inline-flex; }
+        .btn-power { background: transparent; border-color: #3a3a3a; color: #bbb; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-power:hover { color: #f44747; border-color: #7d2e2e; background: rgba(244,71,71,.08); }
+        .power-dropdown { position: absolute; right: 0; top: calc(100% + 6px); background: #1a1a1a;
+            border: 1px solid #333; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.8);
+            min-width: 190px; padding: 6px; display: none; flex-direction: column; gap: 4px; z-index: 2500; }
+        .power-dropdown.open { display: flex; }
+        .power-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+            background: transparent; border: none; border-radius: 5px; color: #ccc; cursor: pointer;
+            text-align: left; transition: all .15s; width: 100%; text-decoration: none; }
+        .power-item:hover { background: #252526; color: #fff; text-decoration: none; }
+        .power-item i { font-size: 15px; width: 18px; text-align: center; }
+        .power-reboot:hover i { color: #d4a95a; }
+        .power-shutdown:hover i { color: #f44747; }
+        .power-item-title { font-size: 12px; font-weight: 600; line-height: 1.2; }
+        .power-item-desc { font-size: 10px; color: #777; margin-top: 2px; }
+
+        /* ── Macros and topbar additions ── */
+        .topbar-sep { width: 1px; height: 18px; background: #2f2f2f; margin: 0 4px; flex-shrink: 0; }
+        .video-ctrl-group { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+        .video-select { background: #1a1a1a; border: 1px solid #3a3a3a; color: #9cdcfe;
+            font-size: 12px; border-radius: 4px; padding: 3px 6px; cursor: pointer; outline: none;
+            font-family: 'Cascadia Code','Fira Mono',Consolas,monospace; max-width: 220px; height: 26px; }
+        .video-select:focus { border-color: #4ec9b0; }
+        .btn-video-play { background: #1b4d2e; border: 1px solid #2e7d46; color: #6dbf85;
+            display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+            padding: 3px 9px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-video-play:hover { filter: brightness(1.2); }
+        .btn-video-refresh { background: #181818; border: 1px solid #2a2a2a; color: #aaa;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 4px; cursor: pointer; transition: all .15s; padding: 0; }
+        .btn-video-refresh:hover { color: #fff; border-color: #555; background: #262626; }
+        .btn-video-stop { background: #4d1b1b; border: 1px solid #7d2e2e; color: #e08080;
+            display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+            padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-video-stop:hover { filter: brightness(1.2); }
+        .btn-video-restart { background: #4d3b1a; border: 1px solid #7d5e2e; color: #d4a95a;
+            display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+            padding: 3px 9px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-video-restart:hover { filter: brightness(1.2); }
+
+        .video-popup-box {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            background: #141414; border: 1px solid #333; border-radius: 10px;
+            width: 720px; max-width: 96vw; height: 540px; max-height: 94vh;
+            min-width: 340px; min-height: 260px;
+            display: flex; flex-direction: column; box-shadow: 0 15px 60px rgba(0,0,0,.9);
+            overflow: hidden; z-index: 3100;
+        }
+        .video-mbody {
+            flex: 1 1 0px; min-height: 0; background: #080808;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; padding: 4px;
+        }
+        .video-stage {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+        }
+        .video-stream-el {
+            max-width: 100%; max-height: 100%; width: auto; height: auto;
+            object-fit: contain; display: block; margin: auto;
+        }
+        .video-loading {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 10px; background: rgba(10,10,10,.85);
+            z-index: 2;
+        }
+        .video-resize-grip {
+            width: 22px; height: 22px; cursor: nwse-resize; display: flex;
+            align-items: center; justify-content: center; color: #555; font-size: 11px;
+            transition: color .15s; user-select: none;
+        }
+        .video-resize-grip:hover { color: #4ec9b0; }
+
+        #macro-bar { display: inline-flex; align-items: center; gap: 5px; max-width: 42vw;
+            overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; flex-shrink: 1; padding: 2px 0; }
+        #macro-bar::-webkit-scrollbar { height: 3px; }
+        #macro-bar::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+        .btn-macro { background: #162638; border: 1px solid #244161; color: #8ec8f6;
+            display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; flex-shrink: 0;
+            padding: 3px 9px; font-size: 12px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-macro:hover { filter: brightness(1.2); }
+        .btn-macro i { font-size: 11px; }
+        .btn-macro-edit { background: transparent; border-color: #3a3a3a; color: #888; }
+        .btn-macro-edit:hover { color: #e8a838; border-color: #7d5e2e; filter: none; }
+
+        /* ── Macros modal (styled like settings.html) ── */
+        .macros-modal-box { background: #141414; border: 1px solid #2a2a2a; border-radius: 10px;
+            width: 860px; max-width: 95vw; height: 85vh; max-height: 85vh; display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,.8); overflow: hidden; }
+        .macros-mhead { display: flex; align-items: center; gap: 10px; padding: 12px 18px;
+            border-bottom: 1px solid #242424; background: #1a1a1a; flex-shrink: 0; }
+        .macros-mtitle { font-size: 13px; font-weight: 600; color: #eee; flex: 1;
+            display: flex; align-items: center; gap: 8px; }
+        .macros-mclose { background: none; border: none; color: #666; font-size: 20px;
+            cursor: pointer; padding: 0 4px; line-height: 1; }
+        .macros-mclose:hover { color: #eee; }
+        .macros-mbody { overflow-y: auto !important; overflow-x: hidden; flex: 1 1 0px; min-height: 0; padding: 18px 20px;
+            display: flex; flex-direction: column; gap: 16px; background: #111;
+            scrollbar-width: thin; scrollbar-color: #555 #181818; overscroll-behavior: contain; }
+        .macros-mbody::-webkit-scrollbar { width: 8px; }
+        .macros-mbody::-webkit-scrollbar-track { background: #181818; }
+        .macros-mbody::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .macros-mbody::-webkit-scrollbar-thumb:hover { background: #666; }
+        .macros-mfooter { padding: 12px 18px; border-top: 1px solid #222; background: #181818;
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+        .macro-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; overflow: hidden;
+            flex-shrink: 0 !important; flex-grow: 0; width: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column; }
+        .macro-card-head { background: #222; border-bottom: 1px solid #2a2a2a;
+            padding: 9px 14px; font-size: 11px; font-weight: 700;
+            display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .macro-card-title { display: flex; align-items: center; gap: 8px; color: #9cdcfe; }
+        .macro-card-badge { background: #2e2e2e; color: #aaa; padding: 1px 6px;
+            border-radius: 3px; font-size: 10px; font-weight: 600; font-family: monospace; }
+        .macro-preview-chip { display: inline-flex; align-items: center; gap: 5px;
+            background: #162638; border: 1px solid #244161; color: #8ec8f6;
+            padding: 2px 8px; border-radius: 4px; font-size: 11px; max-width: 250px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: normal; }
+        .macro-card-ctrls { display: flex; align-items: center; gap: 4px; }
+        .macro-btn-ctrl { background: #161616; border: 1px solid #333; color: #888;
+            width: 26px; height: 26px; border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 11px; }
+        .macro-btn-ctrl:hover:not(:disabled) { color: #ddd; border-color: #555; background: #262626; }
+        .macro-btn-ctrl:disabled { opacity: .25; cursor: not-allowed; }
+        .macro-btn-del:hover:not(:disabled) { color: #f44747 !important; border-color: #7d2e2e; background: #2d1616; }
+
+        .macro-card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; box-sizing: border-box; }
+        .macro-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-width: 0; }
+        .macro-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        .macro-field label { font-size: 11px; color: #777; font-weight: 500; }
+        .macro-field .hint { font-size: 10px; color: #555; margin-top: 1px; }
+        .macro-field input[type=text] {
+            background: #111; border: 1px solid #333; color: #ddd;
+            border-radius: 5px; padding: 7px 10px; font-size: 12.5px; outline: none; width: 100%; box-sizing: border-box;
+        }
+        .macro-field input[type=text]:focus { border-color: #4ec9b0; }
+        .macro-icon-preview {
+            width: 33px; height: 32px; display: flex; align-items: center; justify-content: center;
+            background: #111; border: 1px solid #333; border-radius: 5px; color: #8ec8f6;
+            font-size: 13px; flex-shrink: 0;
+        }
+
+        /* Color picker & swatches */
+        .macro-color-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .macro-input-color { -webkit-appearance: none; border: 1px solid #333; width: 34px; height: 32px;
+            border-radius: 5px; cursor: pointer; background: #111; padding: 1px; }
+        .macro-input-color::-webkit-color-swatch-wrapper { padding: 0; }
+        .macro-input-color::-webkit-color-swatch { border: none; border-radius: 3px; }
+        .macro-color-hex { font-family: monospace; font-size: 11px; color: #888; width: 62px; }
+        .macro-swatches { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .macro-swatch { width: 22px; height: 22px; border-radius: 4px; border: 1px solid rgba(255,255,255,.2);
+            cursor: pointer; transition: transform .1s, border-color .1s; padding: 0; }
+        .macro-swatch:hover { transform: scale(1.18); border-color: #fff; }
+
+        /* FA icon picker */
+        .btn-fa-catalog { background: #192535; border: 1px solid #284464; color: #8ec8f6;
+            border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .btn-fa-catalog:hover { background: #22374e; color: #bae0ff; }
+        .macro-quick-icons { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .macro-quick-ico-btn { background: #181818; border: 1px solid #2a2a2a; color: #aaa;
+            width: 25px; height: 25px; border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 11.5px;
+            transition: all .15s; padding: 0; }
+        .macro-quick-ico-btn:hover { background: #222; color: #4ec9b0; border-color: #4ec9b0; }
+
+        /* FA Catalog Modal */
+        .fa-catalog-box { background: #161616; border: 1px solid #2a2a2a; border-radius: 10px;
+            width: 760px; max-width: 95vw; height: 75vh; max-height: 75vh;
+            display: flex; flex-direction: column; box-shadow: 0 15px 50px rgba(0,0,0,.9);
+            overflow: hidden; z-index: 3100; }
+        .fa-cat-toolbar { padding: 10px 16px; border-bottom: 1px solid #252525; background: #1a1a1a;
+            display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .fa-search-inp { background: #111; border: 1px solid #333; color: #eee;
+            border-radius: 5px; padding: 7px 12px; font-size: 12.5px; outline: none; width: 100%; }
+        .fa-search-inp:focus { border-color: #4ec9b0; }
+        .fa-cat-pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+        .fa-pill { background: #222; border: 1px solid #333; color: #aaa; border-radius: 14px;
+            padding: 3px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+        .fa-pill:hover { color: #eee; border-color: #555; }
+        .fa-pill.active { background: #163327; color: #6dbf85; border-color: #2e6b38; font-weight: 600; }
+        .fa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+            gap: 8px; padding: 14px; overflow-y: auto; flex: 1; min-height: 0; background: #111;
+            scrollbar-width: thin; scrollbar-color: #444 #181818; }
+        .fa-grid::-webkit-scrollbar { width: 6px; }
+        .fa-grid::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        .fa-grid-item { background: #181818; border: 1px solid #282828; border-radius: 6px;
+            padding: 8px 4px 6px; cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; gap: 6px; color: #ccc; transition: all .15s; }
+        .fa-grid-item:hover { background: #202b36; border-color: #3b5f88; color: #8ec8f6; transform: translateY(-1px); }
+        .fa-grid-item i { font-size: 18px; }
+        .fa-grid-item .fa-item-lbl { font-size: 10px; color: #888; max-width: 100%; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+        .fa-grid-item:hover .fa-item-lbl { color: #bae0ff; }
+
+        .btn-add-macro { background: #1e2a1e; border: 1px solid #2e5e2e; color: #6dbf85;
+            border-radius: 5px; padding: 6px 14px; font-size: 12px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px; }
+        .btn-add-macro:hover { filter: brightness(1.2); }
+        .macros-empty-msg { padding: 30px; text-align: center; color: #555; font-size: 13px;
+            border: 1px dashed #2a2a2a; border-radius: 8px; }
 
         /* ── Toast ── */
         .toast { position: fixed; bottom: 36px; right: 14px; padding: 8px 14px; border-radius: 5px;
@@ -159,9 +368,10 @@
             border-bottom: 1px solid #2a2a2a; flex-shrink: 0;
             display: flex; align-items: center; gap: 4px; }
         #outline-title span { flex: 1; }
-        #outline-toggle { font-size: 14px; color: #555; cursor: pointer;
-            padding: 0 2px; line-height: 1; user-select: none; }
-        #outline-toggle:hover { color: #ccc; }
+        .outline-head-btn { background: none; border: none; color: #777; cursor: pointer;
+            padding: 2px 5px; border-radius: 3px; font-size: 12px;
+            display: inline-flex; align-items: center; justify-content: center; transition: all .15s; }
+        .outline-head-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
         #outline-list { overflow-y: auto; flex: 1; padding: 4px 0; }
         #outline-list::-webkit-scrollbar { width: 5px; }
         #outline-list::-webkit-scrollbar-track { background: #252526; }
@@ -178,6 +388,23 @@
         .sym-item .sym-line { font-size: 10px; color: #555; flex-shrink: 0; }
         .sym-item:hover .sym-line { color: #888; }
         #outline-empty { padding: 12px; color: #555; font-size: 12px; }
+
+        /* Outline collapsed rail / strip */
+        .outline-strip { width: 28px; background: #141414; border-left: 1px solid #2a2a2a;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center;
+            padding: 12px 0; gap: 10px; user-select: none; transition: background .15s, color .15s;
+            color: #777; flex-shrink: 0; }
+        .outline-strip:hover { background: #202020; color: #4ec9b0; }
+        .outline-strip i { font-size: 11px; }
+        .outline-strip span { writing-mode: vertical-rl; text-orientation: mixed;
+            font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
+        .outline-strip.hidden { display: none; }
+
+        /* Outline tab button */
+        .btn-outline-toggle { background: transparent; border: 1px solid #333; color: #777;
+            display: inline-flex; align-items: center; gap: 5px; }
+        .btn-outline-toggle:hover { color: #ccc; border-color: #555; }
+        .btn-outline-toggle.active { background: #192535; border-color: #244161; color: #8ec8f6; }
 
         /* ── Resize grip ── */
         #resize-grip { height: 5px; background: #111; cursor: ns-resize; flex-shrink: 0;
@@ -240,16 +467,16 @@
 
         /* ── Services modal ── */
         .svc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75);
-            z-index: 3000; display: none; align-items: center; justify-content: center; }
+            z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
         .svc-overlay.open { display: flex; }
         .svc-modal-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
-            width: 760px; max-width: 95vw; max-height: 80vh; display: flex; flex-direction: column;
+            width: 820px; max-width: 95vw; max-height: 80vh; display: flex; flex-direction: column;
             box-shadow: 0 20px 60px rgba(0,0,0,.9); }
         .svc-mhead { display: flex; align-items: center; gap: 10px; padding: 12px 16px;
-            border-bottom: 1px solid #2a2a2a; flex-shrink: 0; }
-        .svc-mtitle { font-size: 13px; font-weight: 600; color: #ccc; flex: 1; }
+            border-bottom: 1px solid #2a2a2a; flex-shrink: 0; flex-wrap: wrap; }
+        .svc-mtitle { font-size: 13px; font-weight: 600; color: #ccc; flex: 1; display: flex; align-items: center; gap: 6px; }
         .svc-mfilter { background: #111; border: 1px solid #333; color: #ddd; border-radius: 5px;
-            padding: 5px 10px; font-size: 12px; outline: none; width: 200px; }
+            padding: 5px 10px; font-size: 12px; outline: none; width: 170px; }
         .svc-mfilter:focus { border-color: #555; }
         .svc-mclose { background: none; border: none; color: #555; font-size: 20px;
             cursor: pointer; padding: 0 4px; line-height: 1; }
@@ -261,6 +488,8 @@
         .svc-mtbl th { font-size: 10px; font-weight: 700; text-transform: uppercase;
             letter-spacing: .7px; color: #444; padding: 6px 12px; border-bottom: 1px solid #242424;
             white-space: nowrap; position: sticky; top: 0; background: #1a1a1a; z-index: 1; }
+        .svc-mtbl th.th-sortable { cursor: pointer; user-select: none; transition: all .15s; }
+        .svc-mtbl th.th-sortable:hover { color: #8ec8f6; background: #222; }
         .svc-mtbl td { padding: 5px 12px; border-bottom: 1px solid #1e1e1e; vertical-align: middle; }
         .svc-mtbl tr:last-child td { border-bottom: none; }
         .svc-mtbl tr:hover td { background: rgba(255,255,255,.03); }
@@ -293,9 +522,10 @@
         .tree-row:hover .fsize { display: none; }
         .tree-row .faction { display: none; gap: 1px; flex-shrink: 0; }
         .tree-row:hover .faction { display: flex; }
-        .faction-btn { background: none; border: none; color: #666; font-size: 12px;
-            cursor: pointer; padding: 1px 4px; border-radius: 3px; line-height: 1.4; }
-        .faction-btn:hover { background: rgba(255,255,255,.08); color: #ccc; }
+        .faction-btn { background: none; border: none; color: #777; font-size: 11px;
+            cursor: pointer; padding: 2px 5px; border-radius: 3px; line-height: 1.2;
+            display: inline-flex; align-items: center; justify-content: center; }
+        .faction-btn:hover { background: rgba(255,255,255,.1); color: #ccc; }
         .faction-del:hover { color: #f44747 !important; }
 
         /* ── Image preview ── */
@@ -317,17 +547,47 @@
 
     <!-- ── Top bar ── -->
     <div id="topbar">
-        <span class="brand">⚙ {{ app_title }} — Code Editor</span>
+        <span class="brand">⚙ {% if device_name %}{{ device_name }} — {% endif %}{{ app_title }} — Code Editor</span>
+        <div class="video-ctrl-group" title="Video Devices">
+            <i class="fa-solid fa-video" style="color:#4ec9b0;font-size:12px"></i>
+            <select id="video-dev-select" class="video-select"></select>
+            <button type="button" class="btn-video-refresh" onclick="loadVideoDevices()" title="Refresh video devices list"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <button type="button" class="btn btn-video-play" onclick="playVideoPopup()" title="Play video stream"><i class="fa-solid fa-play"></i></button>
+        </div>
+        <div class="topbar-sep"></div>
+        <div id="macro-bar"></div>
+        <button id="btn-macro-edit" class="btn btn-macro-edit" onclick="openMacrosModal()" title="Edit macros"><i class="fa-solid fa-sliders"></i></button>
+        <div class="topbar-sep"></div>
         <select id="svc-select" class="svc-select" onchange="onSvcChange()">
             <option value="{{ service_name }}">{{ service_name }}</option>
         </select>
-        <button class="btn btn-start"   onclick="svcAction('start')"  >▶</button>
-        <button class="btn btn-stop"    onclick="svcAction('stop')"   >■</button>
-        <button class="btn btn-restart" onclick="svcAction('restart')">↺</button>
-        <button class="btn btn-back"    onclick="openSvcModal()">≡ Services</button>
-        <button class="btn btn-back"    onclick="location.href='/'">← Main</button>
-        <a href="/settings" class="btn btn-back">⚙ Settings</a>
-        <a href="/logout" class="btn btn-logout">&#128275; Logout</a>
+        <button class="btn btn-start"   onclick="svcAction('start')"   title="Start Service"><i class="fa-solid fa-play"></i></button>
+        <button class="btn btn-stop"    onclick="svcAction('stop')"    title="Stop Service"><i class="fa-solid fa-stop"></i></button>
+        <button class="btn btn-restart" onclick="svcAction('restart')" title="Restart Service"><i class="fa-solid fa-rotate-right"></i></button>
+        <button class="btn btn-back"    onclick="openSvcModal()"><i class="fa-solid fa-list-check"></i> Services</button>
+        <div class="topbar-sep"></div>
+        <button class="btn btn-back"    onclick="location.href='/'"><i class="fa-solid fa-arrow-left"></i> Main</button>
+        <a href="/settings" class="btn btn-back"><i class="fa-solid fa-gear"></i> Settings</a>
+        <div class="power-dropdown-wrap">
+            <button class="btn btn-power" onclick="togglePowerMenu(event)" title="Power Management"><i class="fa-solid fa-power-off"></i> Power</button>
+            <div id="power-dropdown" class="power-dropdown">
+                <button type="button" class="power-item power-reboot" onclick="confirmPower('reboot')">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <div>
+                        <div class="power-item-title">Reboot</div>
+                        <div class="power-item-desc">Restart the system</div>
+                    </div>
+                </button>
+                <button type="button" class="power-item power-shutdown" onclick="confirmPower('poweroff')">
+                    <i class="fa-solid fa-power-off"></i>
+                    <div>
+                        <div class="power-item-title">Shutdown</div>
+                        <div class="power-item-desc">Power off the system</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+        <a href="/logout" class="btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </div>
 
     <!-- ── Workspace ── -->
@@ -337,7 +597,7 @@
         <div id="sidebar">
             <div id="sidebar-title">
                 Explorer
-                <button class="tree-newfile" onclick="newFile()" title="New File">+</button>
+                <button class="tree-newfile" onclick="newFile()" title="New File"><i class="fa-solid fa-file-circle-plus"></i></button>
             </div>
             <div id="file-tree">
                 <div style="padding:12px;color:#888;font-size:12px">Loading…</div>
@@ -365,12 +625,8 @@
                         <div id="tab-scroll"><!-- tabs inserted by JS --></div>
                         <div class="tab-actions">
                             <span id="save-ok">✓ Saved</span>
-                            <button class="btn btn-save btn-sm" onclick="saveFile()" title="Save (Ctrl+S)">&#128190;</button>
-                            
-                        <!--
-                            <button class="btn btn-start btn-sm" onclick="svcAction('start')" title="Start service">&#9654;</button>
-                            <button class="btn btn-stop btn-sm" onclick="svcAction('stop')" title="Stop service">&#9632;</button>
-                        -->
+                            <button class="btn btn-save btn-sm" onclick="saveFile()" title="Save (Ctrl+S)"><i class="fa-solid fa-floppy-disk"></i></button>
+                            <button id="btn-outline-tab" class="btn btn-sm btn-outline-toggle active" onclick="toggleOutline()" title="Toggle Outline"><i class="fa-solid fa-bars-staggered"></i> <span>Outline</span></button>
                         </div>
                     </div>
                     <div id="monaco-container"></div>
@@ -407,12 +663,18 @@
             <!-- Outline panel -->
             <div id="outline-panel">
                 <div id="outline-title">
-                    <span>Outline</span>
-                    <span id="outline-toggle" onclick="toggleOutline()" title="Hide outline">×</span>
+                    <span><i class="fa-solid fa-bars-staggered" style="color:#4ec9b0;margin-right:4px"></i> Outline</span>
+                    <button class="outline-head-btn" onclick="toggleOutline(false)" title="Close Outline"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="outline-list">
                     <div id="outline-empty">Open a file to see symbols</div>
                 </div>
+            </div>
+
+            <!-- Collapsed Outline strip (shown when outline is closed) -->
+            <div id="outline-collapsed-strip" class="outline-strip hidden" onclick="toggleOutline(true)" title="Open Outline panel">
+                <i class="fa-solid fa-chevron-left"></i>
+                <span>Outline</span>
             </div>
 
         </div>
@@ -426,6 +688,151 @@
         <span id="status-detail">Loading…</span>
     </div>
 
+</div>
+
+<!-- Video Stream Modal Popup -->
+<div id="video-overlay" class="svc-overlay video-modal-overlay" onclick="if(event.target===this)stopVideoPopup()">
+    <div class="video-popup-box" id="video-popup-box">
+        <div class="macros-mhead" id="video-popup-header" style="background:#1c1c1c;border-bottom:1px solid #2a2a2a;padding:8px 14px;flex-shrink:0;cursor:grab;user-select:none;display:flex;align-items:center;gap:10px">
+            <span class="macros-mtitle" style="gap:8px;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                <i class="fa-solid fa-video" style="color:#4ec9b0"></i>
+                <span id="video-popup-dev-label">/dev/video1</span>
+            </span>
+            <div style="display:flex;align-items:center;gap:5px;flex-shrink:0" onclick="event.stopPropagation()">
+                <label style="font-size:11px;color:#888"><i class="fa-solid fa-expand" style="font-size:10px"></i> Resolution:</label>
+                <select id="video-res-select" class="video-select" style="max-width:130px;height:26px" onchange="restartVideoStream()">
+                    <option value="640x480">640x480</option>
+                </select>
+                <button type="button" class="btn btn-video-restart" onclick="restartVideoStream()" title="Restart stream with selected resolution">
+                    <i class="fa-solid fa-rotate-right"></i> Restart
+                </button>
+            </div>
+            <button type="button" class="btn btn-video-stop" onclick="stopVideoPopup()" title="Stop video">
+                <i class="fa-solid fa-stop"></i> Stop
+            </button>
+            <button type="button" class="macros-mclose" onclick="stopVideoPopup()" title="Close">&#215;</button>
+        </div>
+        <div class="video-mbody">
+            <div class="video-stage">
+                <div id="video-loading" class="video-loading">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size:26px;color:#4ec9b0"></i>
+                    <span style="font-size:12px;color:#aaa">Starting video stream...</span>
+                </div>
+                <img id="video-stream-img" src="" alt="Video Stream" class="video-stream-el">
+            </div>
+        </div>
+        <div class="macros-mfooter" style="padding:7px 14px;background:#181818;border-top:1px solid #222;flex-shrink:0;display:flex;align-items:center;gap:10px">
+            <button type="button" class="btn btn-video-stop" onclick="stopVideoPopup()">
+                <i class="fa-solid fa-stop"></i> Stop
+            </button>
+            <button type="button" class="btn btn-video-restart" onclick="restartVideoStream()">
+                <i class="fa-solid fa-rotate-right"></i> Restart
+            </button>
+            <span id="video-stream-status" style="font-size:11.5px;color:#4ec9b0">
+                <i class="fa-solid fa-circle-play"></i> Playback active
+            </span>
+            <span id="video-res-badge" style="font-size:10.5px;color:#888;background:#222;padding:2px 6px;border-radius:3px;font-family:monospace">640x480</span>
+            <div style="flex:1"></div>
+            <span style="font-size:10.5px;color:#555">Drag by header ✥ | Resize ↘</span>
+            <div class="video-resize-grip" id="video-resize-grip" title="Drag to resize window">
+                <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Preview -->
+<div id="img-overlay" onclick="if(event.target===this)closeImage()">
+    <img id="img-preview" src="" alt="">
+    <div id="img-toolbar">
+        <span id="img-name-lbl"></span>
+        <button class="img-close-btn" onclick="closeImage()">Close &nbsp;Esc</button>
+    </div>
+</div>
+
+<!-- Services Modal -->
+<div id="svc-overlay" class="svc-overlay" onclick="if(event.target===this)closeSvcModal()">
+    <div class="svc-modal-box">
+        <div class="svc-mhead">
+            <span class="svc-mtitle"><i class="fa-solid fa-list-check" style="color:#4ec9b0"></i> All Services (<span id="svc-count">0</span>)</span>
+            <div style="display:flex;align-items:center;gap:6px">
+                <label style="font-size:11px;color:#777">Sort:</label>
+                <select id="svc-sort-select" class="svc-mfilter" style="width:auto;cursor:pointer" onchange="onSvcSortChange(this.value)">
+                    <option value="state-running">State: Running first</option>
+                    <option value="state-failed">State: Failed first</option>
+                    <option value="state-az">State: A → Z</option>
+                    <option value="name-asc">Name: A → Z</option>
+                    <option value="name-desc">Name: Z → A</option>
+                </select>
+            </div>
+            <input id="svc-mfilter" class="svc-mfilter" type="text" placeholder="Search / filter…" oninput="filterSvcModal()">
+            <button class="svc-mclose" onclick="closeSvcModal()">&#215;</button>
+        </div>
+        <div class="svc-mbody">
+            <table class="svc-mtbl">
+                <thead><tr>
+                    <th class="th-sortable" onclick="toggleSvcSort('name')" title="Click to sort by name">
+                        Service <span id="sort-ico-name"><i class="fa-solid fa-sort" style="opacity:.3"></i></span>
+                    </th>
+                    <th class="th-sortable" onclick="toggleSvcSort('state')" title="Click to sort by state" style="width:115px">
+                        State <span id="sort-ico-state"><i class="fa-solid fa-arrow-down-short-wide" style="color:#4ec9b0"></i></span>
+                    </th>
+                    <th class="th-sortable" onclick="toggleSvcSort('desc')" title="Click to sort by description">
+                        Description <span id="sort-ico-desc"><i class="fa-solid fa-sort" style="opacity:.3"></i></span>
+                    </th>
+                    <th style="width:110px">Actions</th>
+                </tr></thead>
+                <tbody id="svc-mbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Macros Modal -->
+<div id="macros-overlay" class="svc-overlay" onclick="if(event.target===this)closeMacrosModal()">
+    <div class="macros-modal-box">
+        <div class="macros-mhead">
+            <span class="macros-mtitle"><i class="fa-solid fa-terminal" style="color:#4ec9b0"></i> Command Macros</span>
+            <button class="macros-mclose" onclick="closeMacrosModal()">&#215;</button>
+        </div>
+        <div class="macros-mbody" id="macros-editor-list"></div>
+        <div class="macros-mfooter">
+            <button type="button" class="btn-add-macro" onclick="addMacroCard()">
+                <i class="fa-solid fa-plus"></i> Add Button
+            </button>
+            <div style="flex:1"></div>
+            <span id="macros-status" style="font-size:12px;margin-right:8px"></span>
+            <button type="button" class="btn btn-back" onclick="closeMacrosModal()">Cancel</button>
+            <button type="button" class="btn btn-save" onclick="saveMacrosModal()">
+                <i class="fa-solid fa-floppy-disk"></i> Save
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- FontAwesome Icons Catalog Modal -->
+<div id="fa-catalog-overlay" class="svc-overlay" onclick="if(event.target===this)closeFaCatalog()">
+    <div class="fa-catalog-box">
+        <div class="macros-mhead">
+            <span class="macros-mtitle"><i class="fa-solid fa-icons" style="color:#4ec9b0"></i> FontAwesome Icons Catalog</span>
+            <button class="macros-mclose" onclick="closeFaCatalog()">&#215;</button>
+        </div>
+        <div class="fa-cat-toolbar">
+            <input type="text" id="fa-search-input" class="fa-search-inp" placeholder="Search icon (e.g. git, server, disk, play, net, bug, lock)..." oninput="filterFaIcons()">
+            <div class="fa-cat-pills">
+                <button type="button" class="fa-pill active" data-cat="all" onclick="setFaCategory('all')">All</button>
+                <button type="button" class="fa-pill" data-cat="sys" onclick="setFaCategory('sys')">System / Hardware</button>
+                <button type="button" class="fa-pill" data-cat="dev" onclick="setFaCategory('dev')">Dev / Git</button>
+                <button type="button" class="fa-pill" data-cat="files" onclick="setFaCategory('files')">Files / Data</button>
+                <button type="button" class="fa-pill" data-cat="actions" onclick="setFaCategory('actions')">Actions / Status</button>
+            </div>
+        </div>
+        <div class="fa-grid" id="fa-icon-grid"></div>
+        <div class="macros-mfooter" style="justify-content:space-between">
+            <span style="font-size:11.5px;color:#777">Click an icon to apply or close the dialog</span>
+            <button type="button" class="btn btn-back" onclick="closeFaCatalog()">Close</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -470,17 +877,87 @@
         sh:'shell', bash:'shell', yaml:'yaml', yml:'yaml',
         xml:'xml', ini:'ini', cfg:'ini', conf:'ini', txt:'plaintext', log:'plaintext'
     };
-    const ICON_MAP = { py:'🐍', js:'📜', ts:'📜', html:'🌐', css:'🎨', json:'{}',
-                       md:'📝', sh:'⚙', yaml:'⚙', yml:'⚙' };
 
     function detectLang(name) {
         return LANG_MAP[name.split('.').pop().toLowerCase()] || 'plaintext';
     }
+
     function fileIcon(name) {
-        return ICON_MAP[name.split('.').pop().toLowerCase()] || '📄';
+        if (!name) return '<i class="fa-regular fa-file" style="color:#888"></i>';
+        const lower = name.toLowerCase();
+        if (lower === 'dockerfile') return '<i class="fa-brands fa-docker" style="color:#2496ed"></i>';
+        if (lower === '.dockerignore') return '<i class="fa-brands fa-docker" style="color:#7ab8d4"></i>';
+        if (lower.startsWith('.git')) return '<i class="fa-brands fa-git-alt" style="color:#f34f29"></i>';
+        if (lower === 'license' || lower === 'license.txt' || lower === 'license.md') {
+            return '<i class="fa-solid fa-scale-balanced" style="color:#dcb67a"></i>';
+        }
+        if (lower === 'readme.md' || lower === 'readme.txt' || lower === 'readme') {
+            return '<i class="fa-brands fa-markdown" style="color:#42a5f5"></i>';
+        }
+
+        const ext = lower.split('.').pop();
+        switch (ext) {
+            case 'py': case 'pyw': case 'pyc': case 'pyx': case 'pyd':
+                return '<i class="fa-brands fa-python" style="color:#3776ab"></i>';
+            case 'js': case 'mjs': case 'cjs':
+                return '<i class="fa-brands fa-js" style="color:#f7df1e"></i>';
+            case 'ts':
+                return '<i class="fa-solid fa-code" style="color:#3178c6"></i>';
+            case 'jsx': case 'tsx':
+                return '<i class="fa-brands fa-react" style="color:#61dafb"></i>';
+            case 'html': case 'htm':
+                return '<i class="fa-brands fa-html5" style="color:#e34f26"></i>';
+            case 'css':
+                return '<i class="fa-brands fa-css3-alt" style="color:#2965f1"></i>';
+            case 'scss': case 'sass': case 'less':
+                return '<i class="fa-brands fa-sass" style="color:#cf649a"></i>';
+            case 'json':
+                return '<i class="fa-solid fa-code" style="color:#e5c07b"></i>';
+            case 'yaml': case 'yml':
+                return '<i class="fa-solid fa-sliders" style="color:#cb171e"></i>';
+            case 'xml': case 'svg':
+                return '<i class="fa-solid fa-code" style="color:#e8a838"></i>';
+            case 'ini': case 'cfg': case 'conf': case 'env': case 'toml': case 'properties':
+                return '<i class="fa-solid fa-gear" style="color:#9e9e9e"></i>';
+            case 'sh': case 'bash': case 'zsh':
+                return '<i class="fa-solid fa-terminal" style="color:#4ec9b0"></i>';
+            case 'md': case 'markdown':
+                return '<i class="fa-brands fa-markdown" style="color:#519aba"></i>';
+            case 'txt': case 'text':
+                return '<i class="fa-regular fa-file-lines" style="color:#aaaaaa"></i>';
+            case 'log':
+                return '<i class="fa-solid fa-list-ul" style="color:#ce9178"></i>';
+            case 'sql': case 'sqlite': case 'sqlite3': case 'db':
+                return '<i class="fa-solid fa-database" style="color:#b0bec5"></i>';
+            case 'zip': case 'tar': case 'gz': case '7z': case 'bz2': case 'xz': case 'rar': case 'whl':
+                return '<i class="fa-solid fa-box-archive" style="color:#e8a838"></i>';
+            case 'png': case 'jpg': case 'jpeg': case 'gif': case 'webp': case 'ico': case 'bmp': case 'avif':
+                return '<i class="fa-solid fa-image" style="color:#26a69a"></i>';
+            case 'service': case 'socket': case 'target': case 'timer':
+                return '<i class="fa-solid fa-microchip" style="color:#4ec9b0"></i>';
+            case 'c': case 'h': case 'cpp': case 'hpp': case 'cc':
+                return '<i class="fa-solid fa-c" style="color:#659ad2"></i>';
+            case 'rs':
+                return '<i class="fa-brands fa-rust" style="color:#dea584"></i>';
+            case 'go':
+                return '<i class="fa-brands fa-golang" style="color:#00add8"></i>';
+            case 'java':
+                return '<i class="fa-brands fa-java" style="color:#f89820"></i>';
+            case 'php':
+                return '<i class="fa-brands fa-php" style="color:#777bb4"></i>';
+            case 'rb':
+                return '<i class="fa-solid fa-gem" style="color:#cc342d"></i>';
+            default:
+                return '<i class="fa-regular fa-file-code" style="color:#858585"></i>';
+        }
     }
     function esc(s) {
-        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
     function fmtSize(b) {
         if (b >= 1048576) return (b/1048576).toFixed(1)+' MB';
@@ -502,27 +979,29 @@
             row.style.paddingLeft = (8 + depth * 16) + 'px';
 
             if (item.type === 'dir') {
-                row.innerHTML = `<span class="arrow">▶</span><span class="ico">📁</span><span class="lbl">${esc(item.name)}</span>`;
+                row.innerHTML = `<span class="arrow"><i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span><span class="ico"><i class="fa-solid fa-folder" style="color:#dcb67a"></i></span><span class="lbl">${esc(item.name)}</span>`;
                 const sub = buildTree(item.children || [], depth + 1);
                 sub.className = 'tree-children';
                 row.addEventListener('click', () => {
                     const open = sub.classList.toggle('open');
-                    row.querySelector('.arrow').textContent = open ? '▼' : '▶';
-                    row.querySelectorAll('.ico')[0].textContent = open ? '📂' : '📁';
+                    const arr = row.querySelector('.arrow');
+                    if (arr) arr.innerHTML = open ? '<i class="fa-solid fa-chevron-down" style="font-size:9px"></i>' : '<i class="fa-solid fa-chevron-right" style="font-size:9px"></i>';
+                    const ico = row.querySelector('.ico');
+                    if (ico) ico.innerHTML = open ? '<i class="fa-solid fa-folder-open" style="color:#e5c07b"></i>' : '<i class="fa-solid fa-folder" style="color:#dcb67a"></i>';
                 });
                 li.appendChild(row);
                 li.appendChild(sub);
             } else {
                 const sizeStr = item.size != null ? fmtSize(item.size) : '';
-                const ico = isImage(item.name) ? '🖼️' : fileIcon(item.name);
+                const ico = fileIcon(item.name);
                 row.innerHTML =
                     `<span class="arrow"></span>` +
                     `<span class="ico">${ico}</span>` +
                     `<span class="lbl">${esc(item.name)}</span>` +
                     `<span class="fsize">${esc(sizeStr)}</span>` +
                     `<span class="faction">` +
-                      `<button class="faction-btn" title="Rename">✏️</button>` +
-                      `<button class="faction-btn faction-del" title="Delete">×</button>` +
+                      `<button class="faction-btn" title="Rename"><i class="fa-solid fa-pen-to-square"></i></button>` +
+                      `<button class="faction-btn faction-del" title="Delete"><i class="fa-solid fa-trash"></i></button>` +
                     `</span>`;
                 row.querySelector('.faction-btn:not(.faction-del)').addEventListener('click', e => {
                     e.stopPropagation();
@@ -648,7 +1127,10 @@
         document.getElementById('img-preview').src = '';
     }
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeImage(); closeSvcModal(); }
+        if (e.key === 'Escape') {
+            closeImage(); closeSvcModal(); closeMacrosModal(); closeFaCatalog(); stopVideoPopup();
+            const d = document.getElementById('power-dropdown'); if (d) d.classList.remove('open');
+        }
     });
 
     // ── Open file ───────────────────────────────────────────────────────────────
@@ -1016,13 +1498,28 @@
         outlineDebounce = setTimeout(updateOutline, 500);
     }
 
-    function toggleOutline() {
-        outlineVisible = !outlineVisible;
+    function toggleOutline(forceState) {
+        if (typeof forceState === 'boolean') {
+            outlineVisible = forceState;
+        } else {
+            outlineVisible = !outlineVisible;
+        }
         const panel = document.getElementById('outline-panel');
-        const toggle = document.getElementById('outline-toggle');
-        panel.classList.toggle('hidden', !outlineVisible);
-        toggle.textContent = outlineVisible ? '×' : '☰';
-        toggle.title = outlineVisible ? 'Hide outline' : 'Show outline';
+        const strip = document.getElementById('outline-collapsed-strip');
+        const tabBtn = document.getElementById('btn-outline-tab');
+
+        if (panel) panel.classList.toggle('hidden', !outlineVisible);
+        if (strip) strip.classList.toggle('hidden', outlineVisible);
+        if (tabBtn) {
+            tabBtn.classList.toggle('active', outlineVisible);
+            tabBtn.title = outlineVisible ? 'Hide Outline' : 'Show Outline';
+        }
+        if (outlineVisible) {
+            updateOutline();
+        }
+        if (editor) {
+            setTimeout(() => editor.layout(), 30);
+        }
     }
 
     // highlight current symbol on cursor move
@@ -1239,12 +1736,30 @@
 
     // ── Services modal ─────────────────────────────────────────────────
     let _allSvcs = [];
+    let _svcSortMode = 'state-running';
+
+    const STATE_WEIGHTS = {
+        'running': 1,
+        'active': 2,
+        'reloading': 3,
+        'failed': 4,
+        'exited': 5,
+        'dead': 6,
+        'inactive': 7
+    };
+
+    function getSvcWeight(sub) {
+        if (!sub) return 99;
+        const s = sub.toLowerCase();
+        return STATE_WEIGHTS[s] !== undefined ? STATE_WEIGHTS[s] : 50;
+    }
 
     function openSvcModal() {
         document.getElementById('svc-overlay').classList.add('open');
-        document.getElementById('svc-mfilter').value = '';
+        const filterInp = document.getElementById('svc-mfilter');
+        if (filterInp) filterInp.value = '';
         _loadSvcList();
-        setTimeout(() => document.getElementById('svc-mfilter').focus(), 100);
+        setTimeout(() => { if (filterInp) filterInp.focus(); }, 100);
     }
 
     function closeSvcModal() {
@@ -1259,8 +1774,10 @@
     }
 
     function _renderSvcModal(list) {
-        const cur = document.getElementById('svc-select').value;
+        const sel = document.getElementById('svc-select');
+        const cur = sel ? sel.value : '';
         const tbody = document.getElementById('svc-mbody');
+        if (!tbody) return;
         if (!list.length) {
             tbody.innerHTML = '<tr><td colspan="4" style="color:#555;padding:16px 12px">No services found</td></tr>';
             return;
@@ -1280,27 +1797,119 @@
         }).join('');
     }
 
+    function onSvcSortChange(val) {
+        _svcSortMode = val;
+        applySvcFilterAndSort();
+    }
+
+    function toggleSvcSort(col) {
+        if (col === 'state') {
+            if (_svcSortMode === 'state-running') _svcSortMode = 'state-failed';
+            else if (_svcSortMode === 'state-failed') _svcSortMode = 'state-az';
+            else _svcSortMode = 'state-running';
+        } else if (col === 'name') {
+            _svcSortMode = _svcSortMode === 'name-asc' ? 'name-desc' : 'name-asc';
+        } else if (col === 'desc') {
+            _svcSortMode = _svcSortMode === 'desc-asc' ? 'desc-desc' : 'desc-asc';
+        }
+        const sel = document.getElementById('svc-sort-select');
+        if (sel) sel.value = _svcSortMode;
+        applySvcFilterAndSort();
+    }
+
+    function updateSvcSortIcons() {
+        const icoName = document.getElementById('sort-ico-name');
+        const icoState = document.getElementById('sort-ico-state');
+        const icoDesc = document.getElementById('sort-ico-desc');
+
+        if (icoName) {
+            if (_svcSortMode === 'name-asc') icoName.innerHTML = '<i class="fa-solid fa-arrow-down-a-z" style="color:#4ec9b0"></i>';
+            else if (_svcSortMode === 'name-desc') icoName.innerHTML = '<i class="fa-solid fa-arrow-up-z-a" style="color:#4ec9b0"></i>';
+            else icoName.innerHTML = '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+        }
+        if (icoState) {
+            if (_svcSortMode === 'state-running') icoState.innerHTML = '<i class="fa-solid fa-arrow-down-short-wide" style="color:#4ec9b0" title="Running first"></i>';
+            else if (_svcSortMode === 'state-failed') icoState.innerHTML = '<i class="fa-solid fa-arrow-down-wide-short" style="color:#f44747" title="Failed first"></i>';
+            else if (_svcSortMode === 'state-az') icoState.innerHTML = '<i class="fa-solid fa-arrow-down-a-z" style="color:#4ec9b0"></i>';
+            else icoState.innerHTML = '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+        }
+        if (icoDesc) {
+            if (_svcSortMode === 'desc-asc') icoDesc.innerHTML = '<i class="fa-solid fa-arrow-down-a-z" style="color:#4ec9b0"></i>';
+            else if (_svcSortMode === 'desc-desc') icoDesc.innerHTML = '<i class="fa-solid fa-arrow-up-z-a" style="color:#4ec9b0"></i>';
+            else icoDesc.innerHTML = '<i class="fa-solid fa-sort" style="opacity:.3"></i>';
+        }
+    }
+
+    function applySvcFilterAndSort() {
+        const q = (document.getElementById('svc-mfilter') ? document.getElementById('svc-mfilter').value : '').toLowerCase().trim();
+        let list = _allSvcs.filter(s =>
+            !q || (s.name && s.name.toLowerCase().includes(q)) ||
+                  (s.desc && s.desc.toLowerCase().includes(q)) ||
+                  (s.sub && s.sub.toLowerCase().includes(q))
+        );
+
+        list.sort((a, b) => {
+            if (_svcSortMode === 'state-running') {
+                const diff = getSvcWeight(a.sub) - getSvcWeight(b.sub);
+                return diff !== 0 ? diff : a.name.localeCompare(b.name);
+            }
+            if (_svcSortMode === 'state-failed') {
+                const isFailA = a.sub === 'failed' ? 0 : 1;
+                const isFailB = b.sub === 'failed' ? 0 : 1;
+                if (isFailA !== isFailB) return isFailA - isFailB;
+                const diff = getSvcWeight(b.sub) - getSvcWeight(a.sub);
+                return diff !== 0 ? diff : a.name.localeCompare(b.name);
+            }
+            if (_svcSortMode === 'state-az') {
+                const diff = (a.sub || '').localeCompare(b.sub || '');
+                return diff !== 0 ? diff : a.name.localeCompare(b.name);
+            }
+            if (_svcSortMode === 'name-asc') {
+                return a.name.localeCompare(b.name);
+            }
+            if (_svcSortMode === 'name-desc') {
+                return b.name.localeCompare(a.name);
+            }
+            if (_svcSortMode === 'desc-asc') {
+                return (a.desc || '').localeCompare(b.desc || '');
+            }
+            if (_svcSortMode === 'desc-desc') {
+                return (b.desc || '').localeCompare(a.desc || '');
+            }
+            return 0;
+        });
+
+        const cnt = document.getElementById('svc-count');
+        if (cnt) cnt.textContent = list.length;
+        updateSvcSortIcons();
+        _renderSvcModal(list);
+    }
+
     function filterSvcModal() {
-        const q = document.getElementById('svc-mfilter').value.toLowerCase();
-        _renderSvcModal(_allSvcs.filter(s =>
-            s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q)));
+        applySvcFilterAndSort();
     }
 
     function _loadSvcList() {
-        document.getElementById('svc-mbody').innerHTML =
-            '<tr><td colspan="4" style="color:#555;padding:16px 12px">Loading…</td></tr>';
+        const mb = document.getElementById('svc-mbody');
+        if (mb) {
+            mb.innerHTML = '<tr><td colspan="4" style="color:#555;padding:16px 12px">Loading…</td></tr>';
+        }
         fetch('/api/services').then(r => r.json()).then(data => {
             _allSvcs = data.services || [];
             const sel = document.getElementById('svc-select');
-            const cur = sel.value;
-            sel.innerHTML = _allSvcs.map(s =>
-                `<option value="${esc(s.name)}"${s.name===cur?' selected':''}>${esc(s.name)}</option>`
-            ).join('');
-            if (!sel.value) sel.value = data.default || '{{ service_name }}';
-            _renderSvcModal(_allSvcs);
+            if (sel) {
+                const cur = sel.value;
+                sel.innerHTML = _allSvcs.map(s =>
+                    `<option value="${esc(s.name)}"${s.name===cur?' selected':''}>${esc(s.name)}</option>`
+                ).join('');
+                if (!sel.value) sel.value = data.default || '{{ service_name }}';
+            }
+            applySvcFilterAndSort();
         }).catch(() => {
-            document.getElementById('svc-mbody').innerHTML =
-                '<tr><td colspan="4" style="color:#f44;padding:16px 12px">Failed to load</td></tr>';
+            const mb = document.getElementById('svc-mbody');
+            if (mb) {
+                mb.innerHTML = '<tr><td colspan="4" style="color:#f44;padding:16px 12px">Failed to load</td></tr>';
+            }
         });
     }
 
@@ -1325,35 +1934,769 @@
 
     // Init: populate service dropdown
     _loadSvcList();
+
+    // ── Command Macros ────────────────────────────────────────────────────────────
+    let _macrosList = {{ macros | tojson if macros is defined else '[]' }};
+    let _modalMacros = [];
+    let _activeIconPickerIdx = null;
+    let _currentFaCategory = 'all';
+
+    const PRESET_COLORS = [
+        { color: '#162638', name: 'Blue' },
+        { color: '#1b4d2e', name: 'Green' },
+        { color: '#4d1b1b', name: 'Red' },
+        { color: '#4d3b1a', name: 'Amber' },
+        { color: '#381c4e', name: 'Purple' },
+        { color: '#113d48', name: 'Teal' },
+        { color: '#252526', name: 'Dark Gray' },
+        { color: '#1e2a5a', name: 'Indigo' },
+        { color: '#4a2c11', name: 'Brown' }
+    ];
+
+    const QUICK_ICONS = [
+        { cls: 'fa-solid fa-terminal', name: 'Terminal' },
+        { cls: 'fa-brands fa-git-alt', name: 'Git' },
+        { cls: 'fa-solid fa-hard-drive', name: 'Disk' },
+        { cls: 'fa-solid fa-microchip', name: 'CPU' },
+        { cls: 'fa-solid fa-clock', name: 'Uptime' },
+        { cls: 'fa-solid fa-server', name: 'Server' },
+        { cls: 'fa-solid fa-play', name: 'Play' },
+        { cls: 'fa-solid fa-arrows-rotate', name: 'Refresh' },
+        { cls: 'fa-solid fa-database', name: 'Database' },
+        { cls: 'fa-solid fa-box-archive', name: 'Archive' },
+        { cls: 'fa-solid fa-code', name: 'Code' },
+        { cls: 'fa-solid fa-gear', name: 'Settings' }
+    ];
+
+    const FA_CATALOG = [
+        // System / Hardware
+        { cls: 'fa-solid fa-server', name: 'Server', cat: 'sys' },
+        { cls: 'fa-solid fa-hard-drive', name: 'Disk', cat: 'sys' },
+        { cls: 'fa-solid fa-microchip', name: 'CPU', cat: 'sys' },
+        { cls: 'fa-solid fa-memory', name: 'Memory', cat: 'sys' },
+        { cls: 'fa-solid fa-clock', name: 'Uptime', cat: 'sys' },
+        { cls: 'fa-solid fa-gauge-high', name: 'Load', cat: 'sys' },
+        { cls: 'fa-solid fa-network-wired', name: 'Network', cat: 'sys' },
+        { cls: 'fa-solid fa-wifi', name: 'Wi-Fi', cat: 'sys' },
+        { cls: 'fa-solid fa-bolt', name: 'Power', cat: 'sys' },
+        { cls: 'fa-solid fa-power-off', name: 'Shutdown', cat: 'sys' },
+        { cls: 'fa-solid fa-rotate-right', name: 'Reboot', cat: 'sys' },
+        { cls: 'fa-solid fa-shield-halved', name: 'Security', cat: 'sys' },
+        { cls: 'fa-solid fa-fan', name: 'Cooler', cat: 'sys' },
+        { cls: 'fa-solid fa-temperature-half', name: 'Temperature', cat: 'sys' },
+        { cls: 'fa-solid fa-tower-broadcast', name: 'Antenna', cat: 'sys' },
+        { cls: 'fa-solid fa-ethernet', name: 'Ethernet', cat: 'sys' },
+
+        // Dev / CLI / Git
+        { cls: 'fa-solid fa-terminal', name: 'Terminal', cat: 'dev' },
+        { cls: 'fa-brands fa-git-alt', name: 'Git', cat: 'dev' },
+        { cls: 'fa-brands fa-github', name: 'GitHub', cat: 'dev' },
+        { cls: 'fa-brands fa-docker', name: 'Docker', cat: 'dev' },
+        { cls: 'fa-brands fa-python', name: 'Python', cat: 'dev' },
+        { cls: 'fa-brands fa-node-js', name: 'Node.js', cat: 'dev' },
+        { cls: 'fa-brands fa-rust', name: 'Rust', cat: 'dev' },
+        { cls: 'fa-brands fa-linux', name: 'Linux', cat: 'dev' },
+        { cls: 'fa-brands fa-ubuntu', name: 'Ubuntu', cat: 'dev' },
+        { cls: 'fa-solid fa-code', name: 'Code', cat: 'dev' },
+        { cls: 'fa-solid fa-code-branch', name: 'Branch', cat: 'dev' },
+        { cls: 'fa-solid fa-code-commit', name: 'Commit', cat: 'dev' },
+        { cls: 'fa-solid fa-code-merge', name: 'Merge', cat: 'dev' },
+        { cls: 'fa-solid fa-bug', name: 'Bug', cat: 'dev' },
+        { cls: 'fa-solid fa-cubes', name: 'Packages', cat: 'dev' },
+        { cls: 'fa-solid fa-plug', name: 'Plugin', cat: 'dev' },
+        { cls: 'fa-solid fa-key', name: 'Key', cat: 'dev' },
+        { cls: 'fa-solid fa-lock', name: 'Lock', cat: 'dev' },
+        { cls: 'fa-solid fa-unlock', name: 'Unlock', cat: 'dev' },
+
+        // Files / Data
+        { cls: 'fa-solid fa-folder', name: 'Folder', cat: 'files' },
+        { cls: 'fa-solid fa-folder-open', name: 'Open Folder', cat: 'files' },
+        { cls: 'fa-solid fa-file-code', name: 'Code File', cat: 'files' },
+        { cls: 'fa-solid fa-file-lines', name: 'Log / Text', cat: 'files' },
+        { cls: 'fa-solid fa-database', name: 'Database', cat: 'files' },
+        { cls: 'fa-solid fa-box-archive', name: 'Archive', cat: 'files' },
+        { cls: 'fa-solid fa-download', name: 'Download', cat: 'files' },
+        { cls: 'fa-solid fa-upload', name: 'Upload', cat: 'files' },
+        { cls: 'fa-solid fa-copy', name: 'Copy', cat: 'files' },
+        { cls: 'fa-solid fa-trash-can', name: 'Trash', cat: 'files' },
+        { cls: 'fa-solid fa-floppy-disk', name: 'Save', cat: 'files' },
+        { cls: 'fa-solid fa-share-nodes', name: 'Share', cat: 'files' },
+
+        // Actions / Status
+        { cls: 'fa-solid fa-play', name: 'Play', cat: 'actions' },
+        { cls: 'fa-solid fa-stop', name: 'Stop', cat: 'actions' },
+        { cls: 'fa-solid fa-pause', name: 'Pause', cat: 'actions' },
+        { cls: 'fa-solid fa-arrows-rotate', name: 'Refresh', cat: 'actions' },
+        { cls: 'fa-solid fa-circle-check', name: 'Success', cat: 'actions' },
+        { cls: 'fa-solid fa-triangle-exclamation', name: 'Warning', cat: 'actions' },
+        { cls: 'fa-solid fa-circle-exclamation', name: 'Error', cat: 'actions' },
+        { cls: 'fa-solid fa-circle-info', name: 'Info', cat: 'actions' },
+        { cls: 'fa-solid fa-magnifying-glass', name: 'Search', cat: 'actions' },
+        { cls: 'fa-solid fa-filter', name: 'Filter', cat: 'actions' },
+        { cls: 'fa-solid fa-wrench', name: 'Tools', cat: 'actions' },
+        { cls: 'fa-solid fa-gear', name: 'Settings', cat: 'actions' },
+        { cls: 'fa-solid fa-sliders', name: 'Sliders', cat: 'actions' },
+        { cls: 'fa-solid fa-chart-line', name: 'Chart', cat: 'actions' },
+        { cls: 'fa-solid fa-chart-simple', name: 'Stats', cat: 'actions' },
+        { cls: 'fa-solid fa-bell', name: 'Bell', cat: 'actions' },
+        { cls: 'fa-solid fa-bullseye', name: 'Target / Ping', cat: 'actions' },
+        { cls: 'fa-solid fa-eye', name: 'Monitor', cat: 'actions' },
+        { cls: 'fa-solid fa-cloud', name: 'Cloud', cat: 'actions' },
+        { cls: 'fa-solid fa-globe', name: 'Web', cat: 'actions' },
+        { cls: 'fa-solid fa-layer-group', name: 'Groups', cat: 'actions' },
+        { cls: 'fa-solid fa-list-check', name: 'Tasks', cat: 'actions' }
+    ];
+
+    function formatFaClass(cls) {
+        if (!cls) return '';
+        cls = cls.trim();
+        if (/^fa-[a-z0-9-]+$/i.test(cls)) {
+            return 'fa-solid ' + cls;
+        }
+        return cls;
+    }
+
+    function getContrastTextColor(hex) {
+        if (!hex || !hex.startsWith('#')) return '#8ec8f6';
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        if (c.length !== 6) return '#ffffff';
+        const r = parseInt(c.substring(0, 2), 16) || 0;
+        const g = parseInt(c.substring(2, 4), 16) || 0;
+        const b = parseInt(c.substring(4, 6), 16) || 0;
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return yiq >= 150 ? '#111111' : '#ffffff';
+    }
+
+    function getBorderColor(hex) {
+        if (!hex || !hex.startsWith('#')) return '#244161';
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        if (c.length !== 6) return 'rgba(255,255,255,0.2)';
+        let r = parseInt(c.substring(0, 2), 16) || 0;
+        let g = parseInt(c.substring(2, 4), 16) || 0;
+        let b = parseInt(c.substring(4, 6), 16) || 0;
+        r = Math.min(255, Math.floor(r * 1.35 + 20));
+        g = Math.min(255, Math.floor(g * 1.35 + 20));
+        b = Math.min(255, Math.floor(b * 1.35 + 20));
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function renderMacroButtons() {
+        const bar = document.getElementById('macro-bar');
+        if (!bar) return;
+        bar.innerHTML = '';
+        _macrosList.forEach((m, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-macro';
+            btn.title = m.tooltip || m.name || m.command || '';
+            const faCls = formatFaClass(m.icon);
+            let inner = '';
+            if (faCls) inner += `<i class="${esc(faCls)}"></i>`;
+            if (m.name) inner += `<span>${esc(m.name)}</span>`;
+            if (!inner) inner = `<span>#${idx + 1}</span>`;
+            btn.innerHTML = inner;
+            const col = (m.color || '').trim();
+            if (col) {
+                btn.style.backgroundColor = col;
+                btn.style.borderColor = getBorderColor(col);
+                btn.style.color = getContrastTextColor(col);
+            }
+            btn.onclick = () => runMacro(idx);
+            bar.appendChild(btn);
+        });
+    }
+
+    function runMacro(idx) {
+        const m = _macrosList[idx];
+        if (!m || !m.command) {
+            toast('Command is not configured', true);
+            return;
+        }
+        switchTab('term');
+        if (!term) initXterm();
+        const cmd = m.command.trim();
+        const promptEl = document.getElementById('term-prompt');
+        const promptTxt = promptEl ? promptEl.textContent : '$ ';
+        term.write('\x1b[38;5;78m' + promptTxt + '\x1b[0m' + cmd + '\r\n');
+        cmdHistory.unshift(cmd);
+        if (cmdHistory.length > 200) cmdHistory.pop();
+        toast('▶ ' + (m.name || cmd));
+        execCmd(cmd);
+    }
+
+    function openMacrosModal() {
+        _modalMacros = JSON.parse(JSON.stringify(_macrosList));
+        document.getElementById('macros-status').textContent = '';
+        renderMacrosEditor();
+        document.getElementById('macros-overlay').classList.add('open');
+    }
+
+    function closeMacrosModal() {
+        document.getElementById('macros-overlay').classList.remove('open');
+    }
+
+    function syncModalMacrosFromDOM() {
+        const cards = document.querySelectorAll('#macros-editor-list .macro-card');
+        const updated = [];
+        cards.forEach(card => {
+            updated.push({
+                name: card.querySelector('.macro-input-name').value,
+                tooltip: card.querySelector('.macro-input-tooltip').value,
+                command: card.querySelector('.macro-input-cmd').value,
+                icon: card.querySelector('.macro-input-icon').value,
+                color: card.querySelector('.macro-input-color') ? card.querySelector('.macro-input-color').value : '#162638'
+            });
+        });
+        _modalMacros = updated;
+    }
+
+    function renderMacrosEditor() {
+        const list = document.getElementById('macros-editor-list');
+        if (!list) return;
+        if (!_modalMacros.length) {
+            list.innerHTML = `<div class="macros-empty-msg">
+                <div style="font-size:24px;margin-bottom:8px;opacity:.5"><i class="fa-solid fa-terminal"></i></div>
+                <div>No command macros.</div>
+                <div style="font-size:11.5px;color:#777;margin-top:4px">Click "Add Button" below to create your first macro.</div>
+            </div>`;
+            return;
+        }
+        list.innerHTML = _modalMacros.map((m, i) => {
+            const faCls = formatFaClass(m.icon);
+            const cardColor = m.color || '#162638';
+            return `
+            <div class="macro-card" data-idx="${i}">
+                <div class="macro-card-head">
+                    <div class="macro-card-title">
+                        <span class="macro-card-badge">#${i + 1}</span>
+                        <div class="macro-preview-chip" id="chip-prev-${i}" style="background-color:${esc(cardColor)};border-color:${esc(getBorderColor(cardColor))};color:${esc(getContrastTextColor(cardColor))}">
+                            <i class="${esc(faCls || 'fa-solid fa-play')}"></i>
+                            <span class="chip-text">${esc(m.name || 'Button')}</span>
+                        </div>
+                    </div>
+                    <div class="macro-card-ctrls">
+                        <button type="button" class="macro-btn-ctrl" onclick="moveMacroItem(${i}, -1)" title="Up" ${i === 0 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i></button>
+                        <button type="button" class="macro-btn-ctrl" onclick="moveMacroItem(${i}, 1)" title="Down" ${i === _modalMacros.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
+                        <button type="button" class="macro-btn-ctrl macro-btn-del" onclick="deleteMacroCard(${i})" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+                <div class="macro-card-body">
+                    <div class="macro-field-row">
+                        <div class="macro-field">
+                            <label>Button Label</label>
+                            <input type="text" class="macro-input-name" value="${esc(m.name || '')}" placeholder="e.g. Git Status" oninput="updateMacroCardPreview(${i})">
+                            <span class="hint">Button name shown on topbar</span>
+                        </div>
+                        <div class="macro-field">
+                            <label>Tooltip (on hover)</label>
+                            <input type="text" class="macro-input-tooltip" value="${esc(m.tooltip || '')}" placeholder="e.g. Check Git repository status">
+                            <span class="hint">Hover tooltip text</span>
+                        </div>
+                    </div>
+                    <div class="macro-field-row">
+                        <div class="macro-field">
+                            <label>Command to execute (Bash)</label>
+                            <input type="text" class="macro-input-cmd" value="${esc(m.command || '')}" placeholder="e.g. git status" style="font-family:'Cascadia Code','Fira Mono',Consolas,monospace">
+                            <span class="hint">Executed in the interactive terminal</span>
+                        </div>
+                        <div class="macro-field">
+                            <label>Button Color (Color Picker & Palette)</label>
+                            <div class="macro-color-row">
+                                <input type="color" class="macro-input-color" value="${esc(cardColor)}" oninput="updateMacroCardPreview(${i})">
+                                <span class="macro-color-hex">${esc(cardColor)}</span>
+                                <div class="macro-swatches">
+                                    ${PRESET_COLORS.map(p => `
+                                        <button type="button" class="macro-swatch" style="background:${p.color}" onclick="setMacroCardColor(${i}, '${p.color}')" title="${p.name}"></button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <span class="hint">Button background color</span>
+                        </div>
+                    </div>
+                    <div class="macro-field">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <label>FontAwesome Icon</label>
+                            <button type="button" class="btn-fa-catalog" onclick="openFaCatalog(${i})">
+                                <i class="fa-solid fa-icons"></i> FA Icons Catalog
+                            </button>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
+                            <input type="text" class="macro-input-icon" value="${esc(m.icon || '')}" placeholder="fa-solid fa-terminal" oninput="updateMacroCardPreview(${i})">
+                            <div class="macro-icon-preview" id="icon-prev-${i}"><i class="${esc(faCls || 'fa-solid fa-play')}"></i></div>
+                        </div>
+                        <div class="macro-quick-icons">
+                            <span style="font-size:10px;color:#777;margin-right:2px">Quick select:</span>
+                            ${QUICK_ICONS.map(q => `
+                                <button type="button" class="macro-quick-ico-btn" onclick="setMacroCardIcon(${i}, '${q.cls}')" title="${q.name} (${q.cls})">
+                                    <i class="${q.cls}"></i>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function setMacroCardColor(idx, color) {
+        const card = document.querySelector(`.macro-card[data-idx="${idx}"]`);
+        if (!card) return;
+        const inp = card.querySelector('.macro-input-color');
+        if (inp) inp.value = color;
+        updateMacroCardPreview(idx);
+    }
+
+    function setMacroCardIcon(idx, cls) {
+        const card = document.querySelector(`.macro-card[data-idx="${idx}"]`);
+        if (!card) return;
+        const inp = card.querySelector('.macro-input-icon');
+        if (inp) inp.value = cls;
+        updateMacroCardPreview(idx);
+    }
+
+    function updateMacroCardPreview(idx) {
+        const card = document.querySelector(`.macro-card[data-idx="${idx}"]`);
+        if (!card) return;
+        const nameVal = card.querySelector('.macro-input-name').value.trim();
+        const iconVal = card.querySelector('.macro-input-icon').value.trim();
+        const colorVal = card.querySelector('.macro-input-color') ? card.querySelector('.macro-input-color').value : '#162638';
+        const colorHexSpan = card.querySelector('.macro-color-hex');
+        if (colorHexSpan) colorHexSpan.textContent = colorVal;
+        const faCls = formatFaClass(iconVal);
+
+        const chip = document.getElementById(`chip-prev-${idx}`);
+        if (chip) {
+            chip.innerHTML = `<i class="${esc(faCls || 'fa-solid fa-play')}"></i> <span class="chip-text">${esc(nameVal || 'Button')}</span>`;
+            chip.style.backgroundColor = colorVal;
+            chip.style.borderColor = getBorderColor(colorVal);
+            chip.style.color = getContrastTextColor(colorVal);
+        }
+        const icoBox = document.getElementById(`icon-prev-${idx}`);
+        if (icoBox) {
+            icoBox.innerHTML = `<i class="${esc(faCls || 'fa-solid fa-play')}"></i>`;
+        }
+    }
+
+    function addMacroCard() {
+        syncModalMacrosFromDOM();
+        _modalMacros.push({
+            name: '',
+            tooltip: '',
+            command: '',
+            icon: 'fa-solid fa-terminal',
+            color: '#162638'
+        });
+        renderMacrosEditor();
+        const list = document.getElementById('macros-editor-list');
+        if (list) list.scrollTop = list.scrollHeight;
+    }
+
+    function deleteMacroCard(idx) {
+        syncModalMacrosFromDOM();
+        _modalMacros.splice(idx, 1);
+        renderMacrosEditor();
+    }
+
+    function moveMacroItem(idx, delta) {
+        syncModalMacrosFromDOM();
+        const target = idx + delta;
+        if (target < 0 || target >= _modalMacros.length) return;
+        const tmp = _modalMacros[idx];
+        _modalMacros[idx] = _modalMacros[target];
+        _modalMacros[target] = tmp;
+        renderMacrosEditor();
+    }
+
+    function saveMacrosModal() {
+        syncModalMacrosFromDOM();
+        const clean = _modalMacros.map(m => ({
+            name: (m.name || '').trim(),
+            tooltip: (m.tooltip || '').trim(),
+            command: (m.command || '').trim(),
+            icon: (m.icon || '').trim(),
+            color: (m.color || '').trim() || '#162638'
+        }));
+
+        const statusEl = document.getElementById('macros-status');
+        statusEl.style.color = '#888';
+        statusEl.textContent = 'Saving…';
+
+        fetch('/api/macros', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(clean)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                _macrosList = data.macros;
+                renderMacroButtons();
+                statusEl.style.color = '#4ec9b0';
+                statusEl.textContent = '✓ Saved';
+                toast('Macros saved successfully');
+                setTimeout(() => {
+                    closeMacrosModal();
+                }, 600);
+            } else {
+                statusEl.style.color = '#f44747';
+                statusEl.textContent = 'Error: ' + (data.error || 'failed to save');
+            }
+        })
+        .catch(err => {
+            statusEl.style.color = '#f44747';
+            statusEl.textContent = 'Error: ' + err.message;
+        });
+    }
+
+    // ── FontAwesome Catalog Modal Logic ──────────────────────────────────────────
+    function setFaCategory(cat) {
+        _currentFaCategory = cat;
+        document.querySelectorAll('.fa-pill').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.cat === cat);
+        });
+        filterFaIcons();
+    }
+
+    function filterFaIcons() {
+        const q = (document.getElementById('fa-search-input').value || '').toLowerCase().trim();
+        const grid = document.getElementById('fa-icon-grid');
+        if (!grid) return;
+        const filtered = FA_CATALOG.filter(item => {
+            const matchesCat = _currentFaCategory === 'all' || item.cat === _currentFaCategory;
+            const matchesSearch = !q || item.cls.toLowerCase().includes(q) || item.name.toLowerCase().includes(q);
+            return matchesCat && matchesSearch;
+        });
+
+        if (!filtered.length) {
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#666">No icons found</div>';
+            return;
+        }
+
+        grid.innerHTML = filtered.map(item => `
+            <button type="button" class="fa-grid-item" onclick="selectFaIcon('${item.cls}')" title="${item.cls}">
+                <i class="${item.cls}"></i>
+                <span class="fa-item-lbl">${esc(item.name)}</span>
+            </button>
+        `).join('');
+    }
+
+    function openFaCatalog(idx) {
+        _activeIconPickerIdx = idx;
+        _currentFaCategory = 'all';
+        document.querySelectorAll('.fa-pill').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.cat === 'all');
+        });
+        const inp = document.getElementById('fa-search-input');
+        if (inp) inp.value = '';
+        filterFaIcons();
+        const ov = document.getElementById('fa-catalog-overlay');
+        if (ov) ov.classList.add('open');
+        setTimeout(() => { if (inp) inp.focus(); }, 100);
+    }
+
+    function closeFaCatalog() {
+        const ov = document.getElementById('fa-catalog-overlay');
+        if (ov) ov.classList.remove('open');
+        _activeIconPickerIdx = null;
+    }
+
+    function selectFaIcon(cls) {
+        if (_activeIconPickerIdx !== null) {
+            setMacroCardIcon(_activeIconPickerIdx, cls);
+        }
+        closeFaCatalog();
+    }
+
+    // ── Video streaming logic ────────────────────────────────────────────────────
+    let _currentStreamId = null;
+    let _activeVideoDevice = null;
+    let _activeVideoRes = '640x480';
+
+    function loadVideoDevices(selectedPath) {
+        const sel = document.getElementById('video-dev-select');
+        if (!sel) return;
+        const curVal = selectedPath || sel.value;
+        sel.innerHTML = '<option value="">Scanning devices…</option>';
+
+        fetch('/api/video_devices')
+            .then(r => r.json())
+            .then(data => {
+                const list = data.devices || [];
+                if (!list.length) {
+                    sel.innerHTML = '<option value="">No video devices found</option>';
+                    return;
+                }
+                sel.innerHTML = list.map(d =>
+                    `<option value="${esc(d.path)}"${d.path === curVal ? ' selected' : ''}>${esc(d.label || d.path)}</option>`
+                ).join('');
+                if (!sel.value && list.length) {
+                    const preferred = list.find(d => d.path === '/dev/video1') || list[0];
+                    sel.value = preferred.path;
+                }
+            })
+            .catch(() => {
+                sel.innerHTML = '<option value="">Failed to load devices</option>';
+            });
+    }
+
+    function loadVideoResolutions(device, defaultRes) {
+        const resSel = document.getElementById('video-res-select');
+        if (!resSel) return Promise.resolve(['640x480']);
+        resSel.innerHTML = '<option value="">Detecting…</option>';
+
+        return fetch('/api/video_resolutions?device=' + encodeURIComponent(device))
+            .then(r => r.json())
+            .then(data => {
+                const list = data.resolutions || ['1280x720', '640x480', '320x240'];
+                resSel.innerHTML = list.map(r =>
+                    `<option value="${esc(r)}">${esc(r)}</option>`
+                ).join('');
+                let picked = defaultRes && list.includes(defaultRes) ? defaultRes : '';
+                if (!picked) {
+                    if (list.includes('640x480')) picked = '640x480';
+                    else if (list.includes('1280x720')) picked = '1280x720';
+                    else picked = list[0];
+                }
+                resSel.value = picked;
+                _activeVideoRes = picked;
+                return list;
+            })
+            .catch(() => {
+                resSel.innerHTML = '<option value="640x480" selected>640x480</option><option value="1280x720">1280x720</option><option value="320x240">320x240</option>';
+                _activeVideoRes = '640x480';
+                return ['640x480', '1280x720', '320x240'];
+            });
+    }
+
+    function playVideoPopup() {
+        const sel = document.getElementById('video-dev-select');
+        const dev = sel ? sel.value : '';
+        if (!dev) {
+            alert('Please select a video device from the list');
+            return;
+        }
+
+        _activeVideoDevice = dev;
+        const ov = document.getElementById('video-overlay');
+        const box = document.getElementById('video-popup-box');
+        const devLabel = document.getElementById('video-popup-dev-label');
+
+        if (box && !box.style.left) {
+            box.style.left = '50%';
+            box.style.top = '50%';
+            box.style.transform = 'translate(-50%, -50%)';
+        }
+
+        if (devLabel) {
+            const opt = sel.options[sel.selectedIndex];
+            devLabel.textContent = opt ? opt.textContent : dev;
+        }
+
+        if (ov) ov.classList.add('open');
+
+        loadVideoResolutions(dev, _activeVideoRes).then(() => {
+            startStreamFeed();
+        });
+    }
+
+    function startStreamFeed() {
+        const dev = _activeVideoDevice;
+        if (!dev) return;
+
+        const img = document.getElementById('video-stream-img');
+        const loading = document.getElementById('video-loading');
+        const status = document.getElementById('video-stream-status');
+        const resBadge = document.getElementById('video-res-badge');
+        const resSel = document.getElementById('video-res-select');
+
+        const chosenRes = resSel && resSel.value ? resSel.value : (_activeVideoRes || '640x480');
+        _activeVideoRes = chosenRes;
+        if (resBadge) resBadge.textContent = chosenRes;
+
+        _currentStreamId = 'stream_' + Date.now();
+        if (loading) loading.style.display = 'flex';
+        if (img) {
+            img.style.display = 'none';
+            img.onload = () => {
+                if (loading) loading.style.display = 'none';
+                img.style.display = 'block';
+            };
+            img.onerror = () => {
+                if (loading) loading.style.display = 'none';
+                if (status) status.innerHTML = '<span style="color:#f44747">✕ Video stream error</span>';
+            };
+            img.src = '/api/video_feed?device=' + encodeURIComponent(dev) +
+                      '&size=' + encodeURIComponent(chosenRes) +
+                      '&sid=' + _currentStreamId;
+        }
+        if (status) status.innerHTML = '<i class="fa-solid fa-circle-play" style="color:#4ec9b0"></i> Playback active';
+    }
+
+    function restartVideoStream() {
+        if (_currentStreamId) {
+            fetch('/api/video_stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stream_id: _currentStreamId })
+            }).catch(() => {});
+            _currentStreamId = null;
+        }
+        const img = document.getElementById('video-stream-img');
+        if (img) {
+            img.src = '';
+            img.style.display = 'none';
+        }
+        setTimeout(startStreamFeed, 100);
+    }
+
+    function stopVideoPopup() {
+        const ov = document.getElementById('video-overlay');
+        if (ov) ov.classList.remove('open');
+        const img = document.getElementById('video-stream-img');
+        if (img) {
+            img.src = '';
+            img.style.display = 'none';
+        }
+        const status = document.getElementById('video-stream-status');
+        if (status) status.textContent = 'Stopped';
+        if (_currentStreamId) {
+            fetch('/api/video_stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stream_id: _currentStreamId })
+            }).catch(() => {});
+            _currentStreamId = null;
+        }
+    }
+
+    // Init Drag and Resize for video popup
+    (function initVideoDragAndResize() {
+        const box = document.getElementById('video-popup-box');
+        const header = document.getElementById('video-popup-header');
+        const grip = document.getElementById('video-resize-grip');
+        if (!box || !header || !grip) return;
+
+        // ── Dragging by Header ──
+        let isDragging = false;
+        let dragStartX, dragStartY, boxStartX, boxStartY;
+
+        header.addEventListener('mousedown', e => {
+            if (e.target.closest('button, select, input, a')) return;
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+
+            const rect = box.getBoundingClientRect();
+            box.style.transform = 'none';
+            box.style.left = rect.left + 'px';
+            box.style.top = rect.top + 'px';
+            boxStartX = rect.left;
+            boxStartY = rect.top;
+
+            header.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        // ── Resizing by Grip ──
+        let isResizing = false;
+        let resStartX, resStartY, resStartW, resStartH;
+
+        grip.addEventListener('mousedown', e => {
+            isResizing = true;
+            resStartX = e.clientX;
+            resStartY = e.clientY;
+
+            const rect = box.getBoundingClientRect();
+            if (box.style.transform !== 'none') {
+                box.style.transform = 'none';
+                box.style.left = rect.left + 'px';
+                box.style.top = rect.top + 'px';
+            }
+            resStartW = rect.width;
+            resStartH = rect.height;
+
+            document.body.style.cursor = 'nwse-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (isDragging) {
+                const dx = e.clientX - dragStartX;
+                const dy = e.clientY - dragStartY;
+                let newL = boxStartX + dx;
+                let newT = boxStartY + dy;
+                const maxL = Math.max(0, window.innerWidth - box.offsetWidth);
+                const maxT = Math.max(0, window.innerHeight - box.offsetHeight);
+                box.style.left = Math.max(0, Math.min(maxL, newL)) + 'px';
+                box.style.top = Math.max(0, Math.min(maxT, newT)) + 'px';
+            } else if (isResizing) {
+                const dw = e.clientX - resStartX;
+                const dh = e.clientY - resStartY;
+                const newW = Math.max(340, Math.min(window.innerWidth - box.offsetLeft - 10, resStartW + dw));
+                const newH = Math.max(240, Math.min(window.innerHeight - box.offsetTop - 10, resStartH + dh));
+                box.style.width = newW + 'px';
+                box.style.height = newH + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                header.style.cursor = 'grab';
+                document.body.style.userSelect = '';
+            }
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    })();
+
+    // ── Power Management ──
+    function togglePowerMenu(e) {
+        if (e) e.stopPropagation();
+        const d = document.getElementById('power-dropdown');
+        if (d) d.classList.toggle('open');
+    }
+
+    function confirmPower(action) {
+        const isReboot = action === 'reboot';
+        const text = isReboot ? 'Are you sure you want to reboot the system?' : 'Are you sure you want to shut down the system?';
+        if (!confirm(text)) return;
+        const d = document.getElementById('power-dropdown');
+        if (d) d.classList.remove('open');
+        toast(isReboot ? 'Rebooting system...' : 'Shutting down system...');
+        fetch('/api/power/' + action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            toast(data.message || (isReboot ? 'Reboot in progress...' : 'Shutdown in progress...'));
+        })
+        .catch(() => {
+            toast(isReboot ? 'Reboot command sent.' : 'Shutdown command sent.');
+        });
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.power-dropdown-wrap')) {
+            const d = document.getElementById('power-dropdown');
+            if (d) d.classList.remove('open');
+        }
+    });
+
+    // Init video devices
+    loadVideoDevices();
+
+    // Init: render macro buttons
+    renderMacroButtons();
 </script>
-
-<!-- Image Preview -->
-<div id="img-overlay" onclick="if(event.target===this)closeImage()">
-    <img id="img-preview" src="" alt="">
-    <div id="img-toolbar">
-        <span id="img-name-lbl"></span>
-        <button class="img-close-btn" onclick="closeImage()">Close &nbsp;Esc</button>
-    </div>
-</div>
-
-<!-- Services Modal -->
-<div id="svc-overlay" class="svc-overlay" onclick="if(event.target===this)closeSvcModal()">
-    <div class="svc-modal-box">
-        <div class="svc-mhead">
-            <span class="svc-mtitle">All Services</span>
-            <input id="svc-mfilter" class="svc-mfilter" type="text" placeholder="Filter…" oninput="filterSvcModal()">
-            <button class="svc-mclose" onclick="closeSvcModal()">&#215;</button>
-        </div>
-        <div class="svc-mbody">
-            <table class="svc-mtbl">
-                <thead><tr>
-                    <th>Service</th><th>State</th><th>Description</th><th></th>
-                </tr></thead>
-                <tbody id="svc-mbody"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 </body>

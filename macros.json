@@ -1,0 +1,30 @@
+[
+    {
+        "name": "Git Status",
+        "command": "git status",
+        "tooltip": "Check Git repository status",
+        "icon": "fa-brands fa-git-alt",
+        "color": "#1b4d2e"
+    },
+    {
+        "name": "Disk Free",
+        "command": "df -h",
+        "tooltip": "Free disk space",
+        "icon": "fa-solid fa-hard-drive",
+        "color": "#113d48"
+    },
+    {
+        "name": "Top Mem",
+        "command": "ps aux --sort=-%mem | head -n 15",
+        "tooltip": "Top memory consuming processes",
+        "icon": "fa-solid fa-microchip",
+        "color": "#381c4e"
+    },
+    {
+        "name": "Uptime",
+        "command": "uptime",
+        "tooltip": "System uptime",
+        "icon": "fa-solid fa-clock",
+        "color": "#1b4d2e"
+    }
+]

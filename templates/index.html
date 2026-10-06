@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ page_title }}</title>
+    <title>{% if device_name %}{{ device_name }} — {% endif %}{{ page_title }}</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body { background-color: #111; color: #ddd;
             font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
@@ -140,6 +142,65 @@
             font-family: 'Cascadia Code','Fira Mono',Consolas,monospace; max-width: 230px; }
         .svc-select:focus { border-color: #555; }
 
+        /* ── Video streaming modal & controls ── */
+        .video-ctrl-group { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+        .video-select { background: #1a1a1a; border: 1px solid #3a3a3a; color: #9cdcfe;
+            font-size: 12px; border-radius: 4px; padding: 3px 6px; cursor: pointer; outline: none;
+            font-family: 'Cascadia Code','Fira Mono',Consolas,monospace; max-width: 220px; height: 28px; }
+        .video-select:focus { border-color: #4ec9b0; }
+        .btn-video-play { background: #1b4d2e; border: 1px solid #2e7d46; color: #6dbf85;
+            display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+            padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-video-play:hover { filter: brightness(1.2); }
+        .btn-video-refresh { background: #181818; border: 1px solid #2a2a2a; color: #aaa;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 4px; cursor: pointer; transition: all .15s; padding: 0; }
+        .btn-video-refresh:hover { color: #fff; border-color: #555; background: #262626; }
+        .btn-video-stop { background: #4d1b1b; border: 1px solid #7d2e2e; color: #e08080;
+            display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+            padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-video-stop:hover { filter: brightness(1.2); }
+        .btn-video-restart { background: #4d3b1a; border: 1px solid #7d5e2e; color: #d4a95a;
+            display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+            padding: 3px 9px; border-radius: 4px; cursor: pointer; transition: filter .15s; }
+        .btn-video-restart:hover { filter: brightness(1.2); }
+
+        .video-popup-box {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            background: #141414; border: 1px solid #333; border-radius: 10px;
+            width: 720px; max-width: 96vw; height: 540px; max-height: 94vh;
+            min-width: 340px; min-height: 260px;
+            display: flex; flex-direction: column; box-shadow: 0 15px 60px rgba(0,0,0,.9);
+            overflow: hidden; z-index: 3100;
+        }
+        .video-mbody {
+            flex: 1 1 0px; min-height: 0; background: #080808;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; padding: 4px;
+        }
+        .video-stage {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+        }
+        .video-stream-el {
+            max-width: 100%; max-height: 100%; width: auto; height: auto;
+            object-fit: contain; display: block; margin: auto;
+        }
+        .video-loading {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 10px; background: rgba(10,10,10,.85);
+            z-index: 2;
+        }
+        .video-resize-grip {
+            width: 22px; height: 22px; cursor: nwse-resize; display: flex;
+            align-items: center; justify-content: center; color: #555; font-size: 11px;
+            transition: color .15s; user-select: none;
+        }
+        .video-resize-grip:hover { color: #4ec9b0; }
+        .video-mclose { background: none; border: none; color: #555; font-size: 20px;
+            cursor: pointer; padding: 0 4px; line-height: 1; }
+        .video-mclose:hover { color: #ccc; }
+
         /* ── Services modal ── */
         .svc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7);
             z-index: 3000; display: none; align-items: center; justify-content: center; }
@@ -187,6 +248,24 @@
         .sma-x { background: #4d1b1b; border-color: #7d2e2e; color: #e08080; }
         .sma-r { background: #4d3b1a; border-color: #7d5e2e; color: #d4a95a; }
 
+        /* ── Power dropdown ── */
+        .power-dropdown-wrap { position: relative; display: inline-flex; }
+        .btn-power { background: transparent; border-color: #3a3a3a; color: #bbb; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-power:hover { color: #f44747; border-color: #7d2e2e; background: rgba(244,71,71,.08); }
+        .power-dropdown { position: absolute; right: 0; top: calc(100% + 6px); background: #1a1a1a;
+            border: 1px solid #333; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.8);
+            min-width: 190px; padding: 6px; display: none; flex-direction: column; gap: 4px; z-index: 2500; }
+        .power-dropdown.open { display: flex; }
+        .power-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+            background: transparent; border: none; border-radius: 5px; color: #ccc; cursor: pointer;
+            text-align: left; transition: all .15s; width: 100%; text-decoration: none; }
+        .power-item:hover { background: #252526; color: #fff; text-decoration: none; }
+        .power-item i { font-size: 15px; width: 18px; text-align: center; }
+        .power-reboot:hover i { color: #d4a95a; }
+        .power-shutdown:hover i { color: #f44747; }
+        .power-item-title { font-size: 12px; font-weight: 600; line-height: 1.2; }
+        .power-item-desc { font-size: 10px; color: #777; margin-top: 2px; }
+
         /* ── Toast ── */
         .idx-toast { position: fixed; bottom: 20px; right: 20px; padding: 8px 16px;
             border-radius: 6px; font-size: 12px; z-index: 4000; pointer-events: none;
@@ -199,10 +278,36 @@
 
     <!-- ── Top bar ── -->
     <div id="topbar">
-        <span class="brand">{{ app_title }}</span>
-        <button class="act-btn act-editor" onclick="openSvcModal()">≡ Services</button>
-        <a href="/settings" class="act-btn act-editor">⚙ Settings</a>
-        <a href="/editor" class="act-btn act-editor">🖊 Code Editor</a>
+        <span class="brand">{% if device_name %}{{ device_name }} — {% endif %}{{ app_title }}</span>
+        <div class="video-ctrl-group" title="Video Devices">
+            <i class="fa-solid fa-video" style="color:#4ec9b0;font-size:13px"></i>
+            <select id="video-dev-select" class="video-select"></select>
+            <button type="button" class="btn-video-refresh" onclick="loadVideoDevices()" title="Refresh video devices list"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <button type="button" class="btn btn-video-play" onclick="playVideoPopup()" title="Play video stream"><i class="fa-solid fa-play"></i></button>
+        </div>
+        <button class="act-btn act-editor" onclick="openSvcModal()"><i class="fa-solid fa-list-check"></i> Services</button>
+        <a href="/settings" class="act-btn act-editor"><i class="fa-solid fa-gear"></i> Settings</a>
+        <a href="/editor" class="act-btn act-editor"><i class="fa-solid fa-code"></i> Code Editor</a>
+        <div class="power-dropdown-wrap">
+            <button class="act-btn act-editor btn-power" onclick="togglePowerMenu(event)" title="Power Management"><i class="fa-solid fa-power-off"></i> Power</button>
+            <div id="power-dropdown" class="power-dropdown">
+                <button type="button" class="power-item power-reboot" onclick="confirmPower('reboot')">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <div>
+                        <div class="power-item-title">Reboot</div>
+                        <div class="power-item-desc">Restart the system</div>
+                    </div>
+                </button>
+                <button type="button" class="power-item power-shutdown" onclick="confirmPower('poweroff')">
+                    <i class="fa-solid fa-power-off"></i>
+                    <div>
+                        <div class="power-item-title">Shutdown</div>
+                        <div class="power-item-desc">Power off the system</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+        <a href="/logout" class="act-btn act-editor" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </div>
 
     <div class="container-fluid py-3 px-4" style="max-width: 1200px;">
@@ -302,6 +407,57 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Video Stream Modal Popup -->
+    <div id="video-overlay" class="svc-overlay video-modal-overlay" onclick="if(event.target===this)stopVideoPopup()">
+        <div class="video-popup-box" id="video-popup-box">
+            <div class="svc-mhead" id="video-popup-header" style="background:#1c1c1c;border-bottom:1px solid #2a2a2a;padding:8px 14px;flex-shrink:0;cursor:grab;user-select:none;display:flex;align-items:center;gap:10px">
+                <span class="svc-mtitle" style="gap:8px;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    <i class="fa-solid fa-video" style="color:#4ec9b0"></i>
+                    <span id="video-popup-dev-label">/dev/video1</span>
+                </span>
+                <div style="display:flex;align-items:center;gap:5px;flex-shrink:0" onclick="event.stopPropagation()">
+                    <label style="font-size:11px;color:#888"><i class="fa-solid fa-expand" style="font-size:10px"></i> Resolution:</label>
+                    <select id="video-res-select" class="video-select" style="max-width:130px;height:26px" onchange="restartVideoStream()">
+                        <option value="640x480">640x480</option>
+                    </select>
+                    <button type="button" class="btn btn-video-restart" onclick="restartVideoStream()" title="Restart stream with selected resolution">
+                        <i class="fa-solid fa-rotate-right"></i> Restart
+                    </button>
+                </div>
+                <button type="button" class="btn btn-video-stop" onclick="stopVideoPopup()" title="Stop video">
+                    <i class="fa-solid fa-stop"></i> Stop
+                </button>
+                <button type="button" class="video-mclose" onclick="stopVideoPopup()" title="Close">&#215;</button>
+            </div>
+            <div class="video-mbody">
+                <div class="video-stage">
+                    <div id="video-loading" class="video-loading">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size:26px;color:#4ec9b0"></i>
+                        <span style="font-size:12px;color:#aaa">Starting video stream...</span>
+                    </div>
+                    <img id="video-stream-img" src="" alt="Video Stream" class="video-stream-el">
+                </div>
+            </div>
+            <div style="padding:7px 14px;background:#181818;border-top:1px solid #222;flex-shrink:0;display:flex;align-items:center;gap:10px">
+                <button type="button" class="btn btn-video-stop" onclick="stopVideoPopup()">
+                    <i class="fa-solid fa-stop"></i> Stop
+                </button>
+                <button type="button" class="btn btn-video-restart" onclick="restartVideoStream()">
+                    <i class="fa-solid fa-rotate-right"></i> Restart
+                </button>
+                <span id="video-stream-status" style="font-size:11.5px;color:#4ec9b0">
+                    <i class="fa-solid fa-circle-play"></i> Playback active
+                </span>
+                <span id="video-res-badge" style="font-size:10.5px;color:#888;background:#222;padding:2px 6px;border-radius:3px;font-family:monospace">640x480</span>
+                <div style="flex:1"></div>
+                <span style="font-size:10.5px;color:#555">Drag by header ✥ | Resize ↘</span>
+                <div class="video-resize-grip" id="video-resize-grip" title="Drag to resize window">
+                    <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Services Modal -->
@@ -625,6 +781,300 @@
         // Init: populate dropdown, start polling
         _loadSvcList();
         setInterval(refreshStatusIdx, 10000);
+
+        // ── Video streaming logic ────────────────────────────────────────────────────
+        let _currentStreamId = null;
+        let _activeVideoDevice = null;
+        let _activeVideoRes = '640x480';
+
+        function loadVideoDevices(selectedPath) {
+            const sel = document.getElementById('video-dev-select');
+            if (!sel) return;
+            const curVal = selectedPath || sel.value;
+            sel.innerHTML = '<option value="">Scanning devices…</option>';
+
+            fetch('/api/video_devices')
+                .then(r => r.json())
+                .then(data => {
+                    const list = data.devices || [];
+                    if (!list.length) {
+                        sel.innerHTML = '<option value="">No video devices found</option>';
+                        return;
+                    }
+                    sel.innerHTML = list.map(d =>
+                        `<option value="${escH(d.path)}"${d.path === curVal ? ' selected' : ''}>${escH(d.label || d.path)}</option>`
+                    ).join('');
+                    if (!sel.value && list.length) {
+                        const preferred = list.find(d => d.path === '/dev/video1') || list[0];
+                        sel.value = preferred.path;
+                    }
+                })
+                .catch(() => {
+                    sel.innerHTML = '<option value="">Failed to load devices</option>';
+                });
+        }
+
+        function loadVideoResolutions(device, defaultRes) {
+            const resSel = document.getElementById('video-res-select');
+            if (!resSel) return Promise.resolve(['640x480']);
+            resSel.innerHTML = '<option value="">Detecting…</option>';
+
+            return fetch('/api/video_resolutions?device=' + encodeURIComponent(device))
+                .then(r => r.json())
+                .then(data => {
+                    const list = data.resolutions || ['1280x720', '640x480', '320x240'];
+                    resSel.innerHTML = list.map(r =>
+                        `<option value="${escH(r)}">${escH(r)}</option>`
+                    ).join('');
+                    let picked = defaultRes && list.includes(defaultRes) ? defaultRes : '';
+                    if (!picked) {
+                        if (list.includes('640x480')) picked = '640x480';
+                        else if (list.includes('1280x720')) picked = '1280x720';
+                        else picked = list[0];
+                    }
+                    resSel.value = picked;
+                    _activeVideoRes = picked;
+                    return list;
+                })
+                .catch(() => {
+                    resSel.innerHTML = '<option value="640x480" selected>640x480</option><option value="1280x720">1280x720</option><option value="320x240">320x240</option>';
+                    _activeVideoRes = '640x480';
+                    return ['640x480', '1280x720', '320x240'];
+                });
+        }
+
+        function playVideoPopup() {
+            const sel = document.getElementById('video-dev-select');
+            const dev = sel ? sel.value : '';
+            if (!dev) {
+                alert('Please select a video device from the list');
+                return;
+            }
+
+            _activeVideoDevice = dev;
+            const ov = document.getElementById('video-overlay');
+            const box = document.getElementById('video-popup-box');
+            const devLabel = document.getElementById('video-popup-dev-label');
+
+            if (box && !box.style.left) {
+                box.style.left = '50%';
+                box.style.top = '50%';
+                box.style.transform = 'translate(-50%, -50%)';
+            }
+
+            if (devLabel) {
+                const opt = sel.options[sel.selectedIndex];
+                devLabel.textContent = opt ? opt.textContent : dev;
+            }
+
+            if (ov) ov.classList.add('open');
+
+            loadVideoResolutions(dev, _activeVideoRes).then(() => {
+                startStreamFeed();
+            });
+        }
+
+        function startStreamFeed() {
+            const dev = _activeVideoDevice;
+            if (!dev) return;
+
+            const img = document.getElementById('video-stream-img');
+            const loading = document.getElementById('video-loading');
+            const status = document.getElementById('video-stream-status');
+            const resBadge = document.getElementById('video-res-badge');
+            const resSel = document.getElementById('video-res-select');
+
+            const chosenRes = resSel && resSel.value ? resSel.value : (_activeVideoRes || '640x480');
+            _activeVideoRes = chosenRes;
+            if (resBadge) resBadge.textContent = chosenRes;
+
+            _currentStreamId = 'stream_' + Date.now();
+            if (loading) loading.style.display = 'flex';
+            if (img) {
+                img.style.display = 'none';
+                img.onload = () => {
+                    if (loading) loading.style.display = 'none';
+                    img.style.display = 'block';
+                };
+                img.onerror = () => {
+                    if (loading) loading.style.display = 'none';
+                    if (status) status.innerHTML = '<span style="color:#f44747">✕ Video stream error</span>';
+                };
+                img.src = '/api/video_feed?device=' + encodeURIComponent(dev) +
+                          '&size=' + encodeURIComponent(chosenRes) +
+                          '&sid=' + _currentStreamId;
+            }
+            if (status) status.innerHTML = '<i class="fa-solid fa-circle-play" style="color:#4ec9b0"></i> Playback active';
+        }
+
+        function restartVideoStream() {
+            if (_currentStreamId) {
+                fetch('/api/video_stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stream_id: _currentStreamId })
+                }).catch(() => {});
+                _currentStreamId = null;
+            }
+            const img = document.getElementById('video-stream-img');
+            if (img) {
+                img.src = '';
+                img.style.display = 'none';
+            }
+            setTimeout(startStreamFeed, 100);
+        }
+
+        function stopVideoPopup() {
+            const ov = document.getElementById('video-overlay');
+            if (ov) ov.classList.remove('open');
+            const img = document.getElementById('video-stream-img');
+            if (img) {
+                img.src = '';
+                img.style.display = 'none';
+            }
+            const status = document.getElementById('video-stream-status');
+            if (status) status.textContent = 'Stopped';
+            if (_currentStreamId) {
+                fetch('/api/video_stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stream_id: _currentStreamId })
+                }).catch(() => {});
+                _currentStreamId = null;
+            }
+        }
+
+        // Init Drag and Resize for video popup
+        (function initVideoDragAndResize() {
+            const box = document.getElementById('video-popup-box');
+            const header = document.getElementById('video-popup-header');
+            const grip = document.getElementById('video-resize-grip');
+            if (!box || !header || !grip) return;
+
+            // ── Dragging by Header ──
+            let isDragging = false;
+            let dragStartX, dragStartY, boxStartX, boxStartY;
+
+            header.addEventListener('mousedown', e => {
+                if (e.target.closest('button, select, input, a')) return;
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+
+                const rect = box.getBoundingClientRect();
+                box.style.transform = 'none';
+                box.style.left = rect.left + 'px';
+                box.style.top = rect.top + 'px';
+                boxStartX = rect.left;
+                boxStartY = rect.top;
+
+                header.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            // ── Resizing by Grip ──
+            let isResizing = false;
+            let resStartX, resStartY, resStartW, resStartH;
+
+            grip.addEventListener('mousedown', e => {
+                isResizing = true;
+                resStartX = e.clientX;
+                resStartY = e.clientY;
+
+                const rect = box.getBoundingClientRect();
+                if (box.style.transform !== 'none') {
+                    box.style.transform = 'none';
+                    box.style.left = rect.left + 'px';
+                    box.style.top = rect.top + 'px';
+                }
+                resStartW = rect.width;
+                resStartH = rect.height;
+
+                document.body.style.cursor = 'nwse-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            document.addEventListener('mousemove', e => {
+                if (isDragging) {
+                    const dx = e.clientX - dragStartX;
+                    const dy = e.clientY - dragStartY;
+                    let newL = boxStartX + dx;
+                    let newT = boxStartY + dy;
+                    const maxL = Math.max(0, window.innerWidth - box.offsetWidth);
+                    const maxT = Math.max(0, window.innerHeight - box.offsetHeight);
+                    box.style.left = Math.max(0, Math.min(maxL, newL)) + 'px';
+                    box.style.top = Math.max(0, Math.min(maxT, newT)) + 'px';
+                } else if (isResizing) {
+                    const dw = e.clientX - resStartX;
+                    const dh = e.clientY - resStartY;
+                    const newW = Math.max(340, Math.min(window.innerWidth - box.offsetLeft - 10, resStartW + dw));
+                    const newH = Math.max(240, Math.min(window.innerHeight - box.offsetTop - 10, resStartH + dh));
+                    box.style.width = newW + 'px';
+                    box.style.height = newH + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    header.style.cursor = 'grab';
+                    document.body.style.userSelect = '';
+                }
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        })();
+
+        // ── Power Management ──
+        function togglePowerMenu(e) {
+            if (e) e.stopPropagation();
+            const d = document.getElementById('power-dropdown');
+            if (d) d.classList.toggle('open');
+        }
+
+        function confirmPower(action) {
+            const isReboot = action === 'reboot';
+            const text = isReboot ? 'Are you sure you want to reboot the system?' : 'Are you sure you want to shut down the system?';
+            if (!confirm(text)) return;
+            const d = document.getElementById('power-dropdown');
+            if (d) d.classList.remove('open');
+            idxToast(isReboot ? 'Rebooting system...' : 'Shutting down system...', false);
+            fetch('/api/power/' + action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                idxToast(data.message || (isReboot ? 'Reboot in progress...' : 'Shutdown in progress...'), false);
+            })
+            .catch(() => {
+                idxToast(isReboot ? 'Reboot command sent.' : 'Shutdown command sent.', false);
+            });
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.power-dropdown-wrap')) {
+                const d = document.getElementById('power-dropdown');
+                if (d) d.classList.remove('open');
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeSvcModal();
+                stopVideoPopup();
+                const d = document.getElementById('power-dropdown');
+                if (d) d.classList.remove('open');
+            }
+        });
+
+        loadVideoDevices();
     </script>
 </body>
 </html>
