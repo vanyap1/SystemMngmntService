@@ -1,0 +1,25 @@
+/* Main page (templates/index.html) */
+
+#status-pre { max-height: 260px; margin: 0; }
+.upload-row { align-items: flex-end; }
+
+/* Archives */
+.arc-tbl .arc-name { color: var(--code); font-family: var(--mono); font-size: 11.5px; word-break: break-all; }
+.arc-tbl .arc-size { color: var(--accent); white-space: nowrap; font-size: 11px; text-align: right; }
+.arc-tbl .arc-date { color: #666; white-space: nowrap; font-size: 11px; }
+.arc-tbl .arc-actions { display: flex; gap: 5px; justify-content: flex-end; white-space: nowrap; }
+
+/* System info */
+.si-grid { display: grid; grid-template-columns: 4fr 3fr 5fr; gap: 12px; }
+@media (max-width: 900px) { .si-grid { grid-template-columns: 1fr; } }
+.si-block { background: var(--bg-panel-2); border-radius: var(--radius); padding: 10px 12px;
+    border: 1px solid var(--border-soft); min-width: 0; }
+.si-head { font-size: 10px; color: var(--text-mute); text-transform: uppercase;
+    letter-spacing: .8px; margin-bottom: 6px; }
+.si-head + .si-head, .si-bar + .si-head { margin-top: 8px; }
+.si-kv { display: flex; justify-content: space-between; margin: 1px 0; font-size: 12px; gap: 8px; }
+.si-kv .k { color: #666; white-space: nowrap; }
+.si-kv .v { color: #bbb; text-align: right; word-break: break-all; }
+.si-iface { margin-bottom: 8px; }
+.si-iface strong { color: var(--code); }
+.si-iface small { color: #888; }

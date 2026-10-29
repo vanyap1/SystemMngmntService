@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Tests — {% endblock %}
+{% block page_name %}<span class="brand-sub"> — Tests</span>{% endblock %}
+{% block body_class %}page-tests{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('css/tests.css') }}">{% endblock %}
+
+{% block content %}
+<main class="page tests-page">
+
+    <section class="card">
+        <div class="card-head">
+            <span>Test Run</span>
+            <span class="meta mono">{{ tests_dir }}</span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <select id="test-script" class="select-mono test-select"></select>
+                <input id="test-serial" class="input serial-input mono" type="text" placeholder="Serial number"
+                       maxlength="64" autocomplete="off" spellcheck="false" title="Passed to the script as --sn">
+                <button class="btn btn-ghost btn-square" onclick="Tests.loadScripts()" title="Rescan scripts"><i class="fa-solid fa-arrows-rotate"></i></button>
+                <button id="btn-start" class="btn btn-success btn-lg" onclick="Tests.start()"><i class="fa-solid fa-play"></i> Start</button>
+                <button id="btn-stop" class="btn btn-danger btn-lg" onclick="Tests.stop()" disabled><i class="fa-solid fa-stop"></i> Stop</button>
+                <button class="btn btn-ghost btn-lg" onclick="Tests.openHistory()" title="Test history"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                <span class="spacer"></span>
+                <div class="run-summary" id="board-stats" title="Boards tested with the selected script (from logs; stopped runs excluded)">
+                    <span class="board-label" title="Boards"><i class="fa-solid fa-microchip"></i></span>
+                    <span class="board-stat"><b id="brd-total">0</b><small>total</small></span>
+                    <span class="board-stat st-pass"><b id="brd-pass">0</b><small>pass</small></span>
+                    <span class="board-stat st-fail"><b id="brd-fail">0</b><small>fail</small></span>
+                    <span class="board-stat st-error"><b id="brd-error">0</b><small>error</small></span>
+                    <span class="board-stat st-yield"><b id="brd-yield">—</b><small>yield</small></span>
+                    <span id="run-state" class="run-state state-IDLE">IDLE</span>
+                </div>
+            </div>
+            <div class="row run-options">
+                <label class="check-row stop-on-fail" title="On the first FAIL/ERROR skip the remaining steps and go to finalization">
+                    <input type="checkbox" id="stop-on-fail" checked> Stop on fail
+                </label>
+                <span id="script-desc" class="hint"></span>
+            </div>
+        </div>
+    </section>
+
+    <div id="verdict" class="verdict" hidden></div>
+
+    <section class="card results-card">
+        <div class="card-head">
+            <span>Results</span>
+            <span id="run-title" class="meta mono"></span>
+        </div>
+        <div class="card-body flush results-wrap">
+            <table class="tbl results-tbl">
+                <thead><tr>
+                    <th class="num">#</th><th>Test</th><th>Condition / Value</th><th>Units</th>
+                    <th class="num">Time</th><th>Status</th>
+                </tr></thead>
+                <tbody id="results-body">
+                    <tr><td colspan="6" class="tbl-empty">Select a script and press Start</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="results-foot">
+            <span class="small muted">Steps:</span>
+            <span class="badge badge-ok"   title="Passed steps"><i class="fa-solid fa-check"></i> <span id="cnt-pass">0</span></span>
+            <span class="badge badge-error" title="Failed steps"><i class="fa-solid fa-xmark"></i> <span id="cnt-fail">0</span></span>
+            <span class="badge badge-warn" title="Error steps"><i class="fa-solid fa-triangle-exclamation"></i> <span id="cnt-error">0</span></span>
+            <span class="spacer"></span>
+            <span class="small muted"><i class="fa-regular fa-clock"></i> <span id="run-time" class="mono">0.0 s</span></span>
+        </div>
+    </section>
+
+    <section class="card output-card">
+        <div class="card-head">
+            <span>Output</span>
+            <span class="spacer"></span>
+            <label class="check-row small"><input type="checkbox" id="output-follow" checked> follow</label>
+        </div>
+        <div class="card-body flush">
+            <pre id="output" class="status-log output-log"></pre>
+        </div>
+    </section>
+
+</main>
+{% endblock %}
+
+{% block modals %}
+<!-- Operator prompt: opened by the running script, closed only by an answer or Stop -->
+<div id="prompt-overlay" class="modal-overlay prompt-overlay">
+    <div class="modal-box prompt-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-user-gear"></i> Operator input</span>
+            <span id="prompt-name" class="meta mono"></span>
+        </div>
+        <form class="modal-body prompt-body" id="prompt-form" onsubmit="event.preventDefault(); Tests.submitPrompt();">
+            <div id="prompt-message" class="prompt-message"></div>
+            <div id="prompt-field" class="prompt-field"></div>
+            <div id="prompt-error" class="prompt-error text-error"></div>
+        </form>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-danger" onclick="Tests.stop()"><i class="fa-solid fa-stop"></i> Stop test</button>
+            <span class="spacer"></span>
+            <button type="submit" form="prompt-form" id="prompt-submit" class="btn btn-primary btn-lg"><i class="fa-solid fa-check"></i> OK</button>
+        </div>
+    </div>
+</div>
+
+<div id="history-overlay" class="modal-overlay" onclick="if (event.target === this) Tests.closeHistory()">
+    <div class="modal-box history-modal-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-clock-rotate-left text-ok"></i> Test History</span>
+            <span class="meta mono small faint">{{ logs_dir }}</span>
+            <button class="btn-icon" onclick="Tests.loadLogs()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="Tests.clearLogs()" title="Delete all logs"><i class="fa-solid fa-trash-can"></i> Clear all</button>
+            <button class="modal-close" onclick="Tests.closeHistory()">&#215;</button>
+        </div>
+        <div class="modal-body history-wrap" id="history">
+            <div class="tbl-empty">Loading…</div>
+        </div>
+    </div>
+</div>
+
+<div id="log-overlay" class="modal-overlay" onclick="if (event.target === this) Tests.closeLog()">
+    <div class="modal-box log-modal-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-file-lines text-ok"></i> <span id="log-title" class="mono"></span></span>
+            <a id="log-download" class="btn btn-info btn-sm" href="#"><i class="fa-solid fa-download"></i> Download</a>
+            <button class="modal-close" onclick="Tests.closeLog()">&#215;</button>
+        </div>
+        <div class="modal-body">
+            <pre id="log-text" class="log-text"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/tests.js') }}"></script>{% endblock %}

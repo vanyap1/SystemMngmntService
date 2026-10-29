@@ -1,0 +1,28 @@
+<div id="svc-overlay" class="modal-overlay" onclick="if (event.target === this) Services.closeModal()">
+    <div class="modal-box svc-modal-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-list-check text-ok"></i> All Services (<span id="svc-count">0</span>)</span>
+            <label class="small muted">Sort:</label>
+            <select id="svc-sort-select" class="input input-sm svc-sort" onchange="Services.setSort(this.value)">
+                <option value="state-running">State: Running first</option>
+                <option value="state-failed">State: Failed first</option>
+                <option value="state-az">State: A → Z</option>
+                <option value="name-asc">Name: A → Z</option>
+                <option value="name-desc">Name: Z → A</option>
+            </select>
+            <input id="svc-mfilter" class="input input-sm svc-filter" type="text" placeholder="Search / filter…" oninput="Services.render()">
+            <button class="modal-close" onclick="Services.closeModal()">&#215;</button>
+        </div>
+        <div class="modal-body">
+            <table class="tbl svc-tbl">
+                <thead><tr>
+                    <th class="sortable" onclick="Services.toggleSort('name')">Service <span id="sort-ico-name"></span></th>
+                    <th class="sortable" onclick="Services.toggleSort('state')" style="width:115px">State <span id="sort-ico-state"></span></th>
+                    <th class="sortable" onclick="Services.toggleSort('desc')">Description <span id="sort-ico-desc"></span></th>
+                    <th style="width:110px">Actions</th>
+                </tr></thead>
+                <tbody id="svc-mbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

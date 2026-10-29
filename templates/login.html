@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Login — {% endblock %}
+{% block page_name %}<span class="brand-sub"> — Login</span>{% endblock %}
+
+{% block head %}
+<style>
+    .login-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { width: 340px; max-width: 100%; }
+    .login-card .card-body { padding: 22px 20px; gap: 14px; }
+    .login-back { text-align: center; font-size: 11px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="login-wrap">
+    <div class="card login-card">
+        <div class="card-head"><i class="fa-solid fa-lock"></i> Sign in</div>
+        <form class="card-body" method="post">
+            {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+            <div class="field">
+                <label for="lg">Login</label>
+                <input class="input" type="text" id="lg" name="login" autocomplete="username" autofocus placeholder="username">
+            </div>
+            <div class="field">
+                <label for="pw">Password</label>
+                <input class="input" type="password" id="pw" name="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
+            <div class="login-back"><a href="{{ url_for('dashboard.index') }}">&larr; Back to main page</a></div>
+        </form>
+    </div>
+</main>
+{% endblock %}

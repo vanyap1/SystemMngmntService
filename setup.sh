@@ -48,7 +48,7 @@ APP_OWNER="$(stat -c '%U' "$APP_ENTRY")"
 if [[ "$APP_OWNER" == "root" ]]; then
     # try to read from config.json
     if command -v python3 &>/dev/null && [[ -f "$CONFIG_FILE" ]]; then
-        CFG_USER="$(python3 -c "import json,sys; d=json.load(open('$CONFIG_FILE')); print(d.get('auth',{}).get('username',''))" 2>/dev/null || true)"
+        CFG_USER="$(python3 -c "import sys; sys.path.insert(0, '$SCRIPT_DIR'); from core import config; print(config.auth().get('username', ''))" 2>/dev/null || true)"
         [[ -n "$CFG_USER" ]] && APP_OWNER="$CFG_USER"
     fi
     # last resort: keep root (not ideal but functional)

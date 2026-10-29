@@ -1,0 +1,19 @@
+<div class="power-wrap">
+    <button class="btn btn-power" onclick="togglePowerMenu(event)" title="Power Management"><i class="fa-solid fa-power-off"></i> Power</button>
+    <div id="power-dropdown" class="power-dropdown">
+        <button type="button" class="power-item power-reboot" onclick="confirmPower('reboot')">
+            <i class="fa-solid fa-rotate-right"></i>
+            <div>
+                <div class="power-item-title">Reboot</div>
+                <div class="power-item-desc">Restart the system</div>
+            </div>
+        </button>
+        <button type="button" class="power-item power-shutdown" onclick="confirmPower('poweroff')">
+            <i class="fa-solid fa-power-off"></i>
+            <div>
+                <div class="power-item-title">Shutdown</div>
+                <div class="power-item-desc">Power off the system</div>
+            </div>
+        </button>
+    </div>
+</div>

@@ -10,6 +10,7 @@ Runs as a standalone systemd service, independent of the target application's st
 - Monitor and control a target systemd service (start / stop / restart)
 - Create backups of the application directory, upload and deploy updates
 - Edit application files directly in the browser
+- Run test-platform sequences, watch PASS/FAIL live, keep a log per run
 - View system information (CPU, RAM, network, disks)
 - Configure all parameters through the web interface
 
@@ -19,19 +20,52 @@ Runs as a standalone systemd service, independent of the target application's st
 
 ```
 SystemMngmntService/
-├── app.py          # Flask application — all routes and logic
-├── config.json     # Configuration (paths, port, service, authentication)
-├── main.py         # Entry point (reserved)
-├── setup.sh        # Installation and systemd registration script
-└── templates/
-    ├── index.html    # Main dashboard
-    ├── editor.html   # Code editor
-    └── settings.html # Settings page
+├── app.py            # Entry point: creates the Flask app and registers blueprints
+├── config.json       # Configuration (paths, port, service, authentication)
+├── macros.json       # Code editor command macros
+├── core/             # Shared backend: config, auth, shell helpers, navigation, template context
+├── routes/           # One Flask blueprint per feature (dashboard, services, backups, editor, ...)
+├── templates/
+│   ├── base.html     # Common layout: top bar, shared modals and scripts
+│   ├── partials/     # Reusable fragments (services modal, video, power menu, flash)
+│   ├── index.html    # Main dashboard
+│   ├── editor.html   # Code editor
+│   ├── settings.html # Settings page
+│   └── login.html    # Login page
+├── static/
+│   ├── css/          # base.css + components.css (shared), <page>.css
+│   ├── js/           # core.js, services.js, sysinfo.js, video.js, power.js (shared), <page>.js
+│   └── img/
+├── testPlatform/     # Test platform: *_test.py sequences + hardware drivers (run from the Tests page)
+├── testLogs/         # One log file per test run (git-ignored)
+├── CLAUDE.md         # Development rules (for humans and AI assistants)
+└── setup.sh          # Installation and systemd registration script
 ```
+
+See `CLAUDE.md` for how to add pages and API endpoints.
 
 ---
 
 ## Configuration (`config.json`)
+
+One config file serves every machine the project is deployed to:
+
+```json
+{
+    "default": { "target_dir": "...", "service_name": "...", "auth": { ... } },
+    "hosts": {
+        "orangepi3b": { "device_name": "NAS", "target_dir": "...", ... }
+    }
+}
+```
+
+- The machine is identified by its hostname.
+- A host without its own section uses `default` (missing keys fall back to built-in defaults).
+- Saving on the Settings page stores the settings in the section of the current host; from then on that host
+  uses its own values. "Reset to defaults" on the Settings page removes the section.
+- An old flat `config.json` is converted automatically on first start.
+
+Fields (same in `default` and in a host section):
 
 | Field | Description |
 |---|---|
@@ -42,6 +76,7 @@ SystemMngmntService/
 | `host` / `port` | Panel listen address |
 | `auth.enabled` | Enable / disable login |
 | `auth.username` / `auth.password` | Credentials |
+| `public_service_actions` | Service actions allowed without login (default `["restart"]`) |
 
 ---
 
@@ -87,7 +122,7 @@ sequenceDiagram
     Panel->>Service: systemctl start
     Panel-->>User: {success, auto_backup}
 
-    User->>Panel: GET /backup
+    User->>Panel: POST /backups/create
     Panel->>Service: systemctl stop
     Panel->>FS: tar -czf <archive>
     Panel->>Service: systemctl start
@@ -108,20 +143,76 @@ flowchart LR
 
 ## API
 
-| Method | Route | Description |
-|---|---|---|
-| GET | `/api/status` | `systemctl status` output |
-| GET | `/api/sysinfo` | CPU, RAM, network, disks (JSON) |
-| GET | `/api/backups` | Archive list (JSON) |
-| POST | `/deploy` | Deploy archive (with auto-backup) |
-| POST | `/delete_backup` | Delete archive |
-| GET | `/api/tree` | File tree of the target directory |
-| GET/POST | `/api/file` | Read / write file |
-| POST | `/api/exec` | Execute shell command (editor auth required) |
-| GET | `/api/service/<action>` | start / stop / restart via API |
-| GET | `/api/browse` | Browse the file system |
+| Method | Route | Access | Description |
+|---|---|---|---|
+| GET | `/api/services` | public | All systemd services (JSON) |
+| GET | `/api/status?name=` | public | `systemctl status` output |
+| POST | `/api/service/<start\|stop\|restart>?name=` | public for `public_service_actions`, else login | Service action |
+| GET | `/api/sysinfo` | login | CPU, RAM, network, disks (JSON) |
+| POST | `/api/power/<reboot\|poweroff>` | login | Reboot / shut down |
+| GET | `/api/backups` | login | Archive list (JSON) |
+| POST | `/backups/create` | login | Create archive (form) |
+| POST | `/backups/upload` | login | Upload archive (multipart form) |
+| GET | `/backups/download/<name>` | login | Download archive |
+| POST | `/api/backups/deploy` | login | Deploy archive (with auto-backup) |
+| POST | `/api/backups/delete` | login | Delete archive |
+| GET | `/api/tree` | login | File tree of the target directory |
+| GET/POST | `/api/file` | login | Read / write file |
+| POST | `/api/file_create`, `/api/file_rename`, `/api/file_delete` | login | File operations |
+| GET | `/api/file_raw` | login | Raw file (image preview) |
+| POST | `/api/exec` | login | Execute shell command |
+| GET/POST | `/api/macros` | login | Editor command macros |
+| GET | `/api/video_devices`, `/api/video_resolutions`, `/api/video_feed` | login | Video streaming |
+| POST | `/api/video_stop` | login | Stop video stream |
+| GET | `/api/browse` | login | Browse directories (settings path picker) |
+| POST | `/api/settings` | login | Save settings |
+| GET | `/api/tests/scripts` | login | Test scripts (`*_test.py` in `tests_dir`) |
+| POST | `/api/tests/start` / `/api/tests/stop` | login | Start `{script, serial, stop_on_fail}` / stop the running one |
+| GET | `/api/tests/status?run_id=&results_from=&output_from=` | login | Current run, incremental results, output and pending operator prompt |
+| POST | `/api/tests/answer` | login | Answer the pending operator prompt `{run_id, prompt_id, value}` |
+| GET | `/api/tests/logs`, `/api/tests/logs/<name>[?download=1]` | login | Run history / log file |
+| POST | `/api/tests/logs/delete` | login | Delete `{name}` or `{all: true}` |
+| GET | `/api/tests/stats?script=` | login | Board counts per verdict for a script |
 
 ---
+
+## Test Platform (`/tests`)
+
+- Scripts: every `*_test.py` in `tests_dir` (default `testPlatform/`); the first line of the module docstring is
+  shown as the description. Demo scripts (`demo_*_test.py`) need no hardware.
+- A script runs as a child process (`python3 -u`, cwd = `tests_dir`, env `TEST_RUNNER=1`). Only one run at a time.
+  Stdin receives one Enter and is closed, so interactive scripts run exactly one sequence.
+- `testStrategy.TestStrategy` prints `@@RESULT {"name","condition","units","status"}` lines in runner mode;
+  all other output is shown in the *Output* panel and written to the log.
+- Verdict: `STOPPED` (Stop pressed: SIGINT, SIGKILL after 3 s), `ERROR` (any ERROR result, non-zero exit code,
+  or no results), `FAIL` (any FAIL), otherwise `PASS`.
+- Stop on fail + finalization: structure a script as `ts.run(steps, finalize)`. With the *Stop on fail* checkbox
+  (checked by default; env `TEST_STOP_ON_FAIL=1`, or `--stop-on-fail` in a terminal) the first FAIL/ERROR skips the
+  remaining steps. `finalize` (power off, relays to a safe state) always runs: after pass, fail, an exception or
+  Stop (SIGINT; the runner waits 10 s before SIGKILL). Scripts without `ts.run()` are not affected.
+  Separator rows (`ts.section(title)`) are shown in the results. Demo: `demo_stopfail_test.py`.
+- Serial number: the *Serial number* field is passed to the script as `--sn <serial>` (letters, digits, `-_.`,
+  up to 64 chars; empty = no argument). In a script: `ts.serial`. Enter in the field starts the test (barcode
+  scanners); after a run the field is selected for the next unit. Demo: `demo_serial_test.py` (valid: `test`
+  or `VTP-123456`).
+- Logs: `test_logs_dir/<YYYYmmdd_HHMMSS>_<script>[__<serial>]_<VERDICT>.log` (`.running` while in progress).
+  The *History* popup lists them (with serial) and can delete one log or all logs (the running log is kept).
+- Board statistics (Test Run panel): PASS / FAIL / ERROR boards and yield for the selected script, counted from
+  the logs (stopped runs excluded; clearing the history resets them). Step counters of the current run are shown
+  under the results table.
+- Operator input steps (`TestStrategy` methods; in a terminal they fall back to `input()`):
+
+  | Method | Web UI | Returns |
+  |---|---|---|
+  | `askText(name, message, default="")` | text field (empty not accepted) | `str` |
+  | `askNumber(name, message, lo=None, hi=None, units="", default=None)` | number field, range-checked | `float` |
+  | `askChoice(name, message, options, default=None)` | drop-down | selected option |
+  | `askButtons(name, message, buttons=("OK",))` | one button per option | pressed label |
+  | `askYesNo(name, message)` | Yes / No buttons | `bool` |
+
+  The script prints `@@PROMPT {json}` and blocks; the answer comes back as a JSON line on the pipe from
+  `TEST_RUNNER_ANSWER_FD`. The answer is logged as an `INFO` step (does not affect the verdict); check it with
+  the regular test methods. Demo: `demo_operator_test.py`.
 
 ## Installation
 
@@ -146,7 +237,10 @@ journalctl -u systemmngmntservice.service -f
 
 ## Authentication
 
-When `auth.enabled = true`, all routes and API endpoints require an active session.  
-The code editor and `/api/exec` have a separate `editor_authed` check.  
-Credentials are stored in `config.json` and can be changed via `/settings`.
+When `auth.enabled = true`:
+- **anonymous visitors** see only the *Service Control* block and the *All Services* list on the main page and may
+  run the service actions listed in `public_service_actions`;
+- **logged-in users** get everything else (backups, system info, code editor, terminal, settings, video, power).
 
+When `auth.enabled = false`, every visitor has full access.
+Credentials are stored in `config.json` and can be changed via `/settings`.

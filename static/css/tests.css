@@ -1,0 +1,102 @@
+/* Test platform page (templates/tests.html) */
+
+/* Full-height layout: the results list takes all free space and is the only
+   part that resizes with the window; output has a fixed height at the bottom. */
+body.page-tests { height: 100vh; overflow: hidden; }
+.tests-page { flex: 1; min-height: 0; padding-bottom: 12px; }
+.tests-page > .card, .tests-page > .verdict { flex-shrink: 0; }
+.tests-page > .results-card { flex: 1 1 0; min-height: 120px; }
+.tests-page > .output-card  { flex: 0 0 170px; }
+.results-card .results-wrap, .output-card .card-body { flex: 1; min-height: 0; }
+@media (max-width: 900px) {
+    body.page-tests { height: auto; overflow: visible; }
+    .tests-page > .results-card { flex-basis: 50vh; }
+}
+
+.serial-input { width: 160px; height: 34px; font-size: 13px; padding: 4px 10px; }
+.test-select { max-width: 300px; min-width: 200px; height: 34px; font-size: 13px; }
+.run-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.board-label { font-size: 15px !important; color: var(--text-mute) !important; }
+.board-label { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-dim); }
+.board-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; padding: 2px 6px;
+    border-radius: var(--radius); background: var(--bg-panel-2); border: 1px solid var(--border); line-height: 1.15; }
+.board-stat b { font-size: 16px; font-family: var(--mono); color: #ddd; }
+.board-stat small { font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-mute); }
+.board-stat.st-pass b  { color: #6dbf85; }
+.board-stat.st-fail b  { color: #e08080; }
+.board-stat.st-error b { color: var(--warn); }
+.board-stat.st-yield b { color: var(--info); }
+
+/* Step counters under the results table */
+.results-foot { display: flex; align-items: center; gap: 8px; padding: 6px 14px; flex-shrink: 0;
+    border-top: 1px solid var(--border); background: var(--bg-head); }
+.results-foot .badge { font-size: 12px; padding: 2px 8px; }
+.badge-warn { background: #3a2a0d; color: var(--warn); border: 1px solid #6b4e1a; }
+
+.run-state { font-weight: 700; font-size: 13px; letter-spacing: 1px; padding: 4px 12px;
+    border-radius: var(--radius); border: 1px solid var(--border-strong); min-width: 92px; text-align: center; }
+.state-IDLE    { color: var(--text-mute); }
+.state-RUNNING { color: var(--info); border-color: #1a5fa0; background: #0d2a4a; animation: pulse 1.2s infinite; }
+.state-PASS    { color: #6dbf85; border-color: #2e7d46; background: #1b4d2e; }
+.state-FAIL    { color: #e08080; border-color: #7d2e2e; background: #4d1b1b; }
+.state-ERROR   { color: #d4a95a; border-color: #7d5e2e; background: #4d3b1a; }
+.state-STOPPED { color: var(--text-2); border-color: #555; background: #262626; }
+@keyframes pulse { 50% { opacity: .6; } }
+
+/* Final verdict banner */
+.verdict { border-radius: var(--radius-lg); padding: 8px 20px; font-size: 20px; font-weight: 800;
+    letter-spacing: 3px; text-align: center; border: 1px solid; }
+.verdict small { display: block; font-size: 12px; font-weight: 400; letter-spacing: 0; opacity: .8; margin-top: 2px; }
+
+/* Results */
+.results-wrap { overflow-y: auto; }
+.results-tbl th { position: sticky; top: 0; background: var(--bg-panel); z-index: 1; }
+.results-tbl td { font-size: 12.5px; }
+.results-tbl .r-idx  { color: var(--text-faint); width: 40px; }
+.results-tbl .r-name { color: #ddd; }
+.results-tbl .r-cond { font-family: var(--mono); font-size: 12px; color: var(--code); }
+.results-tbl .r-unit { color: var(--text-dim); }
+.results-tbl .r-time { font-family: var(--mono); font-size: 11px; color: var(--text-mute); width: 70px; }
+.results-tbl tr.r-FAIL  td { background: rgba(244, 71, 71, .08); }
+.results-tbl tr.r-ERROR td { background: rgba(232, 168, 56, .08); }
+.status-tag { display: inline-block; min-width: 54px; text-align: center; font-weight: 700; font-size: 11px;
+    padding: 2px 6px; border-radius: 3px; border: 1px solid; }
+.status-PASS  { color: #6dbf85; border-color: #2e7d46; background: #0d2a18; }
+.status-FAIL  { color: #f88;    border-color: #7d2e2e; background: #2d1010; }
+.status-ERROR { color: var(--warn); border-color: #7d5e2e; background: #2d2210; }
+
+.results-tbl tr.r-section td { background: var(--bg-head); color: var(--info); font-size: 11px; font-weight: 700;
+    letter-spacing: .8px; text-transform: uppercase; padding: 4px 12px; }
+.results-tbl tr.r-section-stop td { color: var(--warn); background: #2d2210; }
+.run-options { gap: 14px; }
+.stop-on-fail { font-size: 12.5px; user-select: none; white-space: nowrap; }
+
+/* Output and history */
+.output-log { flex: 1; min-height: 0; max-height: none; margin: 0; color: #bbb;
+    border: none; border-radius: 0; }
+.history-modal-box { width: 900px; }
+.history-wrap .tbl th, .history-wrap .tbl td { padding: 5px 8px; }
+.history-wrap .h-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.history-wrap .h-script { font-family: var(--mono); font-size: 11.5px; color: var(--code); }
+.history-wrap .h-serial { font-family: var(--mono); font-size: 11.5px; color: #ddd; }
+.history-wrap .h-acts { display: flex; gap: 4px; justify-content: flex-end; }
+
+/* Operator prompt */
+.state-INPUT { color: #c586c0; border-color: #7a4a8a; background: #2e1a36; animation: pulse 1.2s infinite; }
+.prompt-overlay { z-index: 3200; }
+.prompt-box { width: 520px; border-color: #7a4a8a; box-shadow: 0 0 0 3px rgba(197, 134, 192, .25), 0 20px 60px rgba(0, 0, 0, .9); }
+.prompt-box .modal-title i { color: #c586c0; }
+.prompt-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.prompt-message { font-size: 15px; line-height: 1.5; color: #eee; white-space: pre-line; }
+.prompt-field .input { font-size: 16px; padding: 9px 12px; }
+.prompt-number { flex-wrap: nowrap; }
+.prompt-units { font-size: 15px; color: var(--text-2); min-width: 20px; }
+.prompt-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.prompt-buttons .btn { flex: 1; min-width: 110px; padding: 12px 18px; font-size: 15px; }
+.prompt-error { font-size: 12px; min-height: 16px; }
+.status-INFO  { color: #c586c0; border-color: #7a4a8a; background: #2e1a36; }
+
+/* Log viewer */
+.log-modal-box { width: 1000px; max-height: 88vh; }
+.log-text { font-family: var(--mono); font-size: 12px; line-height: 1.5; color: #ccc; padding: 12px 16px;
+    white-space: pre; }

@@ -216,3 +216,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Session signing key (generated on first start)
+.secret_key
+
+# Test run logs
+testLogs/
+
+# ── SystemMngmntService: caches, temp files, logs ──
+# Test runs (also covers a custom test_logs_dir named *Logs)
+*.running
+*Logs/
+logs/
+nohup.out
+# Editors / OS
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+# Temp / backup copies
+*.tmp
+*.bak
+*.orig
+# Claude Code local settings
+.claude/settings.local.json

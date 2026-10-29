@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if device_name %}{{ device_name }} — {% endif %}{% block title %}{% endblock %}{{ page_title }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('img/favicon.png') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ asset('css/base.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/components.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+{% block topbar %}
+<header id="topbar">
+    <span class="brand">
+        {% if device_name %}{{ device_name }} — {% endif %}{{ app_title }}{% block page_name %}{% endblock %}
+    </span>
+
+    {% block topbar_tools %}{% endblock %}
+
+    {% if logged_in %}
+        {% include 'partials/video_controls.html' %}
+    {% endif %}
+    <button class="btn btn-nav" onclick="Services.openModal()"><i class="fa-solid fa-list-check"></i> Services</button>
+    {% for item in nav_items %}
+        <a href="{{ url_for(item.endpoint) }}" class="btn btn-nav"><i class="{{ item.icon }}"></i> {{ item.label }}</a>
+    {% endfor %}
+    {% if logged_in %}
+        {% include 'partials/power_menu.html' %}
+    {% endif %}
+    {% if auth_enabled %}
+        {% if logged_in %}
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-logout" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        {% else %}
+            <a href="{{ url_for('auth.login', next=request.full_path.rstrip('?')) }}" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        {% endif %}
+    {% endif %}
+</header>
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block modals %}{% endblock %}
+{% include 'partials/services_modal.html' %}
+{% if logged_in %}
+    {% include 'partials/video_modal.html' %}
+{% endif %}
+
+<script>window.APP_CONFIG = {{ app_js | tojson }};</script>
+<script src="{{ asset('js/core.js') }}"></script>
+<script src="{{ asset('js/services.js') }}"></script>
+{% if logged_in %}
+    <script src="{{ asset('js/sysinfo.js') }}"></script>
+    <script src="{{ asset('js/video.js') }}"></script>
+    <script src="{{ asset('js/power.js') }}"></script>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

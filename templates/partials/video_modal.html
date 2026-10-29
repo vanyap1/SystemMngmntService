@@ -1,0 +1,33 @@
+<div id="video-overlay" class="modal-overlay" onclick="if (event.target === this) Video.close()">
+    <div class="video-popup-box" id="video-popup-box">
+        <div class="video-head" id="video-popup-header">
+            <span class="video-title">
+                <i class="fa-solid fa-video"></i>
+                <span id="video-popup-dev-label">/dev/video1</span>
+            </span>
+            <label class="small muted"><i class="fa-solid fa-expand"></i> Resolution:</label>
+            <select id="video-res-select" class="select-mono" style="max-width:130px" onchange="Video.restart()">
+                <option value="640x480">640x480</option>
+            </select>
+            <button type="button" class="btn btn-restart btn-sm" onclick="Video.restart()" title="Restart stream"><i class="fa-solid fa-rotate-right"></i> Restart</button>
+            <button type="button" class="btn btn-stop btn-sm" onclick="Video.close()" title="Stop video"><i class="fa-solid fa-stop"></i> Stop</button>
+            <button type="button" class="modal-close" onclick="Video.close()" title="Close">&#215;</button>
+        </div>
+        <div class="video-body">
+            <div id="video-loading" class="video-loading">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span>Starting video stream...</span>
+            </div>
+            <img id="video-stream-img" src="" alt="Video Stream" class="video-stream-el" hidden>
+        </div>
+        <div class="video-foot">
+            <span id="video-stream-status" class="small text-ok"><i class="fa-solid fa-circle-play"></i> Playback active</span>
+            <span id="video-res-badge" class="video-res-badge">640x480</span>
+            <span class="spacer"></span>
+            <span class="small muted">Drag by header ✥ | Resize ↘</span>
+            <div class="video-resize-grip" id="video-resize-grip" title="Drag to resize window">
+                <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,17 +1,38 @@
 {
-    "app_title": "SystemMngmntService",
-    "page_title": "SystemMngmntService",
-    "device_name": "OrangePi 3 LTS",
-    "target_dir": "/home/vanya/pythonKivy_template",
-    "backup_dir": "/home/vanya",
-    "archive_name": "pythonKivy_template.tar.gz",
-    "upload_tmp_name": "uploaded_update.tar.gz",
-    "service_name": "guiService.service",
-    "auth": {
-        "enabled": true,
-        "username": "vanya",
-        "password": "198808"
+    "default": {
+        "app_title": "SystemMngmntService",
+        "page_title": "SystemMngmntService",
+        "device_name": "",
+        "target_dir": "/home/vanya/SystemMngmntService",
+        "backup_dir": "/home/vanya",
+        "archive_name": "pythonKivy_template.tar.gz",
+        "upload_tmp_name": "uploaded_update.tar.gz",
+        "service_name": "guiService.service",
+        "auth": {
+            "enabled": true,
+            "username": "vanya",
+            "password": "198808"
+        },
+        "port": 80,
+        "host": "0.0.0.0"
     },
-    "port": 80,
-    "host": "0.0.0.0"
+    "hosts": {
+        "orangepi3b": {
+            "app_title": "SystemMngmntService",
+            "page_title": "SystemMngmntService",
+            "device_name": "NAS",
+            "target_dir": "/home/vanya/SystemMngmntService",
+            "backup_dir": "/home/vanya",
+            "archive_name": "pythonKivy_template.tar.gz",
+            "upload_tmp_name": "uploaded_update.tar.gz",
+            "service_name": "guiService.service",
+            "auth": {
+                "enabled": true,
+                "username": "vanya",
+                "password": "198808"
+            },
+            "port": 80,
+            "host": "0.0.0.0"
+        }
+    }
 }

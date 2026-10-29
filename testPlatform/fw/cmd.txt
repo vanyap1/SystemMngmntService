@@ -1,0 +1,73 @@
+FW test  - VTP1EleReDesignEOLT_V_4.hex
+FW final - VTP1EleReDesign_V_7_4_Program.hex
+FW final - VTP1EleReDesign_V_7_4_Data.hex
+
+serial baud - 9600
+
+
+Writing test fw
+	- @"-ProgMode=SWIM -verbose -FileProg=C:\FTS\Apps\VTP1\firmware\New_VTP1_test_sw\VTP1EleReDesignEOLT_V_4.hex -verif -Device=STM8S003F3 -no_loop"
+
+Apply AC voltage
+	- check -8v  (7.3 - 8.3)
+	- check -3v3 (3.2 - 3.7)
+	- check AC current (=< 0.04)
+Check FW
+	- cmd - 0xF7
+	- responce = 4
+Zero check
+	- cmd - 0x5F
+	- responce = 193
+Key1 check 
+	- Check off - 0xEF
+	- press simulation
+	- Check on - 0xEF
+	- stop operation - 0xFB
+Key2 check 
+	- Check off - 0xEE
+	- key test ... (0)
+	- stop operation - 0xFB
+Check led1 and 2
+	- leds is on by default on this moment
+	- voltage <= 1
+Check NTC
+	- read val cmd 0xDF
+	- expected - (209-223)
+Check FM
+	- cmd - 0x7B
+	- dmm meas - 3.2-3.5V
+	- count fm pulse, cmd - 0xBF
+	- generate pulses - 1 second with PT 0.05s
+	- read back counter, cmd - 0xBE
+Check pump
+	- pump on cmd - 0x7F
+	- check pump on ....
+	- pump off cmd - 0x7E
+Chack triac
+	- connect dmm tric gate
+	- connect triac gate dummu load 220R
+	- triac off voltage - 7.1-8V
+	- on cmd - 0x7D
+	- triac AC voltage - 2-2.3V
+	- triac DC voltage - 6-6.5V
+	- triac AC freq    - 98-101Hz
+Write final SW
+	- @"-ProgMode=SWIM -verbose -FileProg=C:\FTS\Apps\VTP1\FW_Application_V_7_4\VTP1EleReDesign_V_7_4_Program.hex -FileData=C:\FTS\Apps\VTP1\FW_Application_V_7_4\VTP1EleReDesign_V_7_4_Data.hex -verif -Device=STM8S003F3 -no_loop"
+
+Check led1 and 2
+	- leds is on by default on this moment
+	- voltage >= 3
+
+Open JIG [\FD\03\00\FE]
+	NA - \FD\03\00\FE
+	C1 - Low - \FD\02\03\04\01\00\F9
+	C1 - High- \FD\02\03\04\01\01\F8
+	C2 - Low - \FD\02\03\04\02\00\FA
+	C2 - High- \FD\02\03\04\02\02\F8
+	S01-S08  - \FD\01\02\02\FF\03
+	S01      - \FD\01\02\02\01\FD
+	S02      - \FD\01\02\02\02\FE
+	S09-S10  - \FD\01\02\00\FF\01
+	 
+	
+	
