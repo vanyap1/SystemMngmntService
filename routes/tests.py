@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, render_template, request, send_file
 
 from core import config, test_runner
 from core.auth import login_required
+from core.gpio_ctl import gpio_ctl
 from core.shell import resolve_inside
 
 bp = Blueprint('tests', __name__)
@@ -28,6 +29,8 @@ def api_scripts():
 @login_required
 def api_start():
     data = request.get_json(silent=True) or {}
+    if not runner.is_running():
+        gpio_ctl.release_all()      # the script needs the fixture lines
     try:
         run = runner.start(data.get('script', ''), data.get('serial', ''),
                            data.get('stop_on_fail', True))

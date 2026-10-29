@@ -22,6 +22,7 @@
 
     {% if logged_in %}
         {% include 'partials/video_controls.html' %}
+        <button class="btn btn-nav" onclick="Devices.open()" title="Device nodes and GPIO lines"><i class="fa-solid fa-microchip"></i> Devices</button>
     {% endif %}
     <button class="btn btn-nav" onclick="Services.openModal()"><i class="fa-solid fa-list-check"></i> Services</button>
     {% for item in nav_items %}
@@ -46,6 +47,7 @@
 {% include 'partials/services_modal.html' %}
 {% if logged_in %}
     {% include 'partials/video_modal.html' %}
+    {% include 'partials/devices_modal.html' %}
 {% endif %}
 
 <script>window.APP_CONFIG = {{ app_js | tojson }};</script>
@@ -55,6 +57,7 @@
     <script src="{{ asset('js/sysinfo.js') }}"></script>
     <script src="{{ asset('js/video.js') }}"></script>
     <script src="{{ asset('js/power.js') }}"></script>
+    <script src="{{ asset('js/devices.js') }}"></script>
 {% endif %}
 {% block scripts %}{% endblock %}
 </body>

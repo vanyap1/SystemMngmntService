@@ -1,0 +1,58 @@
+<div id="devices-overlay" class="modal-overlay" onclick="if (event.target === this) Devices.close()">
+    <div class="modal-box devices-modal-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-microchip text-ok"></i> Devices</span>
+            <div class="dev-tabs">
+                <button type="button" class="dev-tab active" data-tab="dev" onclick="Devices.setTab('dev')"><i class="fa-solid fa-folder-tree"></i> /dev</button>
+                <button type="button" class="dev-tab" data-tab="gpio" onclick="Devices.setTab('gpio')"><i class="fa-solid fa-plug"></i> GPIO</button>
+            </div>
+            <select id="dev-group" class="input input-sm dev-group" onchange="Devices.render()" title="Show only one kind of device">
+                <option value="">All devices</option>
+                <option value="serial">Serial ports</option>
+                <option value="usb">USB</option>
+                <option value="video">Video / media</option>
+                <option value="i2c">I²C</option>
+                <option value="spi">SPI</option>
+                <option value="gpio">GPIO chips</option>
+                <option value="block">Block / disks</option>
+                <option value="input">Input / HID</option>
+                <option value="sound">Sound</option>
+            </select>
+            <label class="check-row small" id="gpio-used-wrap" hidden>
+                <input type="checkbox" id="gpio-used-only" onchange="Devices.render()"> Used only
+            </label>
+            <input id="dev-filter" class="input input-sm dev-filter" type="text" placeholder="Filter…" oninput="Devices.render()">
+            <label class="check-row small" title="Refresh the list every 2 seconds">
+                <input type="checkbox" id="dev-auto" checked onchange="Devices.setAuto()"> Auto
+            </label>
+            <button type="button" class="btn-icon" onclick="Devices.refresh()" title="Refresh now"><i class="fa-solid fa-arrows-rotate" id="dev-refresh-ico"></i></button>
+            <button type="button" class="modal-close" onclick="Devices.close()">&#215;</button>
+        </div>
+        <div class="modal-body devices-body">
+            <div id="dev-pane" class="dev-pane">
+                <div class="dev-tree-wrap">
+                    <table class="tbl dev-tbl">
+                        <thead><tr>
+                            <th>Name</th>
+                            <th style="width:70px">Type</th>
+                            <th style="width:80px">Maj:Min</th>
+                            <th style="width:100px">Mode</th>
+                            <th style="width:120px">Owner</th>
+                        </tr></thead>
+                        <tbody id="dev-tbody"><tr><td colspan="5" class="tbl-empty">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+                <aside id="dev-info" class="dev-info" hidden></aside>
+            </div>
+            <div id="gpio-pane" class="gpio-pane" hidden>
+                <div class="tbl-empty">Loading…</div>
+            </div>
+        </div>
+        <div class="modal-foot small">
+            <span id="dev-summary" class="muted"></span>
+            <span class="spacer"></span>
+            <span id="dev-changes" class="mono dev-changes"></span>
+            <span id="dev-updated" class="faint"></span>
+        </div>
+    </div>
+</div>

@@ -34,7 +34,7 @@ SystemMngmntService/
 │   └── login.html    # Login page
 ├── static/
 │   ├── css/          # base.css + components.css (shared), <page>.css
-│   ├── js/           # core.js, services.js, sysinfo.js, video.js, power.js (shared), <page>.js
+│   ├── js/           # core.js, services.js, sysinfo.js, video.js, power.js, devices.js (shared), <page>.js
 │   └── img/
 ├── testPlatform/     # Test platform: *_test.py sequences + hardware drivers (run from the Tests page)
 ├── testLogs/         # One log file per test run (git-ignored)
@@ -165,6 +165,11 @@ flowchart LR
 | GET | `/api/video_devices`, `/api/video_resolutions`, `/api/video_feed` | login | Video streaming |
 | POST | `/api/video_stop` | login | Stop video stream |
 | GET | `/api/browse` | login | Browse directories (settings path picker) |
+| GET | `/api/devices/dev` | login | `/dev` tree (type, maj:min, mode, owner, symlink target) |
+| GET | `/api/devices/dev/info?path=` | login | `udevadm info` properties of one node inside `/dev` |
+| GET | `/api/devices/gpio` | login | GPIO chips and lines like `gpioinfo` (read-only, libgpiod v1/v2) |
+| GET | `/api/devices/gpio/ctl?client=` | login | Lines held by a popup client with live values (also renews its lease) |
+| POST | `/api/devices/gpio/ctl` | login | `{client, action: claim\|input\|output\|set\|release\|release_all, chip, offset, value}` |
 | POST | `/api/settings` | login | Save settings |
 | GET | `/api/tests/scripts` | login | Test scripts (`*_test.py` in `tests_dir`) |
 | POST | `/api/tests/start` / `/api/tests/stop` | login | Start `{script, serial, stop_on_fail}` / stop the running one |
@@ -175,6 +180,24 @@ flowchart LR
 | GET | `/api/tests/stats?script=` | login | Board counts per verdict for a script |
 
 ---
+
+## Devices popup
+
+The **Devices** button in the top bar (logged in) opens a popup with two tabs:
+
+- **/dev** — the device node tree (symlinks are not followed), group filter (serial, USB, video, I²C,
+  SPI, GPIO, block, input, sound) and text filter. Clicking a node shows its `udevadm info` properties.
+  With *Auto* on, the list refreshes every 2 s; new nodes are highlighted and added/removed devices
+  are listed in the footer (plus a toast, except `/dev/pts`, `/dev/shm`).
+- **GPIO** — every `/dev/gpiochip*` with its lines: offset, global sysfs number (`base + offset`), name,
+  consumer, direction, active level, bias/drive flags. Lines are only queried, never requested, so the
+  view does not disturb running tests. Changed lines are highlighted. Without the Python `gpiod`
+  module the raw `gpioinfo` output is shown.
+- **GPIO control** (same tab): *Claim* requests a free line "as is" (its state is not changed), then it can
+  be switched IN/OUT, an output toggled 0/1, an input level is read every second. Lines are held only
+  while the GPIO tab is open: switching the tab, closing the popup or the page releases them, and a client
+  that stops polling loses them after 6 s (`core/gpio_ctl.py`, `LEASE_SECONDS`). Claiming is refused while
+  a test script runs, and starting a test releases every web-held line.
 
 ## Test Platform (`/tests`)
 

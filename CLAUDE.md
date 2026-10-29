@@ -35,10 +35,11 @@ core/
   nav.py               NAV_ITEMS – top bar navigation registry
   web.py               template context for every page, asset() cache-busting helper
   test_runner.py       runs test-platform scripts, verdicts, per-run log files
+  gpio_ctl.py          manual GPIO control for the Devices popup: per-client claimed lines under a lease
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
-  partials/            flash, services modal, video controls/modal, power menu
+  partials/            flash, services modal, video controls/modal, devices modal, power menu
   <page>.html          extends base.html
 static/
   css/base.css         tokens (CSS variables), reset, top bar, buttons, forms, cards, modal, table, badges, utils
@@ -49,13 +50,14 @@ static/
   js/sysinfo.js        SysInfo: polling + render helpers                    (logged in)
   js/video.js          Video: device list + stream popup                    (logged in)
   js/power.js          power menu                                           (logged in)
+  js/devices.js        Devices: /dev tree + GPIO popup (routes/devices.py)  (logged in)
   js/<page>.js         page-only logic
 ```
 
 ## Access model (must be preserved)
 - **Anonymous**: main page with the *Service Control* card only, the *All Services* modal, `/api/services`,
   `/api/status`, and service actions listed in `config.public_service_actions` (default `["restart"]`).
-- **Logged in**: everything else (backups, sysinfo, editor, terminal, settings, video, power, macros).
+- **Logged in**: everything else (backups, sysinfo, editor, terminal, settings, video, devices/GPIO, power, macros).
 - `auth.enabled = false` ⇒ every visitor is treated as logged in.
 - Backend is the source of truth: **every route is `@login_required` unless it is intentionally public**.
   Public routes are only the ones listed above plus `/login`, `/logout`, `/favicon.ico`, static files.
@@ -63,6 +65,12 @@ static/
 - `login_required` returns JSON 401 for `/api/*` and non-GET requests, otherwise redirects to `/login?next=…`.
 - Templates use `logged_in` and `can_service('restart')`; JS uses `App.config.loggedIn` and `Services.canAct()`.
   Scripts/markup for logged-in widgets are not rendered for anonymous users at all.
+
+## GPIO control (Devices popup)
+- Lines are requested **only** on explicit Claim and only while the GPIO tab is open; every exit path
+  (tab switch, popup close, `pagehide` beacon, lease timeout) must release them. Never hold lines otherwise.
+- Claim requests "as is" (no state change). Claiming is refused while a test runs; `/api/tests/start`
+  calls `gpio_ctl.release_all()` so scripts get the fixture lines.
 
 ## Test platform
 - `testPlatform/` holds the user's hardware test sequences (GPIO relays via gpiod, stm8flash, UART, DMM) copied
