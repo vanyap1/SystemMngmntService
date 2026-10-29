@@ -61,6 +61,16 @@
         {% endif %}
     </div>
 
+    <!-- System monitor: public (read-only) -->
+    <section class="card">
+        <div class="card-head">
+            <span><i class="fa-solid fa-chart-line text-ok"></i> System Monitor</span>
+            <span class="spacer"></span>
+            <span id="mon-ts" class="meta"></span>
+        </div>
+        <div class="card-body" id="mon-card"></div>
+    </section>
+
     {% if logged_in %}
     <section class="card">
         <div class="card-head">
@@ -75,16 +85,6 @@
         </div>
     </section>
 
-    <section class="card">
-        <div class="card-head">
-            <span>System Info</span>
-            <span class="spacer"></span>
-            <span id="si-ts" class="meta"></span>
-        </div>
-        <div class="card-body" id="si-card">
-            <div class="muted">Loading…</div>
-        </div>
-    </section>
     {% endif %}
 
 </main>

@@ -1,0 +1,87 @@
+/* Test log viewer (templates/logs.html) */
+.logs-page { max-width: 1400px; }
+
+.card-body.lg-filters { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center;
+    justify-content: flex-start; gap: 8px; }
+.lg-filters .input { width: auto; }
+#lg-q { min-width: 220px; flex: 1; }
+.lg-date { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+.lg-verdicts button { font-size: 11px; padding: 5px 10px; font-weight: 600; }
+.lg-step-filter { font-size: 11px; padding: 3px 8px; }
+.lg-step-filter i { cursor: pointer; margin-left: 4px; }
+
+.lg-summary { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; margin-bottom: 14px; align-items: start; }
+@media (max-width: 1000px) { .lg-summary { grid-template-columns: minmax(0, 1fr); } }
+.lg-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.lg-tile { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 12px; display: flex; flex-direction: column; min-width: 0; }
+.lg-tile b { font-size: 20px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+.lg-tile span { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: .8px; }
+.lg-tile.clickable { cursor: pointer; }
+.lg-tile.clickable:hover { border-color: var(--border-strong); }
+.lg-tile.st-pass b  { color: #6dbf85; }
+.lg-tile.st-fail b  { color: #e08080; }
+.lg-tile.st-error b { color: var(--warn); }
+.lg-tile.st-stopped b { color: var(--text-dim); }
+.lg-tile.st-yield b { color: var(--info); }
+.lg-top { margin: 0; }
+.lg-fail-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 28px 22px; align-items: center; gap: 8px;
+    padding: 4px 12px; cursor: pointer; font-size: 12px; }
+.lg-fail-row:hover { background: var(--bg-hover); }
+.lg-fail-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lg-fail-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.lg-fail-bar i { display: block; height: 100%; background: var(--danger); opacity: .75; border-radius: 3px; }
+.lg-fail-row b { text-align: right; font-variant-numeric: tabular-nums; }
+
+.lg-pager { display: flex; align-items: center; gap: 6px; }
+.lg-tbl tr.clickable, .lv-tbl tr.clickable { cursor: pointer; }
+.lg-ff { max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.lg-verdict { display: inline-block; min-width: 54px; text-align: center; padding: 1px 6px; border-radius: 3px;
+    font-size: 10px; font-weight: 700; letter-spacing: .4px; border: 1px solid var(--border); color: var(--text-dim); }
+.lg-verdict.v-PASS    { background: #0d2a18; color: #6dbf85; border-color: #1f5e32; }
+.lg-verdict.v-FAIL    { background: #2d1010; color: #e08080; border-color: #5a2222; }
+.lg-verdict.v-ERROR   { background: #3a2a0d; color: var(--warn); border-color: #6b4e1a; }
+.lg-verdict.v-INFO    { background: #1c2230; color: var(--info); border-color: #2a3a55; }
+
+/* Viewer */
+.lv-box { width: 1200px; max-width: 96vw; height: 88vh; max-height: 88vh; }
+.lv-search { width: 180px; }
+.lv-modes button { font-size: 11px; padding: 5px 10px; }
+.lv-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 8px 16px; font-size: 12px; color: var(--text-2);
+    border-bottom: 1px solid var(--border-soft); background: var(--bg-panel-2); }
+.lv-meta i { font-style: normal; color: var(--text-mute); font-size: 10px; text-transform: uppercase; letter-spacing: .6px; margin-right: 4px; }
+.lv-tbl td { vertical-align: middle; }
+.lv-step.s-FAIL td  { background: rgba(244, 71, 71, .07); }
+.lv-step.s-ERROR td { background: rgba(232, 168, 56, .07); }
+.lv-cond { white-space: nowrap; }
+.lv-section td { color: var(--info); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; background: var(--bg-panel-2); }
+.lv-section.stop td { color: var(--warn); }
+.lv-qa td { color: var(--code); font-size: 12px; }
+.lv-out td { color: var(--text-dim); font-size: 11px; padding-top: 1px; padding-bottom: 1px; border-bottom: none; white-space: pre-wrap; word-break: break-all; }
+.lv-raw { margin: 0; padding: 12px 16px; font-family: var(--mono); font-size: 12px; color: var(--text-2); white-space: pre-wrap; word-break: break-all; }
+.lv-box mark, .lv-raw mark { background: rgba(232, 168, 56, .35); color: var(--text); border-radius: 2px; }
+.lv-mbar { position: relative; display: inline-block; width: 90px; height: 8px; margin-left: 10px; vertical-align: middle;
+    background: linear-gradient(90deg, rgba(244, 71, 71, .18) 20%, rgba(78, 201, 176, .15) 20% 80%, rgba(244, 71, 71, .18) 80%);
+    border-radius: 2px; }
+.lv-mbar i { position: absolute; top: -2px; bottom: -2px; width: 1px; }
+.lv-mbar i.lim { background: var(--text-mute); }
+.lv-mbar i.val { width: 3px; margin-left: -1px; background: var(--accent); border-radius: 1px; }
+.lv-mbar i.val.s-FAIL { background: var(--danger); }
+.lv-mbar i.val.s-ERROR { background: var(--warn); }
+
+/* Step analysis */
+.sa-box { width: 1000px; max-width: 96vw; }
+#sa-body { padding: 12px 16px; }
+#sa-body .lg-tiles { margin-bottom: 12px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+#sa-body .lg-tile b { font-size: 17px; }
+.sa-chart { background: var(--bg-panel-2); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 6px; margin-bottom: 12px; }
+.sa-chart svg { display: block; width: 100%; height: auto; }
+.sa-lim  { stroke: var(--danger); stroke-width: 1; stroke-dasharray: 5 3; opacity: .7; vector-effect: non-scaling-stroke; }
+.sa-mean { stroke: var(--text-mute); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sa-line { fill: none; stroke: var(--border-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sa-pt { fill: var(--accent); stroke: var(--bg-panel-2); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.sa-pt.s-FAIL { fill: var(--danger); }
+.sa-pt.s-ERROR { fill: var(--warn); }
+.sa-lbl { fill: var(--text-mute); font-size: 10px; font-family: var(--mono); }

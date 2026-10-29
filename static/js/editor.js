@@ -12,9 +12,9 @@ const tabs = new Map();   // path → { path, name, model, viewState, row, dirty
 let activeTabPath = null;
 
 // ── Monaco init ─────────────────────────────────────────────────────────────
-const VS = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+const VS = '/static/vendor/monaco/vs';   // vendored Monaco 0.44.0 (works offline)
 const monacoLoader = document.createElement('script');
-monacoLoader.src = VS + '/loader.min.js';
+monacoLoader.src = VS + '/loader.js';
 monacoLoader.onload = () => {
     require.config({ paths: { vs: VS } });
     require(['vs/editor/editor.main'], () => {

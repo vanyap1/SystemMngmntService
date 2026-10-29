@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Logs — {% endblock %}
+{% block page_name %}<span class="brand-sub"> — Logs</span>{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('css/logs.css') }}">{% endblock %}
+
+{% block content %}
+<main class="page logs-page">
+
+    <section class="card">
+        <div class="card-head">
+            <span><i class="fa-solid fa-filter text-ok"></i> Test logs</span>
+            <span class="meta mono small faint">{{ logs_dir }}</span>
+            <span class="spacer"></span>
+            <a id="lg-csv" class="btn btn-sm btn-info" href="/api/logs/export.csv" title="Export the filtered runs as CSV"><i class="fa-solid fa-file-csv"></i> CSV</a>
+            <button class="btn-icon" onclick="Logs.load()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+        </div>
+        <div class="card-body lg-filters">
+            <select id="lg-script" class="input select-mono" title="Test script"><option value="">All scripts</option></select>
+            <div class="gpio-seg lg-verdicts" id="lg-verdicts" title="Verdict (none selected = all)">
+                <button type="button" data-v="PASS">PASS</button><button type="button" data-v="FAIL">FAIL</button><button type="button" data-v="ERROR">ERROR</button><button type="button" data-v="STOPPED">STOPPED</button>
+            </div>
+            <input id="lg-q" class="input" placeholder="Serial number or file name…" autocomplete="off">
+            <label class="lg-date">From <input id="lg-from" type="date" class="input"></label>
+            <label class="lg-date">To <input id="lg-to" type="date" class="input"></label>
+            <span id="lg-step-filter" class="badge badge-error lg-step-filter" hidden></span>
+            <button class="btn btn-ghost btn-sm" onclick="Logs.reset()"><i class="fa-solid fa-xmark"></i> Reset</button>
+        </div>
+    </section>
+
+    <div class="lg-summary">
+        <div class="lg-tiles" id="lg-tiles"></div>
+        <section class="card lg-top">
+            <div class="card-head">Top failing steps <span class="spacer"></span><span class="meta small faint">click: analyse · <i class="fa-solid fa-filter"></i>: runs</span></div>
+            <div class="card-body flush" id="lg-top"></div>
+        </section>
+    </div>
+
+    <section class="card">
+        <div class="card-head">
+            <span>Runs</span><span id="lg-count" class="meta"></span>
+            <span class="spacer"></span>
+            <div id="lg-pager" class="lg-pager"></div>
+        </div>
+        <div class="card-body flush" id="lg-list"><div class="tbl-empty">Loading…</div></div>
+    </section>
+
+</main>
+{% endblock %}
+
+{% block modals %}
+<!-- Log viewer -->
+<div id="lv-overlay" class="modal-overlay" onclick="if (event.target === this) Logs.closeLog()">
+    <div class="modal-box lv-box">
+        <div class="modal-head">
+            <span class="modal-title" id="lv-title"></span>
+            <div class="gpio-seg lv-modes">
+                <button type="button" class="active" data-mode="steps" onclick="Logs.setMode('steps')"><i class="fa-solid fa-list-check"></i> Steps</button>
+                <button type="button" data-mode="raw" onclick="Logs.setMode('raw')"><i class="fa-solid fa-align-left"></i> Raw</button>
+            </div>
+            <input id="lv-search" class="input lv-search" placeholder="Find…" autocomplete="off">
+            <label class="check-row small" title="Show script output lines"><input type="checkbox" id="lv-output" checked> Output</label>
+            <button class="btn-icon" onclick="Logs.step(-1)" title="Newer run (←)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="btn-icon" onclick="Logs.step(1)" title="Older run (→)"><i class="fa-solid fa-chevron-right"></i></button>
+            <a id="lv-download" class="btn btn-info btn-sm" href="#"><i class="fa-solid fa-download"></i></a>
+            <button class="modal-close" onclick="Logs.closeLog()">&#215;</button>
+        </div>
+        <div class="lv-meta" id="lv-meta"></div>
+        <div class="modal-body" id="lv-body"></div>
+    </div>
+</div>
+
+<!-- Step analysis -->
+<div id="sa-overlay" class="modal-overlay" onclick="if (event.target === this) Logs.closeStep()">
+    <div class="modal-box sa-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-chart-simple text-ok"></i> <span id="sa-title" class="mono"></span></span>
+            <span class="meta small faint">over the current filter</span>
+            <button class="btn btn-sm btn-ghost" onclick="Logs.filterStep()" title="Show runs where this step failed"><i class="fa-solid fa-filter"></i> Failed runs</button>
+            <button class="modal-close" onclick="Logs.closeStep()">&#215;</button>
+        </div>
+        <div class="modal-body" id="sa-body"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/logs.js') }}"></script>{% endblock %}

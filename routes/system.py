@@ -5,6 +5,7 @@ import subprocess
 from flask import Blueprint, jsonify, request
 
 from core.auth import login_required
+from core.monitor import monitor
 from core.shell import sh
 
 bp = Blueprint('system', __name__)
@@ -53,6 +54,16 @@ def api_sysinfo():
         'mem': mem, 'net': net,
         'procs': procs, 'lsblk': lsblk,
     })
+
+
+@bp.route('/api/monitor')
+def api_monitor():
+    """Public (read-only) dashboard data: current values, block devices and chart history newer than ?since=."""
+    try:
+        since = float(request.args.get('since', 0))
+    except ValueError:
+        since = 0.0
+    return jsonify(monitor.snapshot(since))
 
 
 @bp.route('/api/power/<action>', methods=['POST'])

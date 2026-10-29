@@ -35,21 +35,27 @@ core/
   nav.py               NAV_ITEMS – top bar navigation registry
   web.py               template context for every page, asset() cache-busting helper
   test_runner.py       runs test-platform scripts, verdicts, per-run log files
+  test_logs.py         test log viewer: parse testLogs/*.log (cached), filters, yield/FPY, step stats, CSV
   gpio_ctl.py          manual GPIO control for the Devices popup: per-client claimed lines under a lease
   net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
   udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
+  monitor.py           system monitor sampler (CPU/RAM/temp/active iface/disk I/O, 15 min history, lease)
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
-  partials/            flash, services modal, video controls/modal, devices modal, power menu
+  partials/            flash, services modal, video controls/modal, devices modal, power menu, monitor_float
   <page>.html          extends base.html
+tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
+docs/img/              README screenshots
 static/
+  vendor/              Font Awesome 6.5.1, Monaco 0.44.0, xterm 5.3.0 (+fit) — local copies, see vendor/README.md
   css/base.css         tokens (CSS variables), reset, top bar, buttons, forms, cards, modal, table, badges, utils
   css/components.css   shared widgets: services, status log, sysinfo, video, power menu
   css/<page>.css       page-only styles
   js/core.js           App namespace (config, api, onEscape, formatters), esc(), toast()
   js/services.js       Services: selector, actions, modal, status colouring  (public)
   js/sysinfo.js        SysInfo: polling + render helpers                    (logged in)
+  js/monitor.js        MonitorData (shared poller), TimeChart (canvas), Monitor.create(el), MonitorFloat (logged in)
   js/video.js          Video: device list + stream popup                    (logged in)
   js/power.js          power menu                                           (logged in)
   js/devices.js        Devices popup shell: tab registry, info panel, text popup (logged in)
@@ -61,7 +67,8 @@ static/
 - **Anonymous**: main page with the *Service Control* card for the **target service only** (`service_name`;
   no selector, no *All Services* modal/button). `/api/services` returns only that service, `/api/status` and
   `/api/service/<action>` ignore `name` and use it; actions limited to `config.public_service_actions`
-  (default `["restart"]`).
+  (default `["restart"]`). Below it the read-only *System Monitor* card (`/api/monitor` is public);
+  the floating Monitor window on other pages is logged-in only.
 - **Logged in**: everything else (backups, sysinfo, editor, terminal, settings, video, devices/GPIO, power, macros).
 - `auth.enabled = false` ⇒ every visitor is treated as logged in.
 - Backend is the source of truth: **every route is `@login_required` unless it is intentionally public**.
@@ -76,6 +83,14 @@ static/
   (tab switch, popup close, `pagehide` beacon, lease timeout) must release them. Never hold lines otherwise.
 - Claim requests "as is" (no state change). Claiming is refused while a test runs; `/api/tests/start`
   calls `gpio_ctl.release_all()` so scripts get the fixture lines.
+
+## System monitor
+- Main page: `Monitor.create(#mon-card)`; other pages: `MonitorFloat` window (`partials/monitor_float.html`,
+  not rendered on `dashboard.index`). Both use one `MonitorData` poller of `/api/monitor?since=`.
+- Charts follow one rule: one y-axis per chart (CPU %, RAM %, network rate) — never mix units in a chart.
+  Colours only from CSS variables; TX is dashed so RX/TX differ without colour.
+- The sampler thread (`core/monitor.py`) lives only while polled (30 s lease); keep it to cheap /proc and /sys
+  reads — subprocesses (`lsblk`, `ip`) run per request and are cached.
 
 ## Devices popup
 - Routes: `routes/devices.py` (devices, buses, GPIO), `routes/udev.py` (service, events, rules, udevadm tools),
@@ -112,6 +127,9 @@ static/
 - Serial number from the UI reaches the script as `--sn <serial>` (validated by `SERIAL_PATTERN`); scripts read
   it via `ts.serial`. It is part of the log file name (`__<serial>`, see `LOG_PATTERN`) and the log header.
 - Page: `routes/tests.py`, `templates/tests.html`, `static/js/tests.js`, `static/css/tests.css`.
+- Log viewer: `core/test_logs.py` (parser + cache, filters, statistics), `routes/logs.py`, `templates/logs.html`,
+  `static/js/logs.js`, `static/css/logs.css`. It parses the text format written by `TestRunner._add_result` /
+  `_open_log` / `_close_log` — if that format changes, update the parser and `tests/test_logs.py` together.
 
 ## Adding a page
 1. `routes/<name>.py`: `bp = Blueprint('<name>', __name__)`, view decorated with `@login_required`
@@ -139,6 +157,9 @@ static/
   `sh()` for quiet read-only ones. File paths from the client must go through `resolve_inside(path, root)`.
 
 ## Front-end conventions
+- **Offline only**: the panel runs in closed networks. Never link CDNs/external URLs (scripts, styles, fonts,
+  images); put third-party files into `static/vendor/<lib>/` with their license and list them in
+  `static/vendor/README.md`. `tests/test_offline.py` enforces this.
 - No Bootstrap, no inline `<style>` blocks in pages (tiny page-local styles in `{% block head %}` are the
   exception, e.g. login). Reuse classes from `base.css`/`components.css` before adding new ones:
   layout `.page .grid .grid-main-side .stack .row .spacer`, cards `.card .card-head .card-body`,
@@ -154,10 +175,13 @@ static/
 - Link static files with `{{ asset('path') }}` (adds a cache-busting version).
 
 ## Verification before finishing
-- `python3 -c "import app"` must succeed.
-- Check the access matrix with Flask's test client: anonymous gets 200 on `/`, `/api/services`, `/api/status`,
-  401 on other `/api/*`, 302 on protected pages; after `POST /login` everything returns 200.
-- Visual check with headless Chromium against a test instance:
-  `chromium --headless=new --no-sandbox --window-size=1400,950 --virtual-time-budget=6000 --screenshot=out.png http://127.0.0.1:5099/`
-  (for logged-in views start the test instance with `config.CFG['auth']['enabled'] = False` set in memory).
+Use the test suite instead of ad-hoc scripts — it is fast, quiet and saves tokens (see `tests/README.md`):
+- `python3 -m unittest discover -s tests -t . -q` must pass (prints only failures; ~20 s). While iterating,
+  run just the relevant module (`python3 -m unittest tests.test_<feature> -q`).
+- New/changed route ⇒ update the URL lists in `tests/test_access.py`; new feature ⇒ add `tests/test_<feature>.py`
+  (import `tests.support` first — it isolates `config.json` and `testLogs/`).
+- UI changes: `python3 tests/devserver.py &` (port 5099, login off; `--auth` for the anonymous view), then
+  `tests/screenshot.sh '<path>[?js=…]' <scratch>/x.png [WxH] [budget_ms] [port]` — it also prints JS errors.
+  Look at screenshots only when layout matters; crop with PIL to the area you changed. Kill the server by PID.
+- README screenshots: `tests/docs_screenshots.sh` (regenerates `docs/img`).
 - Update `README.md` (routes/API tables) when routes change.

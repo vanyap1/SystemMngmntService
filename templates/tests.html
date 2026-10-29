@@ -110,6 +110,7 @@
             <span class="modal-title"><i class="fa-solid fa-clock-rotate-left text-ok"></i> Test History</span>
             <span class="meta mono small faint">{{ logs_dir }}</span>
             <button class="btn-icon" onclick="Tests.loadLogs()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <a class="btn btn-info btn-sm" href="{{ url_for('logs.logs') }}" title="Filter, statistics, step analysis"><i class="fa-solid fa-file-lines"></i> Log viewer</a>
             <button class="btn btn-danger btn-sm" onclick="Tests.clearLogs()" title="Delete all logs"><i class="fa-solid fa-trash-can"></i> Clear all</button>
             <button class="modal-close" onclick="Tests.closeHistory()">&#215;</button>
         </div>

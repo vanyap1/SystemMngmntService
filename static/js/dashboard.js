@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Main page (templates/index.html). Service status is public; archives and
-   system info exist only for logged-in users (their DOM is absent otherwise).
+   Main page (templates/index.html). Service status and the system monitor are
+   public; archives exist only for logged-in users (their DOM is absent otherwise).
    ========================================================================== */
 
 const Dashboard = {
@@ -67,48 +67,15 @@ const Dashboard = {
             .then(() => { Dashboard.setArcStatus('✓ Deleted'); Dashboard.loadArchives(); })
             .catch(e => { Dashboard.setArcStatus('✗ ' + e.message, true); btn.disabled = false; });
     },
-
-    // ── System info ──
-    renderSysinfo(d) {
-        const m = d.mem || {};
-        let h = '<div class="si-grid">';
-
-        h += '<div class="si-block">';
-        h += `<div class="si-head">CPU &mdash; ${esc(d.cpu_count || '?')} cores</div>`;
-        h += `<div class="si-kv"><span class="k">Load avg</span><span class="v">${SysInfo.loadText(d)}</span></div>`;
-        h += SysInfo.bar(SysInfo.loadPct(d));
-        h += '<div class="si-head">Memory</div>';
-        h += `<div class="si-kv"><span class="k">RAM</span><span class="v">${App.fmtKb(m.used_kb)} / ${App.fmtKb(m.total_kb)} (${m.pct}%)</span></div>`;
-        h += SysInfo.bar(m.pct || 0);
-        if (m.swap_total_kb > 0) {
-            h += `<div class="si-kv"><span class="k">Swap</span><span class="v">${App.fmtKb(m.swap_used_kb)} / ${App.fmtKb(m.swap_total_kb)} (${m.swap_pct}%)</span></div>`;
-            h += SysInfo.bar(m.swap_pct || 0);
-        }
-        h += `<div class="si-kv"><span class="k">Processes</span><span class="v text-ok">${esc(d.procs)}</span></div>`;
-        h += '</div>';
-
-        h += '<div class="si-block"><div class="si-head">Network</div>';
-        (d.net || []).forEach(n => {
-            const st = n.state === 'UP' ? '<span class="si-up">● UP</span>' : '<span class="si-down">○ DOWN</span>';
-            h += `<div class="si-iface"><strong>${esc(n.iface)}</strong> ${st}<br>` +
-                 `<small>${(n.addrs || []).map(esc).join('<br>') || '—'}</small></div>`;
-        });
-        if (!(d.net || []).length) h += '<small class="muted">No interfaces</small>';
-        h += '</div>';
-
-        h += `<div class="si-block"><div class="si-head">Storage</div>${SysInfo.lsblkTable(d.lsblk)}</div>`;
-        h += '</div>';
-
-        document.getElementById('si-card').innerHTML = h;
-        document.getElementById('si-ts').textContent = App.fmtTime();
-    },
 };
 
 Services.onChange(Dashboard.refreshStatus);
 Dashboard.showStatus(document.getElementById('status-pre').textContent);
 setInterval(Dashboard.refreshStatus, 10000);
 
+Monitor.create(document.getElementById('mon-card'));
+MonitorData.subscribe(() => { document.getElementById('mon-ts').textContent = App.fmtTime(); });
+
 if (App.config.loggedIn) {
     Dashboard.loadArchives();
-    SysInfo.poll(Dashboard.renderSysinfo);
 }

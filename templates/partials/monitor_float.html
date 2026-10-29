@@ -1,0 +1,15 @@
+<!-- Floating system monitor (pages other than the main one), see static/js/monitor.js MonitorFloat -->
+<div id="mon-float" class="mon-float" hidden>
+    <div class="mon-float-head" title="Drag to move">
+        <i class="fa-solid fa-chart-line text-ok"></i>
+        <span class="mon-float-title">System Monitor</span>
+        <span class="spacer"></span>
+        <label class="mon-opacity" title="Window opacity">
+            <i class="fa-solid fa-circle-half-stroke"></i>
+            <input type="range" id="mon-opacity" min="20" max="100" step="5" value="100">
+            <span id="mon-opacity-val" class="mono small">100%</span>
+        </label>
+        <button type="button" class="modal-close" onclick="MonitorFloat.close()" title="Close">&times;</button>
+    </div>
+    <div id="mon-float-body" class="mon-float-body"></div>
+</div>

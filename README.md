@@ -1,18 +1,61 @@
 # SystemMngmntService
 
-A web panel for remote monitoring and management of an application on a Linux server.  
-Runs as a standalone systemd service, independent of the target application's state.
+A self-contained web panel for single-board Linux machines (OrangePi, NanoPi, Raspberry Pi …) that run one
+main application as a systemd service — and, optionally, a hardware test fixture.
+It runs as its own systemd unit, so it stays reachable when the application crashes or is being redeployed.
 
----
+Flask 3 + plain JavaScript, no build step; the only server dependency is `python3-flask` from apt.
+**Works fully offline** (closed networks): Font Awesome, the Monaco editor and xterm.js are vendored in
+`static/vendor`, the monitor charts are drawn on canvas — the browser never contacts the internet.
 
-## Purpose
+![Dashboard](docs/img/dashboard.png)
 
-- Monitor and control a target systemd service (start / stop / restart)
-- Create backups of the application directory, upload and deploy updates
-- Edit application files directly in the browser
-- Run test-platform sequences, watch PASS/FAIL live, keep a log per run
-- View system information (CPU, RAM, network, disks)
-- Configure all parameters through the web interface
+## Features
+
+| | |
+|---|---|
+| **Service control** | status / start / stop / restart of the target service and any other systemd unit |
+| **System monitor** | CPU, RAM, temperature, active network interface and block devices with live charts; on the main page and as a floating, resizable, semi-transparent window on every other page |
+| **Backups & deploy** | archive the project, upload a `.tar.gz`, deploy it with an automatic backup |
+| **Code editor** | file tree, Monaco editor with outline, service log, web terminal, command macros |
+| **Test platform** | run `*_test.py` fixture sequences, live PASS/FAIL table, operator prompts, stop-on-fail, a log per run, yield statistics |
+| **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
+| **Devices** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **udev** events / rules editor / tools |
+| **Video** | preview of V4L2 cameras |
+| **Per-host config** | one repository deployed to several machines, each with its own section in `config.json` |
+| **Simple access model** | anonymous operators see only the target service (restart) and the read-only monitor; everything else needs a login |
+
+## Screenshots
+
+| Anonymous operator view | Floating monitor on another page |
+|---|---|
+| ![Anonymous view](docs/img/dashboard-anonymous.png) | ![Monitor window](docs/img/monitor-window.png) |
+
+| Test platform | Code editor |
+|---|---|
+| ![Tests](docs/img/tests.png) | ![Editor](docs/img/editor.png) |
+
+| Devices — buses | Devices — network |
+|---|---|
+| ![Buses](docs/img/devices-buses.png) | ![Network](docs/img/devices-network.png) |
+
+| Test log viewer | Step analysis |
+|---|---|
+| ![Logs](docs/img/logs.png) | ![Step analysis](docs/img/logs-step.png) |
+
+| Devices — GPIO | Devices — udev rules |
+|---|---|
+| ![GPIO](docs/img/devices-gpio.png) | ![udev](docs/img/devices-udev.png) |
+
+## Quick start
+
+```bash
+git clone <this repo> && cd SystemMngmntService
+sudo bash setup.sh          # installs python3-flask, registers and starts systemmngmntservice.service
+```
+
+Open `http://<device>/`, log in (default `admin` / `admin` — change it in **Settings**) and set the target
+service, project and backup directories. See [Installation](#installation) and [Configuration](#configuration-configjson).
 
 ---
 
@@ -34,10 +77,13 @@ SystemMngmntService/
 │   └── login.html    # Login page
 ├── static/
 │   ├── css/          # base.css + components.css (shared), <page>.css
-│   ├── js/           # core.js, services.js, sysinfo.js, video.js, power.js, devices*.js (shared), <page>.js
+│   ├── vendor/       # Font Awesome, Monaco, xterm.js served locally (offline), see vendor/README.md
+│   ├── js/           # core.js, services.js, sysinfo.js, monitor.js, video.js, power.js, devices*.js (shared), <page>.js
 │   └── img/
 ├── testPlatform/     # Test platform: *_test.py sequences + hardware drivers (run from the Tests page)
 ├── testLogs/         # One log file per test run (git-ignored)
+├── tests/            # Unit/integration tests (unittest) + dev server and screenshot helpers
+├── docs/img/         # README screenshots (regenerate with tests/docs_screenshots.sh)
 ├── CLAUDE.md         # Development rules (for humans and AI assistants)
 └── setup.sh          # Installation and systemd registration script
 ```
@@ -99,7 +145,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     Dashboard --> ServiceControl[Service status\nstart / stop / restart]
-    Dashboard --> SysInfo[CPU / RAM / network / disks]
+    Dashboard --> Monitor[System monitor\nCPU / RAM / network charts\ntemperature, block devices]
     Dashboard --> Archives[Archive list]
     Archives --> Deploy[Deploy]
     Archives --> Download[Download]
@@ -148,7 +194,8 @@ flowchart LR
 | GET | `/api/services` | public | systemd services (JSON); anonymous: only the target service |
 | GET | `/api/status?name=` | public | `systemctl status` output; anonymous: target service only |
 | POST | `/api/service/<start\|stop\|restart>?name=` | public for `public_service_actions`, else login | Service action |
-| GET | `/api/sysinfo` | login | CPU, RAM, network, disks (JSON) |
+| GET | `/api/sysinfo` | login | CPU, RAM, network, disks (JSON; editor side panel) |
+| GET | `/api/monitor?since=` | public | System monitor: current CPU/RAM/temperature/active interface/disk I/O, block devices, chart history newer than `since` |
 | POST | `/api/power/<reboot\|poweroff>` | login | Reboot / shut down |
 | GET | `/api/backups` | login | Archive list (JSON) |
 | POST | `/backups/create` | login | Create archive (form) |
@@ -193,7 +240,32 @@ flowchart LR
 | POST | `/api/tests/answer` | login | Answer the pending operator prompt `{run_id, prompt_id, value}` |
 | GET | `/api/tests/logs`, `/api/tests/logs/<name>[?download=1]` | login | Run history / log file |
 | POST | `/api/tests/logs/delete` | login | Delete `{name}` or `{all: true}` |
+| GET | `/logs` | login | Test log viewer page |
+| GET | `/api/logs?script&verdict&q&from&to&step&offset&limit` | login | Filtered runs (newest first) + statistics (yield, first-pass yield, top failing steps) |
+| GET | `/api/logs/view/<name>` | login | One log parsed into header, steps, sections, output, operator Q/A, footer |
+| GET | `/api/logs/step?name=&…filters` | login | One step across the filtered runs: values, min/mean/max/σ, Cpk |
+| GET | `/api/logs/export.csv?…filters` | login | Filtered runs as CSV (one row per run) |
 | GET | `/api/tests/stats?script=` | login | Board counts per verdict for a script |
+
+---
+
+## System monitor
+
+The **System Monitor** card on the main page is public (read-only, also for anonymous visitors); for
+logged-in users the **Monitor** button in the top bar of every other page opens the same view in a floating window (drag by the title bar, resize from the
+bottom-right corner, opacity slider, ×). Position, size, opacity and the open state are remembered in the
+browser, so the window stays open while moving between pages.
+
+- Tiles: CPU % (per-core bars, frequency, load average), RAM, swap, temperature (all thermal zones, CPU first),
+  active network interface rates, uptime / processes.
+- Charts (1 / 5 / 15 min window, hover for values): CPU %, RAM %, network RX/TX of the active interface.
+- Block devices (`lsblk`, loop/ram skipped): size, model/transport, NVMe temperature, filesystem/swap usage,
+  mount points, read/write rate and busy %.
+- Active interface = the default route with the lowest metric (otherwise the first link that is up):
+  state, carrier, speed, addresses, gateway, MAC/MTU, totals, errors/drops.
+
+`core/monitor.py` samples `/proc` and `/sys` once per second and keeps 15 minutes of history. The sampler
+runs only while the page polls `/api/monitor` (30 s lease); the browser polls every 2 s and pauses in a hidden tab.
 
 ---
 
@@ -242,6 +314,27 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
     problems. Changes apply after *Reload rules*.
   - *Service & tools* — `systemd-udevd` status, restart, reload rules, `udevadm trigger` (by subsystem
     and/or device), `udevadm test`, attribute walk.
+
+## Test log viewer (`/logs`)
+
+Browses the run logs in `test_logs_dir` (`testLogs/`), written for every run started from the Tests page
+(**Logs** in the top bar, or **Log viewer** on the Tests page).
+
+- Filters: script, verdict (PASS / FAIL / ERROR / STOPPED, several at once), serial number or file name,
+  date range, "failed at step". The filter is kept in the URL (`/logs#verdict=FAIL&q=SN-1`), so a view can be linked.
+- Statistics over the filter: runs per verdict, yield (stopped runs excluded), distinct boards, first-pass yield
+  (first finished run of each serial), top failing steps.
+- Run list with first failure, 100 per page; click a serial to see every run of that board; CSV export.
+- Log view: steps with status and a limit bar showing where the measured value lies between its limits,
+  sections (stop-on-fail, finalization), operator prompts/answers, script output (can be hidden), raw text,
+  search, ←/→ to move to the newer/older run.
+- Step analysis (click a step name): every value of that step across the filtered runs, run chart with limits
+  and mean, min / mean / max / σ / Cpk.
+
+`core/test_logs.py` parses the log format of `core/test_runner.py` (fixed columns: name 40, condition 28, units)
+and caches parsed files by mtime/size.
+
+---
 
 ## Test Platform (`/tests`)
 
@@ -302,11 +395,38 @@ journalctl -u systemmngmntservice.service -f
 
 ---
 
+## Testing
+
+The tests use only the standard library (`unittest`) and never touch the live service, `config.json`
+or `testLogs/` (they work on temporary copies):
+
+```bash
+python3 -m unittest discover -s tests -t . -q          # whole suite, ~20 s
+python3 -m unittest tests.test_access -q               # one module
+```
+
+| Module | Covers |
+|---|---|
+| `test_access.py` | access matrix: anonymous / logged in / auth disabled |
+| `test_config.py` | legacy migration, per-host sections, save / reset |
+| `test_monitor.py` | `/api/monitor` payload, sampler lease, active interface detection |
+| `test_logs.py` | log parsing, filters, yield/FPY, step statistics, CSV, `/api/logs*` |
+| `test_test_runner.py` | operator answer validation, real runs of the demo scripts, stop |
+| `test_offline.py` | no external (CDN) URLs in templates/static, vendored libraries are served |
+| `test_net.py`, `test_udev.py`, `test_shell.py` | CAN frame parsing, udev rule linter, path/command helpers |
+
+Visual checks: `python3 tests/devserver.py` starts a second instance on port 5099 (login disabled in memory,
+`?js=` hook for opening popups), `tests/screenshot.sh <path> <out.png>` takes a headless Chromium screenshot,
+`tests/docs_screenshots.sh` regenerates the images in `docs/img`. See [tests/README.md](tests/README.md).
+
+---
+
 ## Authentication
 
 When `auth.enabled = true`:
 - **anonymous visitors** see only the *Service Control* block for the target service (`service_name`) — no
   service selector and no *All Services* list — and may run the actions listed in `public_service_actions` on it;
+  below it they see the read-only *System Monitor* dashboard;
 - **logged-in users** get everything else (backups, system info, code editor, terminal, settings, video, power).
 
 When `auth.enabled = false`, every visitor has full access.

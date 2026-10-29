@@ -287,6 +287,7 @@ class TestRunner:
                 except ValueError:
                     pass
             self._add_output(run, line)
+        proc.stdout.close()
         self._finish(run, proc.wait())
 
     @staticmethod
