@@ -34,7 +34,7 @@ SystemMngmntService/
 │   └── login.html    # Login page
 ├── static/
 │   ├── css/          # base.css + components.css (shared), <page>.css
-│   ├── js/           # core.js, services.js, sysinfo.js, video.js, power.js, devices.js (shared), <page>.js
+│   ├── js/           # core.js, services.js, sysinfo.js, video.js, power.js, devices*.js (shared), <page>.js
 │   └── img/
 ├── testPlatform/     # Test platform: *_test.py sequences + hardware drivers (run from the Tests page)
 ├── testLogs/         # One log file per test run (git-ignored)
@@ -166,10 +166,26 @@ flowchart LR
 | POST | `/api/video_stop` | login | Stop video stream |
 | GET | `/api/browse` | login | Browse directories (settings path picker) |
 | GET | `/api/devices/dev` | login | `/dev` tree (type, maj:min, mode, owner, symlink target) |
-| GET | `/api/devices/dev/info?path=` | login | `udevadm info` properties of one node inside `/dev` |
+| GET | `/api/devices/dev/info?path=\|devpath=` | login | `udevadm info` properties of a node in `/dev` or a `/devices/...` path |
+| GET | `/api/devices/list` | login | Device nodes from the udev database, grouped by kind |
+| GET | `/api/devices/buses` | login | USB topology, PCI devices, I²C adapters and clients |
+| GET | `/api/devices/usb/verbose[?bus=&dev=]` | login | `lsusb -v -s bus:dev`, or `lsusb` + `lsusb -t` |
 | GET | `/api/devices/gpio` | login | GPIO chips and lines like `gpioinfo` (read-only, libgpiod v1/v2) |
 | GET | `/api/devices/gpio/ctl?client=` | login | Lines held by a popup client with live values (also renews its lease) |
 | POST | `/api/devices/gpio/ctl` | login | `{client, action: claim\|input\|output\|set\|release\|release_all, chip, offset, value}` |
+| GET | `/api/net/interfaces` | login | Interfaces (state, addresses, counters, CAN bit timing), routes, DNS |
+| POST | `/api/net/can/link` | login | `{iface, action: open\|close, bitrate, sample_point, restart_ms, listen_only}` |
+| GET | `/api/net/can/frames?iface=&since=` | login | New CAN frames + cyclic jobs; polling keeps the socket open |
+| POST | `/api/net/can/send` | login | `{iface, action: send\|cyclic\|stop\|stop_all\|clear, id, ext, rtr, data, period_ms, job}` |
+| GET | `/api/udev/status` | login | systemd-udevd state, udev version, rules counts, subsystems |
+| POST | `/api/udev/action` | login | `{action: reload\|restart\|trigger\|test\|attrs, kind, subsystem, device, devpath, all}` |
+| GET | `/api/udev/events?since=` | login | New monitor events; polling keeps `udevadm monitor` running |
+| POST | `/api/udev/events/clear` | login | Clear the event buffer |
+| GET | `/api/udev/rules` | login | Rules files of `/etc`, `/run`, `/lib` with override info |
+| GET | `/api/udev/rule?dir=&name=` | login | Read one rules file |
+| POST | `/api/udev/rule` | login | Save `{name, text, force}` to `/etc/udev/rules.d` (422 on syntax problems unless `force`) |
+| POST | `/api/udev/rule/check` | login | Syntax check `{text}` → `{problems: [{line, message}]}` |
+| POST | `/api/udev/rule/delete` | login | Delete `{name}` from `/etc/udev/rules.d` |
 | POST | `/api/settings` | login | Save settings |
 | GET | `/api/tests/scripts` | login | Test scripts (`*_test.py` in `tests_dir`) |
 | POST | `/api/tests/start` / `/api/tests/stop` | login | Start `{script, serial, stop_on_fail}` / stop the running one |
@@ -183,21 +199,49 @@ flowchart LR
 
 ## Devices popup
 
-The **Devices** button in the top bar (logged in) opens a popup with two tabs:
+The **Devices** button in the top bar (logged in) opens a popup with six tabs. With *Auto* on, the
+current view refreshes every 2–3 s; new devices are highlighted, added/removed ones are listed in the
+footer (plus a toast, except `/dev/pts`, `/dev/shm`). All groups, trees, chips, bus sections and rules
+directories start collapsed (a filter expands what matches; *Expand* / *Collapse* buttons). Clicking a device opens a side panel with its udev
+properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm test`, dry run),
+*Trigger change*, *New rule…* (drafts a rule matching the device and opens it in the rules editor).
 
-- **/dev** — the device node tree (symlinks are not followed), group filter (serial, USB, video, I²C,
-  SPI, GPIO, block, input, sound) and text filter. Clicking a node shows its `udevadm info` properties.
-  With *Auto* on, the list refreshes every 2 s; new nodes are highlighted and added/removed devices
-  are listed in the footer (plus a toast, except `/dev/pts`, `/dev/shm`).
+- **Devices** — the udev database grouped by kind: serial ports, USB, video, I²C, SPI, GPIO, storage,
+  input, sound, network, display, other, virtual (hidden by default). Human names (hwdb vendor/model,
+  V4L product, disk model/size/filesystem), driver, VID:PID, symlinks.
+- **/dev** — the device node tree (symlinks are not followed) with a group and a text filter.
+- **Buses** — USB topology like `lsusb -t` (VID:PID, hwdb names, serial, speed, interface class → driver,
+  device nodes of each device; 🔍 = `lsusb -v`), PCI (`lspci -k`), I²C adapters with the clients the kernel
+  knows about (the bus is never scanned).
+- **Network**
+  - *Interfaces* — every interface with type, state, IPv4/IPv6, MAC, RX/TX rate and errors; a row expands to
+    MTU, driver, link speed, packet counters (and bit timing / bus state / error counters for CAN).
+    *Routes & DNS* below. Read-only: interfaces other than CAN are never reconfigured.
+  - *CAN bus* — SocketCAN tool for `can*` / `vcan*`: *Open* applies bitrate, sample point, restart-ms,
+    listen-only (`ip link set … type can …`, root) and brings the link up, *Close* brings it down (vcan: up/down
+    only). Frames (RX, own TX, error frames with decoded class) in *Trace* or *By ID* (count, period, changed
+    bytes highlighted). Send a frame (hex ID, Ext, RTR, hex data) or *Start repeat* every N ms; running
+    repeats are listed with counters and a Stop button. The socket and all repeats exist only while the
+    CAN view is open (leaving it stops the repeats, an idle client loses them after 10 s). Configuration is
+    locked while a test script runs; starting a test stops all repeats.
 - **GPIO** — every `/dev/gpiochip*` with its lines: offset, global sysfs number (`base + offset`), name,
-  consumer, direction, active level, bias/drive flags. Lines are only queried, never requested, so the
-  view does not disturb running tests. Changed lines are highlighted. Without the Python `gpiod`
-  module the raw `gpioinfo` output is shown.
-- **GPIO control** (same tab): *Claim* requests a free line "as is" (its state is not changed), then it can
-  be switched IN/OUT, an output toggled 0/1, an input level is read every second. Lines are held only
-  while the GPIO tab is open: switching the tab, closing the popup or the page releases them, and a client
-  that stops polling loses them after 6 s (`core/gpio_ctl.py`, `LEASE_SECONDS`). Claiming is refused while
-  a test script runs, and starting a test releases every web-held line.
+  consumer, direction, active level, bias/drive flags. Without the Python `gpiod` module the raw
+  `gpioinfo` output is shown.
+  *Claim* requests a free line "as is" (its state is not changed), then it can be switched IN/OUT, an output
+  toggled 0/1, an input level is read every second. Lines are held only while the GPIO tab is open:
+  switching the tab, closing the popup or the page releases them, and a client that stops polling loses
+  them after 6 s (`core/gpio_ctl.py`, `LEASE_SECONDS`). Claiming is refused while a test script runs, and
+  starting a test releases every web-held line.
+- **udev**
+  - *Events* — live `udevadm monitor --kernel --udev --property` (filter by source, text; pause; click an
+    event for its properties). The monitor process runs only while this view is polled and stops 10 s
+    later (`core/udev.py`, `UdevMonitor`).
+  - *Rules* — rules files of `/etc/udev/rules.d` (editable), `/run/udev/rules.d` and `/lib/udev/rules.d`
+    (read-only, *Override in /etc* copies one into `/etc`). Overridden files are marked. *Check* runs a
+    built-in syntax check (`udevadm verify` needs systemd ≥ 254); Save asks before writing a file with
+    problems. Changes apply after *Reload rules*.
+  - *Service & tools* — `systemd-udevd` status, restart, reload rules, `udevadm trigger` (by subsystem
+    and/or device), `udevadm test`, attribute walk.
 
 ## Test Platform (`/tests`)
 

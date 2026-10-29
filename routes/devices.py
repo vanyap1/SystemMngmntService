@@ -1,4 +1,4 @@
-"""Device browser: /dev tree with udev details and a GPIO line overview (like gpioinfo)."""
+"""Device browser: grouped device list, /dev tree, buses (USB/PCI/I2C), GPIO overview and control."""
 import glob
 import grp
 import os
@@ -8,6 +8,7 @@ import stat
 
 from flask import Blueprint, jsonify, request
 
+from core import udev
 from core.auth import login_required
 from core.gpio_ctl import GpioError, gpio_ctl
 from core.shell import quote, resolve_inside, sh
@@ -104,12 +105,19 @@ def api_dev_tree():
 @bp.route('/api/devices/dev/info')
 @login_required
 def api_dev_info():
-    """udev properties of one device node (``udevadm info``)."""
+    """udev properties of a device node (``path`` in /dev) or of a sysfs device (``devpath``)."""
     path = request.args.get('path', '')
-    real = resolve_inside(path, DEV_ROOT)
-    if not real:
-        return jsonify({'error': 'Path must be inside /dev'}), 400
-    out = sh(f"udevadm info --query=all --name={quote(real)}")
+    devpath = request.args.get('devpath', '')
+    if devpath:
+        real = resolve_inside('/sys' + devpath, '/sys/devices')
+        if not real:
+            return jsonify({'error': 'devpath must be inside /sys/devices'}), 400
+        out = sh(f"udevadm info --query=all --path={quote(real)}")
+    else:
+        real = resolve_inside(path, DEV_ROOT)
+        if not real:
+            return jsonify({'error': 'Path must be inside /dev'}), 400
+        out = sh(f"udevadm info --query=all --name={quote(real)}")
     info = {'path': path, 'real': real, 'devpath': '', 'symlinks': [], 'props': {}}
     for line in out.split('\n'):
         key, _, value = line.partition(': ')
@@ -123,6 +131,34 @@ def api_dev_info():
     if not out:
         info['error'] = 'No udev information for this node'
     return jsonify(info)
+
+
+@bp.route('/api/devices/list')
+@login_required
+def api_device_list():
+    """Device nodes from the udev database, grouped by kind."""
+    return jsonify(udev.device_list())
+
+
+@bp.route('/api/devices/buses')
+@login_required
+def api_buses():
+    """USB topology (like lsusb -t), PCI devices (lspci -k) and I2C adapters with clients."""
+    return jsonify({'usb': udev.usb_devices(), 'pci': udev.pci_devices(), 'i2c': udev.i2c_buses()})
+
+
+@bp.route('/api/devices/usb/verbose')
+@login_required
+def api_usb_verbose():
+    """Descriptors of one USB device (lsusb -v -s bus:dev); without arguments lsusb + lsusb -t."""
+    if not request.args.get('bus'):
+        return jsonify({'text': sh('lsusb 2>&1; echo; lsusb -t 2>&1', timeout=10) or 'lsusb is not available'})
+    try:
+        bus, dev = int(request.args.get('bus', '')), int(request.args.get('dev', ''))
+    except ValueError:
+        return jsonify({'error': 'bus and dev must be numbers'}), 400
+    out = sh(f"lsusb -v -s {bus:03d}:{dev:03d} 2>&1", timeout=10)
+    return jsonify({'text': out or 'lsusb returned nothing (is usbutils installed?)'})
 
 
 # ── GPIO ─────────────────────────────────────────────────────────────────

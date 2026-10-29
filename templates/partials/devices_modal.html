@@ -3,50 +3,240 @@
         <div class="modal-head">
             <span class="modal-title"><i class="fa-solid fa-microchip text-ok"></i> Devices</span>
             <div class="dev-tabs">
-                <button type="button" class="dev-tab active" data-tab="dev" onclick="Devices.setTab('dev')"><i class="fa-solid fa-folder-tree"></i> /dev</button>
+                <button type="button" class="dev-tab" data-tab="list" onclick="Devices.setTab('list')"><i class="fa-solid fa-layer-group"></i> Devices</button>
+                <button type="button" class="dev-tab" data-tab="dev" onclick="Devices.setTab('dev')"><i class="fa-solid fa-folder-tree"></i> /dev</button>
+                <button type="button" class="dev-tab" data-tab="buses" onclick="Devices.setTab('buses')"><i class="fa-brands fa-usb"></i> Buses</button>
+                <button type="button" class="dev-tab" data-tab="net" onclick="Devices.setTab('net')"><i class="fa-solid fa-network-wired"></i> Network</button>
                 <button type="button" class="dev-tab" data-tab="gpio" onclick="Devices.setTab('gpio')"><i class="fa-solid fa-plug"></i> GPIO</button>
+                <button type="button" class="dev-tab" data-tab="udev" onclick="Devices.setTab('udev')"><i class="fa-solid fa-gears"></i> udev</button>
             </div>
-            <select id="dev-group" class="input input-sm dev-group" onchange="Devices.render()" title="Show only one kind of device">
-                <option value="">All devices</option>
-                <option value="serial">Serial ports</option>
-                <option value="usb">USB</option>
-                <option value="video">Video / media</option>
-                <option value="i2c">I²C</option>
-                <option value="spi">SPI</option>
-                <option value="gpio">GPIO chips</option>
-                <option value="block">Block / disks</option>
-                <option value="input">Input / HID</option>
-                <option value="sound">Sound</option>
-            </select>
-            <label class="check-row small" id="gpio-used-wrap" hidden>
-                <input type="checkbox" id="gpio-used-only" onchange="Devices.render()"> Used only
-            </label>
-            <input id="dev-filter" class="input input-sm dev-filter" type="text" placeholder="Filter…" oninput="Devices.render()">
-            <label class="check-row small" title="Refresh the list every 2 seconds">
+            <label class="check-row small" id="dev-auto-wrap" title="Refresh the current view periodically">
                 <input type="checkbox" id="dev-auto" checked onchange="Devices.setAuto()"> Auto
             </label>
             <button type="button" class="btn-icon" onclick="Devices.refresh()" title="Refresh now"><i class="fa-solid fa-arrows-rotate" id="dev-refresh-ico"></i></button>
             <button type="button" class="modal-close" onclick="Devices.close()">&#215;</button>
         </div>
         <div class="modal-body devices-body">
-            <div id="dev-pane" class="dev-pane">
-                <div class="dev-tree-wrap">
-                    <table class="tbl dev-tbl">
-                        <thead><tr>
-                            <th>Name</th>
-                            <th style="width:70px">Type</th>
-                            <th style="width:80px">Maj:Min</th>
-                            <th style="width:100px">Mode</th>
-                            <th style="width:120px">Owner</th>
-                        </tr></thead>
-                        <tbody id="dev-tbody"><tr><td colspan="5" class="tbl-empty">Loading…</td></tr></tbody>
-                    </table>
-                </div>
-                <aside id="dev-info" class="dev-info" hidden></aside>
+            <div class="dev-panes">
+
+                <!-- Devices: udev database grouped by kind -->
+                <section class="dev-pane" id="devpane-list" hidden>
+                    <div class="dev-toolbar">
+                        <input id="dl-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: node, name, driver, VID:PID…" oninput="Devices.render()">
+                        <label class="check-row small"><input type="checkbox" id="dl-virtual" onchange="Devices.render()"> Show virtual</label>
+                        <span class="spacer"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.list.expandAll(true)"><i class="fa-solid fa-angles-down"></i> Expand</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.list.expandAll(false)"><i class="fa-solid fa-angles-up"></i> Collapse</button>
+                    </div>
+                    <div class="dev-scroll" id="dl-body"><div class="tbl-empty">Loading…</div></div>
+                </section>
+
+                <!-- /dev tree -->
+                <section class="dev-pane" id="devpane-dev" hidden>
+                    <div class="dev-toolbar">
+                        <select id="dt-group" class="input input-sm dev-group" onchange="Devices.render()" title="Show only one kind of device">
+                            <option value="">All nodes</option>
+                            <option value="serial">Serial ports</option>
+                            <option value="usb">USB</option>
+                            <option value="video">Video / media</option>
+                            <option value="i2c">I²C</option>
+                            <option value="spi">SPI</option>
+                            <option value="gpio">GPIO chips</option>
+                            <option value="block">Block / disks</option>
+                            <option value="input">Input / HID</option>
+                            <option value="sound">Sound</option>
+                        </select>
+                        <input id="dt-filter" class="input input-sm dev-filter" type="text" placeholder="Filter…" oninput="Devices.render()">
+                    </div>
+                    <div class="dev-scroll">
+                        <table class="tbl dev-tbl">
+                            <thead><tr>
+                                <th>Name</th>
+                                <th style="width:70px">Type</th>
+                                <th style="width:80px">Maj:Min</th>
+                                <th style="width:100px">Mode</th>
+                                <th style="width:120px">Owner</th>
+                            </tr></thead>
+                            <tbody id="dev-tbody"><tr><td colspan="5" class="tbl-empty">Loading…</td></tr></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Buses: USB tree, PCI, I2C -->
+                <section class="dev-pane" id="devpane-buses" hidden>
+                    <div class="dev-toolbar">
+                        <input id="db-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: VID:PID, name, driver…" oninput="Devices.render()">
+                        <span class="spacer"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.buses.expandAll(true)"><i class="fa-solid fa-angles-down"></i> Expand</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.buses.expandAll(false)"><i class="fa-solid fa-angles-up"></i> Collapse</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.buses.rawLsusb()"><i class="fa-solid fa-terminal"></i> lsusb / lsusb -t</button>
+                    </div>
+                    <div class="dev-scroll" id="db-body"><div class="tbl-empty">Loading…</div></div>
+                </section>
+
+                <!-- Network: interfaces + SocketCAN tool -->
+                <section class="dev-pane" id="devpane-net" hidden>
+                    <div class="dev-toolbar">
+                        <div class="gpio-seg ud-views net-views">
+                            <button type="button" data-view="ifaces" onclick="Devices.tabs.net.setView('ifaces')"><i class="fa-solid fa-ethernet"></i> Interfaces</button>
+                            <button type="button" data-view="can" onclick="Devices.tabs.net.setView('can')"><i class="fa-solid fa-bus"></i> CAN bus</button>
+                        </div>
+                        <div class="ud-ctrl" data-for="ifaces">
+                            <input id="ni-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: name, address, driver…" oninput="Devices.render()">
+                        </div>
+                        <div class="ud-ctrl" data-for="can">
+                            <select id="can-iface" class="input input-sm" onchange="Devices.tabs.net.selectCan(this.value)"></select>
+                            <span id="can-state" class="small"></span>
+                        </div>
+                    </div>
+
+                    <div class="ud-view" data-view="ifaces">
+                        <div class="dev-scroll" id="ni-body"><div class="tbl-empty">Loading…</div></div>
+                    </div>
+
+                    <div class="ud-view" data-view="can">
+                        <div class="can-bar" id="can-config">
+                            <label class="small muted">Bitrate</label>
+                            <select id="can-bitrate" class="input input-sm"></select>
+                            <label class="small muted">Sample point</label>
+                            <input id="can-sp" class="input input-sm can-num" placeholder="auto" title="e.g. 0.875; empty = driver default">
+                            <label class="small muted" title="Automatic restart after bus-off">Restart ms</label>
+                            <input id="can-restart" class="input input-sm can-num" value="100">
+                            <label class="check-row small" title="Receive only, never ACK or send"><input type="checkbox" id="can-listen"> Listen-only</label>
+                            <button type="button" class="btn btn-start btn-sm" onclick="Devices.tabs.net.link('open')"><i class="fa-solid fa-play"></i> Open</button>
+                            <button type="button" class="btn btn-stop btn-sm" onclick="Devices.tabs.net.link('close')"><i class="fa-solid fa-stop"></i> Close</button>
+                            <span class="spacer"></span>
+                            <span id="can-status" class="small mono"></span>
+                        </div>
+                        <div class="can-bar can-send">
+                            <label class="small muted">ID (hex)</label>
+                            <input id="can-id" class="input input-sm mono can-id" value="123">
+                            <label class="check-row small"><input type="checkbox" id="can-ext"> Ext</label>
+                            <label class="check-row small"><input type="checkbox" id="can-rtr"> RTR</label>
+                            <label class="small muted">Data (hex)</label>
+                            <input id="can-data" class="input input-sm mono can-data" placeholder="11 22 33 44" value="11 22 33 44">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.net.send()" title="Enter in the data field"><i class="fa-solid fa-paper-plane"></i> Send</button>
+                            <span class="can-sep"></span>
+                            <label class="small muted">Repeat every</label>
+                            <input id="can-period" class="input input-sm can-num" value="100">
+                            <span class="small muted">ms</span>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="Devices.tabs.net.startCyclic()"><i class="fa-solid fa-repeat"></i> Start repeat</button>
+                        </div>
+                        <div id="can-jobs" class="can-jobs" hidden></div>
+                        <div class="can-bar can-view-bar">
+                            <div class="gpio-seg can-modes">
+                                <button type="button" data-mode="trace" onclick="Devices.tabs.net.setMode('trace')">Trace</button>
+                                <button type="button" data-mode="byid" onclick="Devices.tabs.net.setMode('byid')">By ID</button>
+                            </div>
+                            <input id="can-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: ID, data, rx/tx/err…" oninput="Devices.tabs.net.renderFrames(true)">
+                            <label class="check-row small"><input type="checkbox" id="can-pause" onchange="Devices.tabs.net.renderFrames(true)"> Pause</label>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.net.clearFrames()"><i class="fa-solid fa-eraser"></i> Clear</button>
+                            <span class="spacer"></span>
+                            <span id="can-counts" class="small muted"></span>
+                        </div>
+                        <div class="dev-scroll" id="can-frames"></div>
+                    </div>
+                </section>
+
+                <!-- GPIO overview + control -->
+                <section class="dev-pane" id="devpane-gpio" hidden>
+                    <div class="dev-toolbar">
+                        <label class="check-row small"><input type="checkbox" id="gpio-used-only" onchange="Devices.render()"> Used only</label>
+                        <input id="gpio-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: line, GPIO #, name, consumer…" oninput="Devices.render()">
+                        <span class="spacer"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.gpio.expandAll(true)"><i class="fa-solid fa-angles-down"></i> Expand</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.gpio.expandAll(false)"><i class="fa-solid fa-angles-up"></i> Collapse</button>
+                        <span id="gpio-held-count" class="badge badge-muted">0 claimed</span>
+                        <button type="button" class="btn btn-ghost btn-sm" id="gpio-release-all" onclick="Devices.tabs.gpio.ctl('release_all')" hidden><i class="fa-solid fa-hand-sparkles"></i> Release all</button>
+                    </div>
+                    <div class="dev-note"><i class="fa-solid fa-circle-info"></i>
+                        Claimed lines are held only while this tab is open — leaving the tab, closing the popup or the page
+                        releases them. Lines used by the kernel or other programs cannot be claimed.</div>
+                    <div class="dev-scroll" id="gpio-pane"><div class="tbl-empty">Loading…</div></div>
+                </section>
+
+                <!-- udev: events, rules, service & tools -->
+                <section class="dev-pane" id="devpane-udev" hidden>
+                    <div class="dev-toolbar">
+                        <div class="gpio-seg ud-views">
+                            <button type="button" data-view="events" onclick="Devices.tabs.udev.setView('events')"><i class="fa-solid fa-bolt"></i> Events</button>
+                            <button type="button" data-view="rules" onclick="Devices.tabs.udev.setView('rules')"><i class="fa-solid fa-file-code"></i> Rules</button>
+                            <button type="button" data-view="tools" onclick="Devices.tabs.udev.setView('tools')"><i class="fa-solid fa-screwdriver-wrench"></i> Service &amp; tools</button>
+                        </div>
+                        <span id="ud-svc-state" class="small"></span>
+                        <span class="spacer"></span>
+                        <div class="ud-ctrl" data-for="events">
+                            <select id="ue-source" class="input input-sm" onchange="Devices.tabs.udev.renderEvents()">
+                                <option value="udev">udev events</option>
+                                <option value="kernel">kernel uevents</option>
+                                <option value="">both</option>
+                            </select>
+                            <input id="ue-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: action, subsystem, device…" oninput="Devices.tabs.udev.renderEvents()">
+                            <label class="check-row small"><input type="checkbox" id="ue-pause" onchange="Devices.tabs.udev.renderEvents()"> Pause</label>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.udev.clearEvents()"><i class="fa-solid fa-eraser"></i> Clear</button>
+                        </div>
+                        <div class="ud-ctrl" data-for="rules">
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.udev.reload()" title="udevadm control --reload-rules"><i class="fa-solid fa-rotate"></i> Reload rules</button>
+                        </div>
+                    </div>
+
+                    <div class="ud-view" data-view="events">
+                        <div class="dev-scroll" id="ue-body"></div>
+                    </div>
+
+                    <div class="ud-view ud-rules" data-view="rules">
+                        <div class="ur-list">
+                            <div class="ur-list-head">
+                                <input id="ur-filter" class="input input-sm" type="text" placeholder="Filter rules…" oninput="Devices.tabs.udev.renderRules()">
+                                <button type="button" class="btn btn-success btn-sm" onclick="Devices.tabs.udev.newRule()" title="New rule file in /etc/udev/rules.d"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div id="ur-files" class="ur-files"></div>
+                        </div>
+                        <div class="ur-editor">
+                            <div class="ur-editor-head" id="ur-head"><span class="muted small">Select a rules file</span></div>
+                            <textarea id="ur-text" class="ur-text" spellcheck="false" disabled
+                                      oninput="Devices.tabs.udev.markDirty()"></textarea>
+                            <div id="ur-problems" class="ur-problems" hidden></div>
+                        </div>
+                    </div>
+
+                    <div class="ud-view ud-tools" data-view="tools">
+                        <div class="ut-grid">
+                            <div class="ut-box">
+                                <div class="ut-title"><i class="fa-solid fa-server"></i> systemd-udevd</div>
+                                <div id="ut-status" class="ut-status muted small">Loading…</div>
+                                <div class="row">
+                                    <button type="button" class="btn btn-restart btn-sm" onclick="Devices.tabs.udev.restart()"><i class="fa-solid fa-rotate-right"></i> Restart udevd</button>
+                                    <button type="button" class="btn btn-info btn-sm" onclick="Devices.tabs.udev.reload()"><i class="fa-solid fa-rotate"></i> Reload rules</button>
+                                </div>
+                            </div>
+                            <div class="ut-box">
+                                <div class="ut-title"><i class="fa-solid fa-bolt"></i> Trigger events</div>
+                                <div class="ut-form">
+                                    <select id="ut-trig-kind" class="input input-sm"><option>change</option><option>add</option></select>
+                                    <input id="ut-trig-sub" class="input input-sm" list="ut-subsystems" placeholder="subsystem (tty, usb…)">
+                                    <input id="ut-trig-dev" class="input input-sm" placeholder="/dev/ttyUSB0">
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="Devices.tabs.udev.trigger()"><i class="fa-solid fa-bolt"></i> Trigger</button>
+                                </div>
+                                <div class="hint">Re-applies rules to matching devices. Empty filters = all devices.</div>
+                            </div>
+                            <div class="ut-box">
+                                <div class="ut-title"><i class="fa-solid fa-flask"></i> Test rules / attributes</div>
+                                <div class="ut-form">
+                                    <input id="ut-dev" class="input input-sm" placeholder="/dev/ttyUSB0">
+                                    <select id="ut-test-kind" class="input input-sm"><option>add</option><option>change</option><option>remove</option></select>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.udev.test()"><i class="fa-solid fa-flask"></i> udevadm test</button>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.udev.attrs()"><i class="fa-solid fa-list"></i> Attribute walk</button>
+                                </div>
+                                <div class="hint"><code>udevadm test</code> is a dry run: it shows which rules match, RUN programs are not executed.</div>
+                            </div>
+                        </div>
+                        <datalist id="ut-subsystems"></datalist>
+                        <pre id="ut-output" class="ut-output muted">Command output appears here.</pre>
+                    </div>
+                </section>
             </div>
-            <div id="gpio-pane" class="gpio-pane" hidden>
-                <div class="tbl-empty">Loading…</div>
-            </div>
+            <aside id="dev-info" class="dev-info" hidden></aside>
         </div>
         <div class="modal-foot small">
             <span id="dev-summary" class="muted"></span>
@@ -54,5 +244,15 @@
             <span id="dev-changes" class="mono dev-changes"></span>
             <span id="dev-updated" class="faint"></span>
         </div>
+    </div>
+</div>
+
+<div id="dev-text-overlay" class="modal-overlay" onclick="if (event.target === this) Devices.closeText()">
+    <div class="modal-box dev-text-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-terminal text-ok"></i> <span id="dev-text-title" class="mono"></span></span>
+            <button type="button" class="modal-close" onclick="Devices.closeText()">&#215;</button>
+        </div>
+        <div class="modal-body"><pre id="dev-text-body" class="ut-output"></pre></div>
     </div>
 </div>

@@ -6,15 +6,19 @@ import subprocess
 quote = shlex.quote
 
 
-def run_command(command):
+def run_command(command, timeout=None):
     """Run a shell command; ``sudo`` never prompts. Returns stdout or an 'Error!' report."""
     if command.startswith('sudo '):
-        command = command.replace('sudo ', 'sudo -n ', 1)
+        # Already root (the panel service): sudo is not needed.
+        command = command[5:] if os.geteuid() == 0 else command.replace('sudo ', 'sudo -n ', 1)
     try:
-        result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
+        result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True,
+                                timeout=timeout)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         return f"Error!\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}"
+    except subprocess.TimeoutExpired:
+        return f"Error!\nTimed out after {timeout} s"
 
 
 def sh(command, timeout=4):

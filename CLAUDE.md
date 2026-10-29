@@ -36,6 +36,8 @@ core/
   web.py               template context for every page, asset() cache-busting helper
   test_runner.py       runs test-platform scripts, verdicts, per-run log files
   gpio_ctl.py          manual GPIO control for the Devices popup: per-client claimed lines under a lease
+  net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
+  udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
@@ -50,7 +52,8 @@ static/
   js/sysinfo.js        SysInfo: polling + render helpers                    (logged in)
   js/video.js          Video: device list + stream popup                    (logged in)
   js/power.js          power menu                                           (logged in)
-  js/devices.js        Devices: /dev tree + GPIO popup (routes/devices.py)  (logged in)
+  js/devices.js        Devices popup shell: tab registry, info panel, text popup (logged in)
+  js/devices_<tab>.js  popup tabs: nodes (Devices + /dev), buses, net, gpio, udev — Devices.register({...})
   js/<page>.js         page-only logic
 ```
 
@@ -71,6 +74,19 @@ static/
   (tab switch, popup close, `pagehide` beacon, lease timeout) must release them. Never hold lines otherwise.
 - Claim requests "as is" (no state change). Claiming is refused while a test runs; `/api/tests/start`
   calls `gpio_ctl.release_all()` so scripts get the fixture lines.
+
+## Devices popup
+- Routes: `routes/devices.py` (devices, buses, GPIO), `routes/udev.py` (service, events, rules, udevadm tools),
+  `routes/net.py` (interfaces, CAN). Only CAN links may be reconfigured — never touch other interfaces (SSH/web).
+- CAN without hardware: test in a user+net namespace with vcan:
+  `unshare -rnm sh -c 'mount -t sysfs sysfs /sys; ip link set lo up; ip link add vcan0 type vcan; ip link set vcan0 up; …'`.
+- New tab: a button in `partials/devices_modal.html` (`data-tab`), a `<section class="dev-pane" id="devpane-<id>">`
+  (`.dev-toolbar` + `.dev-scroll`), and `static/js/devices_<id>.js` calling `Devices.register({id, autoMs, load,
+  render, onShow, onHide, canLeave})`, included in `base.html`. Pass `this.id` to `Devices.summary()`.
+- Background resources (GPIO lines, `udevadm monitor`) live only while their view is open and polled
+  (lease on the server); every exit path must release them. Child processes use `_die_with_parent`.
+- Rules are written only to `/etc/udev/rules.d` (names `^[\w.@+-]+\.rules$`); system dirs are read-only.
+  Never scan I²C buses or open device nodes just to list them.
 
 ## Test platform
 - `testPlatform/` holds the user's hardware test sequences (GPIO relays via gpiod, stm8flash, UART, DMM) copied
