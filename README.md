@@ -145,8 +145,8 @@ flowchart LR
 
 | Method | Route | Access | Description |
 |---|---|---|---|
-| GET | `/api/services` | public | All systemd services (JSON) |
-| GET | `/api/status?name=` | public | `systemctl status` output |
+| GET | `/api/services` | public | systemd services (JSON); anonymous: only the target service |
+| GET | `/api/status?name=` | public | `systemctl status` output; anonymous: target service only |
 | POST | `/api/service/<start\|stop\|restart>?name=` | public for `public_service_actions`, else login | Service action |
 | GET | `/api/sysinfo` | login | CPU, RAM, network, disks (JSON) |
 | POST | `/api/power/<reboot\|poweroff>` | login | Reboot / shut down |
@@ -305,8 +305,8 @@ journalctl -u systemmngmntservice.service -f
 ## Authentication
 
 When `auth.enabled = true`:
-- **anonymous visitors** see only the *Service Control* block and the *All Services* list on the main page and may
-  run the service actions listed in `public_service_actions`;
+- **anonymous visitors** see only the *Service Control* block for the target service (`service_name`) — no
+  service selector and no *All Services* list — and may run the actions listed in `public_service_actions` on it;
 - **logged-in users** get everything else (backups, system info, code editor, terminal, settings, video, power).
 
 When `auth.enabled = false`, every visitor has full access.

@@ -24,7 +24,9 @@
         {% include 'partials/video_controls.html' %}
         <button class="btn btn-nav" onclick="Devices.open()" title="Device nodes and GPIO lines"><i class="fa-solid fa-microchip"></i> Devices</button>
     {% endif %}
-    <button class="btn btn-nav" onclick="Services.openModal()"><i class="fa-solid fa-list-check"></i> Services</button>
+    {% if logged_in %}
+        <button class="btn btn-nav" onclick="Services.openModal()"><i class="fa-solid fa-list-check"></i> Services</button>
+    {% endif %}
     {% for item in nav_items %}
         <a href="{{ url_for(item.endpoint) }}" class="btn btn-nav"><i class="{{ item.icon }}"></i> {{ item.label }}</a>
     {% endfor %}
@@ -44,8 +46,8 @@
 {% block content %}{% endblock %}
 
 {% block modals %}{% endblock %}
-{% include 'partials/services_modal.html' %}
 {% if logged_in %}
+    {% include 'partials/services_modal.html' %}
     {% include 'partials/video_modal.html' %}
     {% include 'partials/devices_modal.html' %}
 {% endif %}

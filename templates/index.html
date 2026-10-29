@@ -17,9 +17,13 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <select id="svc-select" class="select-mono">
-                        <option value="{{ service_name }}">{{ service_name }}</option>
-                    </select>
+                    {% if logged_in %}
+                        <select id="svc-select" class="select-mono">
+                            <option value="{{ service_name }}">{{ service_name }}</option>
+                        </select>
+                    {% else %}
+                        <span class="svc-target mono"><i class="fa-solid fa-gear"></i> {{ service_name }}</span>
+                    {% endif %}
                     {% if can_service('start') %}<button class="btn btn-start" onclick="svcAction('start')"><i class="fa-solid fa-play"></i> Start</button>{% endif %}
                     {% if can_service('stop') %}<button class="btn btn-stop" onclick="svcAction('stop')"><i class="fa-solid fa-stop"></i> Stop</button>{% endif %}
                     {% if can_service('restart') %}<button class="btn btn-restart" onclick="svcAction('restart')"><i class="fa-solid fa-rotate-right"></i> Restart</button>{% endif %}

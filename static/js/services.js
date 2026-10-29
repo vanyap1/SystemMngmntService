@@ -1,7 +1,8 @@
 /* ==========================================================================
    Services widget: service selector (#svc-select), start/stop/restart,
    "All Services" modal (partials/services_modal.html), status log colouring.
-   Available to anonymous users; actions are limited by App.config.publicServiceActions.
+   Anonymous users get only the target service (no selector, no modal);
+   actions are limited by App.config.publicServiceActions.
 
    Page hooks:
      Services.onChange(fn)  - called with the service name when selection changes
@@ -34,7 +35,8 @@ const Services = {
                 else toast(name + ': ' + action);
                 setTimeout(() => {
                     if (name === Services.current()) Services._notify();
-                    if (document.getElementById('svc-overlay').classList.contains('open')) Services.load();
+                    const ov = document.getElementById('svc-overlay');
+                    if (ov && ov.classList.contains('open')) Services.load();
                 }, 1500);
             })
             .catch(e => toast(e.message || 'Command failed', true));
@@ -81,7 +83,10 @@ const Services = {
         setTimeout(() => f.focus(), 100);
     },
 
-    closeModal() { document.getElementById('svc-overlay').classList.remove('open'); },
+    closeModal() {
+        const ov = document.getElementById('svc-overlay');
+        if (ov) ov.classList.remove('open');
+    },
 
     setSort(mode) {
         Services.sortMode = mode;
@@ -222,6 +227,6 @@ function svcAction(action) { Services.action(action); }
 document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('svc-select');
     if (sel) sel.addEventListener('change', () => Services._notify());
-    Services.load();
+    if (sel || document.getElementById('svc-overlay')) Services.load();
 });
 App.onEscape(() => Services.closeModal());

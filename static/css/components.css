@@ -18,6 +18,7 @@
 .svc-acts { display: flex; gap: 4px; }
 .svc-acts .btn { padding: 1px 7px; font-size: 11px; }
 .svc-filter { width: 180px; }
+.svc-target { color: var(--code); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
 .svc-sort { width: auto; }
 
 /* ── Service status / log ── */

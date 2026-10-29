@@ -1,4 +1,5 @@
-"""systemd services: list and status are public, actions are checked per action."""
+"""systemd services. Anonymous users see and control only the target service (config ``service_name``)
+with the actions in ``public_service_actions``; logged-in users get every service."""
 import re
 
 from flask import Blueprint, jsonify, request
@@ -12,6 +13,9 @@ _SERVICE_RE = re.compile(r'^[a-zA-Z0-9_.@:%\-]+\.service$')
 
 
 def _service_arg():
+    """Requested service; anonymous users are always pinned to the target service."""
+    if not auth.is_logged_in():
+        return config.service_name()
     name = request.args.get('name') or (request.get_json(silent=True) or {}).get('name')
     return name or config.service_name()
 
@@ -33,6 +37,8 @@ def api_services():
             'sub':    parts[3],
             'desc':   parts[4].strip() if len(parts) > 4 else '',
         })
+    if not auth.is_logged_in():
+        services = [s for s in services if s['name'] == config.service_name()]
     return jsonify({'services': services, 'default': config.service_name()})
 
 

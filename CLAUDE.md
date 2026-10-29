@@ -58,8 +58,10 @@ static/
 ```
 
 ## Access model (must be preserved)
-- **Anonymous**: main page with the *Service Control* card only, the *All Services* modal, `/api/services`,
-  `/api/status`, and service actions listed in `config.public_service_actions` (default `["restart"]`).
+- **Anonymous**: main page with the *Service Control* card for the **target service only** (`service_name`;
+  no selector, no *All Services* modal/button). `/api/services` returns only that service, `/api/status` and
+  `/api/service/<action>` ignore `name` and use it; actions limited to `config.public_service_actions`
+  (default `["restart"]`).
 - **Logged in**: everything else (backups, sysinfo, editor, terminal, settings, video, devices/GPIO, power, macros).
 - `auth.enabled = false` ⇒ every visitor is treated as logged in.
 - Backend is the source of truth: **every route is `@login_required` unless it is intentionally public**.
