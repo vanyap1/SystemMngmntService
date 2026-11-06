@@ -20,6 +20,8 @@ Flask 3 + plain JavaScript, no build step; the only server dependency is `python
 | **Code editor** | file tree, Monaco editor with outline, service log, web terminal, command macros |
 | **Test platform** | run `*_test.py` fixture sequences, live PASS/FAIL table, operator prompts, stop-on-fail, a log per run, yield statistics |
 | **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
+| **Docs** | Markdown knowledge base in `help/`: sidebar tree, full-text search, rendered view with table of contents and code copy buttons, Monaco editor with live preview, toolbar, image paste/drop upload, attachments; **diagram editor** for pinouts and block diagrams (exported to SVG, embedded in pages) |
+| **Git** | Settings → Git and a Git popup in the code editor and docs: changes with diff, commit (selected files, current or new branch, push after), branches, fetch / pull / push, problem detection with one-click fixes, discard / reset to remote with automatic backup; HTTPS token stored outside the repositories |
 | **Devices** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **udev** events / rules editor / tools |
 | **Video** | preview of V4L2 cameras |
 | **Per-host config** | one repository deployed to several machines, each with its own section in `config.json` |
@@ -80,6 +82,7 @@ SystemMngmntService/
 │   ├── vendor/       # Font Awesome, Monaco, xterm.js served locally (offline), see vendor/README.md
 │   ├── js/           # core.js, services.js, sysinfo.js, monitor.js, video.js, power.js, devices*.js (shared), <page>.js
 │   └── img/
+├── help/            # Documentation (Markdown), help/img images, help/docs attachments, help/examples raw notes
 ├── testPlatform/     # Test platform: *_test.py sequences + hardware drivers (run from the Tests page)
 ├── testLogs/         # One log file per test run (git-ignored)
 ├── tests/            # Unit/integration tests (unittest) + dev server and screenshot helpers
@@ -123,6 +126,8 @@ Fields (same in `default` and in a host section):
 | `auth.enabled` | Enable / disable login |
 | `auth.username` / `auth.password` | Credentials |
 | `public_service_actions` | Service actions allowed without login (default `["restart"]`) |
+| `tests_dir` / `test_logs_dir` | Test scripts / run logs (relative to the project) |
+| `help_dir` | Documentation folder (default `help`, relative to the project) |
 
 ---
 
@@ -246,6 +251,22 @@ flowchart LR
 | GET | `/api/logs/step?name=&…filters` | login | One step across the filtered runs: values, min/mean/max/σ, Cpk |
 | GET | `/api/logs/export.csv?…filters` | login | Filtered runs as CSV (one row per run) |
 | GET | `/api/tests/stats?script=` | login | Board counts per verdict for a script |
+| GET | `/api/git/repos`, `/api/git/status?repo=`, `/api/git/summary?repo=`, `/api/git/diff?repo=&path=` | login | Repositories (project, panel, docs), full status + problems, badge counts, diff of a changed file |
+| POST | `/api/git/commit`, `/branch`, `/checkout`, `/branch_delete`, `/fetch`, `/pull`, `/push`, `/discard`, `/reset`, `/fix`, `/identity` | login | Git actions `{repo, …}`; every answer carries the new status |
+| GET | `/api/git/tree_status` | login | Changed files of target_dir's repositories (editor tree marks) |
+| POST | `/api/git/clone`, `/api/git/init` | login | Clone `{url, name}` into target_dir / initialize target_dir |
+| GET / POST | `/api/git/credentials` | login | HTTPS username + token (write-only: only `token_set` / last 4 chars come back) |
+| GET | `/help[?doc=<path>]` | login | Documentation viewer / editor |
+| GET | `/help/file/<path>[?dl=1]` | login | Image, attachment or raw page from `help_dir` (sandboxed) |
+| GET | `/api/help/tree` | login | All pages `{path, title, mtime, size}` |
+| GET / POST | `/api/help/doc` | login | Read `?path=` / save `{path, content, mtime, force}` (409 if changed since `mtime`) |
+| POST | `/api/help/create`, `/api/help/rename`, `/api/help/delete` | login | `{path, title}` / `{path, new_path}` (fixes img/docs links) / `{path}` (moved to `.trash/`) |
+| GET | `/api/help/search?q=` | login | Pages containing every word, with matching lines |
+| GET | `/api/help/assets?kind=img\|docs` | login | Images / attachments with the pages that use them |
+| POST | `/api/help/upload` | login | Multipart `kind` + `file`(s); returns the stored names |
+| POST | `/api/help/asset_delete` | login | `{kind, name}` (moved to `.trash/`) |
+| GET | `/api/help/diagrams`, `/api/help/diagram?name=` | login | Diagram list / one diagram model with the pages that embed it |
+| POST | `/api/help/diagram/create`, `/save`, `/rename`, `/delete` | login | `{name, data, svg}` / `{name, data, svg, mtime, force}` (409 on conflict) / `{name, new_name}` (fixes page links) / `{name}` |
 
 ---
 
@@ -336,6 +357,66 @@ and caches parsed files by mtime/size.
 
 ---
 
+## Git (Settings → Git, Git icon in the editor and docs)
+
+Works on the repositories of `target_dir` (*Project*), the panel itself and `help_dir` (*Docs*) — folders in one
+worktree are shown once — plus every repository found inside `target_dir` (projects cloned from GitHub etc.,
+up to 3 levels deep, id `dir:<relative path>`).
+
+- **Code editor**: change marks in the file tree (M / U / D, a dot on folders with changes), the branch next to the
+  root folder of every repository, the repository of the open file in the status bar (branch, changes, ahead/behind,
+  GitHub/GitLab remote), *Commit* next to Save (opens the Git popup with that file selected), the Git icon opens
+  the repository of the open file.
+- Not a repository: clone a project (https / ssh / `git@host:owner/repo`; private https repos use the token) into
+  `target_dir/<folder>`, or `git init`.
+
+- Status: branch (switch from the list), ahead/behind the upstream, changed files with diff.
+- Commit the selected files to the current branch or to a new one, optionally push right after.
+- Branches: create & switch, switch, delete (asks before deleting an unmerged one). Fetch, pull (`--ff-only`), push
+  (sets the upstream on the first push).
+- **Problems** with fixes: root-owned files in `.git` (chown back), stale `index.lock`, merge / rebase in progress
+  (abort), conflicts, missing user name / e-mail, detached HEAD (create a branch), no upstream, behind / diverged
+  (pull rebase / merge / reset to remote), credentials inside a remote URL (strip), tracked `.secret_key` (untrack),
+  the token found in tracked or staged files, credentials file inside a repository.
+- Discard changes, **Reset to remote** — always creates `backup/<date>` at the old HEAD and stashes uncommitted work.
+- git runs as the owner of the repository (the panel runs as root), non-interactive, with timeouts.
+- **Token**: kept in `~/.config/systemmngmntservice/credentials.json` of the panel user (`/root/...` for the
+  service), mode 600, outside every repository and never in `config.json`; the browser can only replace or remove
+  it. Git receives it through a one-shot credential helper reading an environment variable of that one process —
+  nothing is written to `.git/config` or remote URLs, and command output is scrubbed of it.
+
+---
+
+## Documentation (`/help`)
+
+A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar (login only).
+
+| Folder | Content |
+|---|---|
+| `help/*.md`, `help/<folder>/*.md` | pages; folders (up to 3 levels) are sections of the sidebar tree |
+| `help/img/` | images (pasted / dropped into the editor are uploaded here) |
+| `help/docs/` | attached files, rendered as file buttons |
+| `help/diagrams/` | diagrams: `<name>.json` (model) + `<name>.svg` (written on every save) |
+| `help/examples/` | raw notes, not listed |
+| `help/.trash/` | deleted pages and files |
+
+- View: rendered GitHub-flavoured Markdown (tables, task lists, `> [!NOTE]` boxes), highlighted code with a Copy
+  button, table of contents with scroll tracking, image zoom, print. `?doc=<path>#<heading>` links to a section.
+- Search (`/`): every word must occur; results show matching lines, the opened page highlights them.
+- Edit (`E`): Monaco with live preview (editor / split / preview), formatting toolbar, `Ctrl+S` / `B` / `I` / `K`,
+  paste or drop images and files to upload and link them, link to another page; saving detects concurrent changes.
+- Links are relative to the page (`img/x.png`, `../docs/f.zip`, `other.md#section`), so the files also render
+  in VS Code or Git. Rename/move rewrites the `img/` and `docs/` links for the new folder depth.
+- Rendering uses vendored marked + DOMPurify + highlight.js; served files get a sandbox CSP.
+- **Diagrams** (sidebar group *Diagrams*, `?diagram=<name>`; only inside the Docs page): SVG editor with
+  chips/modules with pins on four sides ("tags" or "simple" pin style, pin kinds with legend), blocks, wires/arrows
+  attached to blocks (orthogonal auto-route, bend points, labels), text and legend; grid snap, zoom/pan,
+  multi-select, align, copy/paste, undo/redo. Pins are edited in a table that accepts rows pasted from Excel/CSV.
+  Saving writes `<name>.json` and the exported `<name>.svg`; pages embed `../diagrams/<name>.svg` (toolbar button),
+  and a diagram image in a page has an *Edit diagram* button. SVG/PNG download.
+
+---
+
 ## Test Platform (`/tests`)
 
 - Scripts: every `*_test.py` in `tests_dir` (default `testPlatform/`); the first line of the module docstring is
@@ -411,6 +492,8 @@ python3 -m unittest tests.test_access -q               # one module
 | `test_config.py` | legacy migration, per-host sections, save / reset |
 | `test_monitor.py` | `/api/monitor` payload, sampler lease, active interface detection |
 | `test_logs.py` | log parsing, filters, yield/FPY, step statistics, CSV, `/api/logs*` |
+| `test_help.py` | docs paths, store (create/save conflict/rename relink/trash/search), uploads, `/api/help*`, `/help/file` |
+| `test_git.py` | git on temporary repositories: commit/branch/push/pull, problems + fixes, reset backup, token never leaks |
 | `test_test_runner.py` | operator answer validation, real runs of the demo scripts, stop |
 | `test_offline.py` | no external (CDN) URLs in templates/static, vendored libraries are served |
 | `test_net.py`, `test_udev.py`, `test_shell.py` | CAN frame parsing, udev rule linter, path/command helpers |

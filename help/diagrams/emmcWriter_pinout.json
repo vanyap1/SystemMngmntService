@@ -1,0 +1,1552 @@
+{
+ "version": 1,
+ "title": "emmcWriter · DS_H618_Core",
+ "width": 1900,
+ "height": 2694,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output (code)",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input (code)",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#1f2937"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "SDC0",
+   "color": "#a8a29e"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#b08a8a"
+  },
+  "pwm": {
+   "label": "PWM backlight",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM_RED",
+   "color": "#a16a2a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "HB_LED",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "PI13",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "id": "tp30fig",
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "emmcWriter · DS_H618_Core",
+   "size": 32,
+   "weight": "700",
+   "color": "#1f2937"
+  },
+  {
+   "id": "tuhqyam",
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "size": 16,
+   "color": "#6b7280",
+   "text": "Pinout: SoC port → function in code (gpiod, gpiochip1) · grey text = schematic net / alt functions"
+  },
+  {
+   "id": "ltg4x6l",
+   "type": "legend",
+   "x": 60,
+   "y": 140,
+   "kinds": [
+    "out",
+    "in",
+    "bus",
+    "pwr",
+    "pwm",
+    "nc",
+    "free"
+   ],
+   "style": "tags"
+  },
+  {
+   "id": "co5k7ze",
+   "type": "chip",
+   "x": 450,
+   "y": 560,
+   "w": 1000,
+   "h": 900,
+   "body": "module",
+   "holes": true,
+   "ic": {
+    "show": true,
+    "title": "H618",
+    "subtitle": "Allwinner · 4×A53"
+   },
+   "caption": "DS_H618_Core  ·  U13",
+   "caption2": "100-pin castellated module",
+   "pinStyle": "tags",
+   "corner": 120,
+   "portW": 66,
+   "fnW": 128,
+   "numbers": true,
+   "pins": {
+    "left": [
+     {
+      "n": 51,
+      "port": "PI7",
+      "fn": "RT_SW_B3",
+      "kind": "in",
+      "badge": "",
+      "note": "encoder 8"
+     },
+     {
+      "n": 52,
+      "port": "PI8",
+      "fn": "RT_SW_B2",
+      "kind": "in",
+      "badge": "",
+      "note": "encoder 4"
+     },
+     {
+      "n": 53,
+      "port": "PI9",
+      "fn": "RT_SW_B1",
+      "kind": "in",
+      "badge": "",
+      "note": "encoder 2"
+     },
+     {
+      "n": 54,
+      "port": "PI10",
+      "fn": "RT_SW_B0",
+      "kind": "in",
+      "badge": "",
+      "note": "encoder 1"
+     },
+     {
+      "n": 55,
+      "port": "PI11",
+      "fn": "PWM_RED",
+      "kind": "pwm",
+      "badge": "",
+      "note": "PWM1 · backlight red"
+     },
+     {
+      "n": 56,
+      "port": "PI12",
+      "fn": "PWM_GREEN",
+      "kind": "pwm",
+      "badge": "",
+      "note": "PWM2 · backlight green"
+     },
+     {
+      "n": 57,
+      "port": "PI13",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "PWM3 · UART4_TX"
+     },
+     {
+      "n": 58,
+      "port": "PI14",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "PWM4 · UART4_RX"
+     },
+     {
+      "n": 59,
+      "port": "PI15",
+      "fn": "USB_BR_EN",
+      "kind": "out",
+      "badge": "",
+      "note": "U36 EN · bridge power"
+     },
+     {
+      "n": 60,
+      "port": "PI16",
+      "fn": "USB_BR_OCP",
+      "kind": "in",
+      "badge": "",
+      "note": "net USB_BR_FB · U36 OC#"
+     },
+     {
+      "n": 61,
+      "port": "PF6",
+      "fn": "SYS_DET",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": "system eMMC U14"
+     },
+     {
+      "n": 62,
+      "port": "PF0",
+      "fn": "SYS_D1",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": ""
+     },
+     {
+      "n": 63,
+      "port": "PF1",
+      "fn": "SYS_D0",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": ""
+     },
+     {
+      "n": 64,
+      "port": "PF2",
+      "fn": "SYS_CLK",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": ""
+     },
+     {
+      "n": 65,
+      "port": "PF3",
+      "fn": "SYS_CMD",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": ""
+     },
+     {
+      "n": 66,
+      "port": "PF4",
+      "fn": "SYS_D3",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": ""
+     },
+     {
+      "n": 67,
+      "port": "PF5",
+      "fn": "SYS_D2",
+      "kind": "bus",
+      "badge": "SDC0",
+      "note": ""
+     },
+     {
+      "n": 68,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 69,
+      "port": "3V3-OUT",
+      "fn": "3V3_OUT",
+      "kind": "pwr",
+      "badge": "",
+      "note": "encoder, pull-ups"
+     },
+     {
+      "n": 70,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 71,
+      "port": "1V8-OUT",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "1V8 out"
+     },
+     {
+      "n": 72,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     }
+    ],
+    "right": [
+     {
+      "n": 22,
+      "port": "PG14",
+      "fn": "EMMC_BR_DET_EN",
+      "kind": "out",
+      "badge": "",
+      "note": "net CD → Q1 → SD_CD"
+     },
+     {
+      "n": 21,
+      "port": "PG11",
+      "fn": "MUX_SEL",
+      "kind": "out",
+      "badge": "",
+      "note": "net MUX_CH · 0 USB / 1 SoC"
+     },
+     {
+      "n": 20,
+      "port": "PG12",
+      "fn": "EMMC_DET",
+      "kind": "in",
+      "badge": "",
+      "note": "target socket U1"
+     },
+     {
+      "n": 19,
+      "port": "PG13",
+      "fn": "JIG_DET",
+      "kind": "in",
+      "badge": "",
+      "note": "net SW_DET · opto U31"
+     },
+     {
+      "n": 18,
+      "port": "PH10",
+      "fn": "EMMC_OCP",
+      "kind": "in",
+      "badge": "",
+      "note": "net MMC_OC · U34 OC#"
+     },
+     {
+      "n": 17,
+      "port": "PH9",
+      "fn": "EMMC_VTG",
+      "kind": "out",
+      "badge": "",
+      "note": "net MMC_VTG · U34 EN"
+     },
+     {
+      "n": 16,
+      "port": "PH8",
+      "fn": "HB_LED",
+      "kind": "nc",
+      "badge": "",
+      "note": "not in code · active-low"
+     },
+     {
+      "n": 15,
+      "port": "PH7",
+      "fn": "KP_LED",
+      "kind": "nc",
+      "badge": "",
+      "note": "not in code · active-low"
+     },
+     {
+      "n": 14,
+      "port": "PH6",
+      "fn": "LED_R",
+      "kind": "out",
+      "badge": "",
+      "note": "net R_LED"
+     },
+     {
+      "n": 13,
+      "port": "PH5",
+      "fn": "LED_Y",
+      "kind": "out",
+      "badge": "",
+      "note": "net Y_LED"
+     },
+     {
+      "n": 12,
+      "port": "PH4",
+      "fn": "LED_G",
+      "kind": "out",
+      "badge": "",
+      "note": "net G_LED"
+     },
+     {
+      "n": 11,
+      "port": "PH3",
+      "fn": "LNK_ETH",
+      "kind": "bus",
+      "badge": "ETH",
+      "note": "EPHY link LED"
+     },
+     {
+      "n": 10,
+      "port": "PH2",
+      "fn": "SPD_ETH",
+      "kind": "bus",
+      "badge": "ETH",
+      "note": "EPHY speed LED"
+     },
+     {
+      "n": 9,
+      "port": "PH1",
+      "fn": "DEB_RX",
+      "kind": "bus",
+      "badge": "UART0",
+      "note": "header H7"
+     },
+     {
+      "n": 8,
+      "port": "PH0",
+      "fn": "DEB_TX",
+      "kind": "bus",
+      "badge": "UART0",
+      "note": "header H7"
+     },
+     {
+      "n": 7,
+      "port": "FEL",
+      "fn": "FEL",
+      "kind": "bus",
+      "badge": "BOOT",
+      "note": "button SW2"
+     },
+     {
+      "n": 6,
+      "port": "EPHY_TXP",
+      "fn": "TXP_ETH",
+      "kind": "bus",
+      "badge": "ETH",
+      "note": ""
+     },
+     {
+      "n": 5,
+      "port": "EPHY_TXN",
+      "fn": "TXN_ETH",
+      "kind": "bus",
+      "badge": "ETH",
+      "note": ""
+     },
+     {
+      "n": 4,
+      "port": "EPHY_RXP",
+      "fn": "RXP_ETH",
+      "kind": "bus",
+      "badge": "ETH",
+      "note": ""
+     },
+     {
+      "n": 3,
+      "port": "EPHY_RXN",
+      "fn": "RXN_ETH",
+      "kind": "bus",
+      "badge": "ETH",
+      "note": ""
+     },
+     {
+      "n": 2,
+      "port": "HTX2P",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "HDMI"
+     },
+     {
+      "n": 1,
+      "port": "HTX2N",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "HDMI"
+     }
+    ],
+    "top": [
+     {
+      "n": 50,
+      "port": "PI6",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_RX · TWI0_SDA"
+     },
+     {
+      "n": 49,
+      "port": "PI5",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_TX · TWI0_SCK"
+     },
+     {
+      "n": 48,
+      "port": "PI4",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_DIN0"
+     },
+     {
+      "n": 47,
+      "port": "PI3",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_DOUT0"
+     },
+     {
+      "n": 46,
+      "port": "PI2",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_LRCK"
+     },
+     {
+      "n": 45,
+      "port": "PI1",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_BCLK"
+     },
+     {
+      "n": 44,
+      "port": "PI0",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_MCLK"
+     },
+     {
+      "n": 43,
+      "port": "PG17",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_RTS"
+     },
+     {
+      "n": 42,
+      "port": "PG19",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "PWM1 (=PI11)"
+     },
+     {
+      "n": 41,
+      "port": "PG18",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_CTS"
+     },
+     {
+      "n": 40,
+      "port": "PG16",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_RX · TWI4_SDA"
+     },
+     {
+      "n": 39,
+      "port": "PG15",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_TX · TWI4_SCK"
+     },
+     {
+      "n": 38,
+      "port": "PG10",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S2_MCLK"
+     },
+     {
+      "n": 37,
+      "port": "PG8",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART1_RTS"
+     },
+     {
+      "n": 36,
+      "port": "PG9",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART1_CTS"
+     },
+     {
+      "n": 35,
+      "port": "PG7",
+      "fn": "SYS_DET_EN",
+      "kind": "out",
+      "badge": "",
+      "note": "net TG_DET_EN → Q2"
+     },
+     {
+      "n": 34,
+      "port": "PG6",
+      "fn": "TG_DET",
+      "kind": "in",
+      "badge": "DT",
+      "note": "SDC1 card-detect"
+     },
+     {
+      "n": 33,
+      "port": "PWRON",
+      "fn": "PERON",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 32,
+      "port": "5V",
+      "fn": "VCC5V",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 31,
+      "port": "5V",
+      "fn": "VCC5V",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 30,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 29,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 28,
+      "port": "PG4",
+      "fn": "DAT2",
+      "kind": "bus",
+      "badge": "SDC1",
+      "note": "→ MUX U12"
+     },
+     {
+      "n": 27,
+      "port": "PG2",
+      "fn": "DAT0",
+      "kind": "bus",
+      "badge": "SDC1",
+      "note": "→ MUX U12"
+     },
+     {
+      "n": 26,
+      "port": "PG1",
+      "fn": "CMD",
+      "kind": "bus",
+      "badge": "SDC1",
+      "note": "→ MUX U12"
+     },
+     {
+      "n": 25,
+      "port": "PG3",
+      "fn": "DAT1",
+      "kind": "bus",
+      "badge": "SDC1",
+      "note": "→ MUX U12"
+     },
+     {
+      "n": 24,
+      "port": "PG0",
+      "fn": "CLK",
+      "kind": "bus",
+      "badge": "SDC1",
+      "note": "22R · → MUX U12"
+     },
+     {
+      "n": 23,
+      "port": "PG5",
+      "fn": "DAT3",
+      "kind": "bus",
+      "badge": "SDC1",
+      "note": "→ MUX U12"
+     }
+    ],
+    "bottom": [
+     {
+      "n": 73,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 74,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 75,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 76,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 77,
+      "port": "USB0_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 78,
+      "port": "USB0_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 79,
+      "port": "USB1_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 80,
+      "port": "USB1_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 81,
+      "port": "USB2_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 82,
+      "port": "USB2_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 83,
+      "port": "USB3_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 84,
+      "port": "USB3_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 85,
+      "port": "AGND",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 86,
+      "port": "LINEOUTL",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 87,
+      "port": "LINEOUTR",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 88,
+      "port": "LRADC",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 89,
+      "port": "TV_OUT",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 90,
+      "port": "RESET",
+      "fn": "RESET",
+      "kind": "in",
+      "badge": "",
+      "note": "button SW3"
+     },
+     {
+      "n": 91,
+      "port": "HHPD",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 92,
+      "port": "HSDA",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 93,
+      "port": "HSCL",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 94,
+      "port": "HCEC",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 95,
+      "port": "HTXCN",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 96,
+      "port": "HTXCP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 97,
+      "port": "HTX0N",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 98,
+      "port": "HTX0P",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 99,
+      "port": "HTX1N",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 100,
+      "port": "HTX1P",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     }
+    ]
+   }
+  },
+  {
+   "id": "wfvmbkl",
+   "type": "wire",
+   "from": {
+    "x": 60,
+    "y": 1840
+   },
+   "to": {
+    "x": 1840,
+    "y": 1840
+   },
+   "route": "straight",
+   "arrow": "none",
+   "color": "#e7e5e4",
+   "width": 2
+  },
+  {
+   "id": "t1wiq6j",
+   "type": "text",
+   "x": 60,
+   "y": 1890,
+   "text": "Block diagram",
+   "size": 26,
+   "weight": "700",
+   "color": "#1f2937"
+  },
+  {
+   "id": "tm1wn4z",
+   "type": "text",
+   "x": 90,
+   "y": 2534,
+   "text": "POWER · ISOLATED INPUTS",
+   "size": 14,
+   "weight": "700",
+   "color": "#6b7280"
+  },
+  {
+   "id": "benahb2",
+   "type": "block",
+   "x": 720,
+   "y": 1940,
+   "w": 420,
+   "h": 540,
+   "title": "U13 · DS_H618_Core  (H618)",
+   "lines": [
+    "emmcWriter service (Python)",
+    "",
+    "`HTTP  :8080  remote control",
+    "`UDP   :8088  status broadcast / 0.5 s",
+    "`IP    192.168.1.(70 + slot)",
+    "",
+    "`crpi  target → USB3 bridge (big dump)",
+    "`copi  target → SoC SDC1",
+    "`      boot regions + u-boot",
+    "`writeboot / readboot / verifyboot",
+    "`buildimg → rootfs + u-boot",
+    "`led=N · id=N (beacon)",
+    "",
+    "`TG_DET_EN → Q2 → TG_DET",
+    "`  (SDC1 card-detect emulation)"
+   ],
+   "style": "dark"
+  },
+  {
+   "id": "by49ke5",
+   "type": "block",
+   "x": 90,
+   "y": 1950,
+   "w": 330,
+   "h": 74,
+   "title": "Rotary switch U32",
+   "lines": [
+    "ES07MP-16RBZ · slot ID 0–7"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "b5yazko",
+   "type": "block",
+   "x": 90,
+   "y": 2040,
+   "w": 330,
+   "h": 74,
+   "title": "Status LEDs",
+   "lines": [
+    "R/Y/G active-high · HB/KP active-low"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bea52bm",
+   "type": "block",
+   "x": 90,
+   "y": 2130,
+   "w": 330,
+   "h": 74,
+   "title": "Gradient backlight",
+   "lines": [
+    "PWM1 → red · PWM2 → green"
+   ],
+   "style": "accent"
+  },
+  {
+   "id": "bmhmgrm",
+   "type": "block",
+   "x": 90,
+   "y": 2220,
+   "w": 330,
+   "h": 74,
+   "title": "Debug H7 · SW2 FEL · SW3 RST",
+   "lines": [
+    "UART0 · buttons"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "b0r1igz",
+   "type": "block",
+   "x": 90,
+   "y": 2310,
+   "w": 330,
+   "h": 74,
+   "title": "LAN · RJ1 HY951180A",
+   "lines": [
+    "internal EPHY 100M"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bb085hv",
+   "type": "block",
+   "x": 90,
+   "y": 2400,
+   "w": 330,
+   "h": 74,
+   "title": "System eMMC slot U14",
+   "lines": [
+    "SoC boot + rootfs · CLK 22R"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bda4l7n",
+   "type": "block",
+   "x": 1270,
+   "y": 2070,
+   "w": 190,
+   "h": 170,
+   "title": "U12 MUX",
+   "lines": [
+    "TS3A27518E",
+    "`MUX_CH:",
+    "`0 = USB (SD_*)",
+    "`1 = SoC (SDC1)",
+    "10k pull-down → USB"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bf8fwtt",
+   "type": "block",
+   "x": 1570,
+   "y": 2050,
+   "w": 260,
+   "h": 210,
+   "title": "Target eMMC  U1",
+   "lines": [
+    "PM127 socket · ESD",
+    "",
+    "`U34 TPS2051 → EMMC_VDD",
+    "`  EN  ← MMC_VTG",
+    "`  OC# → MMC_OC",
+    "`EMMC_DET → inserted"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "byp48oo",
+   "type": "block",
+   "x": 1270,
+   "y": 2320,
+   "w": 190,
+   "h": 140,
+   "title": "U8 USB3 bridge",
+   "lines": [
+    "GL3224 · SD/MMC",
+    "`SD_CD ← Q1 ← CD",
+    "`U36 TPS2051 → VBUS",
+    "`  EN ← USB_BR_EN"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "b1ceq6y",
+   "type": "block",
+   "x": 1570,
+   "y": 2345,
+   "w": 260,
+   "h": 90,
+   "title": "PC · USB 3.0",
+   "lines": [
+    "USB2 connector",
+    "large image dump"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bg1vopk",
+   "type": "block",
+   "x": 90,
+   "y": 2550,
+   "w": 330,
+   "h": 84,
+   "title": "CN1 · H1",
+   "lines": [
+    "`VIN · SLOT_EN · GND",
+    "`EXT_SW (jig)"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "b32e9en",
+   "type": "block",
+   "x": 500,
+   "y": 2550,
+   "w": 260,
+   "h": 84,
+   "title": "U31 MOCD207",
+   "lines": [
+    "`SLOT_EN → ENA",
+    "`EXT_SW  → SW_DET"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bfv6kk7",
+   "type": "block",
+   "x": 840,
+   "y": 2550,
+   "w": 260,
+   "h": 84,
+   "title": "U15 TPS5430",
+   "lines": [
+    "buck · VIN → VCC5V",
+    "ENA = slot enable"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bkk8a01",
+   "type": "block",
+   "x": 1180,
+   "y": 2550,
+   "w": 260,
+   "h": 84,
+   "title": "U2 SY8089",
+   "lines": [
+    "buck · VCC5V → VCC3V3"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "betxegq",
+   "type": "block",
+   "x": 1520,
+   "y": 2550,
+   "w": 310,
+   "h": 84,
+   "title": "Load switches",
+   "lines": [
+    "`U36: VCC5V  → bridge VBUS",
+    "`U34: VCC3V3 → EMMC_VDD"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "wmikyv5",
+   "type": "wire",
+   "from": {
+    "id": "by49ke5",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.087
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "RT_SW_B0..B3"
+  },
+  {
+   "id": "wvf1ewf",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.2537
+   },
+   "to": {
+    "id": "b5yazko",
+    "side": "right",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "LED_R/Y/G · HB/KP"
+  },
+  {
+   "id": "wj1s53z",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.4204
+   },
+   "to": {
+    "id": "bea52bm",
+    "side": "right",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "PWM_RED · PWM_GREEN",
+   "dashed": true
+  },
+  {
+   "id": "wzi8ax2",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.587
+   },
+   "to": {
+    "id": "bmhmgrm",
+    "side": "right",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "DEB_TX/RX · FEL · RESET"
+  },
+  {
+   "id": "ww2621l",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.7537
+   },
+   "to": {
+    "id": "b0r1igz",
+    "side": "right",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "HTTP / UDP"
+  },
+  {
+   "id": "wjintxl",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.9204
+   },
+   "to": {
+    "id": "bb085hv",
+    "side": "right",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "SYS_* · SDC0"
+  },
+  {
+   "id": "w2syc32",
+   "type": "wire",
+   "from": {
+    "id": "bda4l7n",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "bf8fwtt",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "EMMC_*"
+  },
+  {
+   "id": "wmbiokm",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "right",
+    "t": 0.3333
+   },
+   "to": {
+    "id": "bda4l7n",
+    "side": "left",
+    "t": 0.2941
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "SDC1 bus"
+  },
+  {
+   "id": "w0pmv52",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "right",
+    "t": 0.4537
+   },
+   "to": {
+    "id": "bda4l7n",
+    "side": "left",
+    "t": 0.6765
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "MUX_CH"
+  },
+  {
+   "id": "w07lspb",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "right",
+    "t": 0.0926
+   },
+   "to": {
+    "id": "bf8fwtt",
+    "side": "top",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "MMC_VTG · MMC_OC · EMMC_DET",
+   "labelDx": -65
+  },
+  {
+   "id": "wavmdyf",
+   "type": "wire",
+   "from": {
+    "id": "bda4l7n",
+    "side": "bottom",
+    "t": 0.5
+   },
+   "to": {
+    "id": "byp48oo",
+    "side": "top",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "SD_*",
+   "labelDy": 1
+  },
+  {
+   "id": "wkvkgl9",
+   "type": "wire",
+   "from": {
+    "id": "byp48oo",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "b1ceq6y",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "USB 3.0"
+  },
+  {
+   "id": "wkfo0g0",
+   "type": "wire",
+   "from": {
+    "id": "benahb2",
+    "side": "right",
+    "t": 0.8611
+   },
+   "to": {
+    "id": "byp48oo",
+    "side": "left",
+    "t": 0.6071
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "BR_EN·FB·CD"
+  },
+  {
+   "id": "wuubolt",
+   "type": "wire",
+   "from": {
+    "id": "bg1vopk",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "b32e9en",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": ""
+  },
+  {
+   "id": "w4pla6h",
+   "type": "wire",
+   "from": {
+    "id": "b32e9en",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "bfv6kk7",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "ENA"
+  },
+  {
+   "id": "wpe56pe",
+   "type": "wire",
+   "from": {
+    "id": "bfv6kk7",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "bkk8a01",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "5V"
+  },
+  {
+   "id": "wf8kwlw",
+   "type": "wire",
+   "from": {
+    "id": "bkk8a01",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "betxegq",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "3V3"
+  },
+  {
+   "id": "w1f4z2y",
+   "type": "wire",
+   "from": {
+    "id": "bfv6kk7",
+    "side": "top",
+    "t": 0.5
+   },
+   "to": {
+    "id": "benahb2",
+    "side": "bottom",
+    "t": 0.5952
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "VCC5V → module",
+   "labelDy": 11
+  },
+  {
+   "id": "w2w158v",
+   "type": "wire",
+   "from": {
+    "id": "b32e9en",
+    "side": "top",
+    "t": 0.5
+   },
+   "to": {
+    "id": "benahb2",
+    "side": "left",
+    "t": 0.963
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "SW_DET → JIG_DET",
+   "labelDy": 21
+  }
+ ]
+}

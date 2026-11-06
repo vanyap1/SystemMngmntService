@@ -352,3 +352,21 @@ body.page-editor { height: 100vh; overflow: hidden; background: #1e1e1e; color: 
 #sysinfo-body .td-name.child { padding-left: 14px; }
 #sysinfo-body .td-size { font-size: 10.5px; }
 #sysinfo-body .td-type, #sysinfo-body .td-mount { font-size: 10px; }
+
+/* ── Git marks (static/js/editor_git.js) ── */
+.tree-row .git-mark { font-family: var(--mono); font-size: 10px; font-weight: 700; width: 14px; text-align: center; flex-shrink: 0; }
+.tree-row.git-m .lbl, .tree-row.git-m .git-mark { color: var(--warn); }
+.tree-row.git-u .lbl, .tree-row.git-u .git-mark, .tree-row.git-a .lbl, .tree-row.git-a .git-mark { color: var(--accent); }
+.tree-row.git-d .lbl, .tree-row.git-d .git-mark, .tree-row.git-c .git-mark { color: var(--danger); }
+.tree-row.git-r .git-mark { color: var(--code); }
+.tree-row.git-dirdot .lbl::after { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--warn);
+    margin-left: 6px; vertical-align: middle; opacity: .8; }
+.tree-row .git-root { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-family: var(--mono); color: var(--text-dim);
+    border: 1px solid var(--border-strong); border-radius: 3px; padding: 0 4px; margin-left: 4px; flex-shrink: 0; max-width: 90px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-row .git-root i { color: var(--git); }
+.eg-status { margin-left: auto; flex-shrink: 0; cursor: pointer; padding: 0 8px; white-space: nowrap; opacity: .95; display: inline-flex; gap: 5px; align-items: center; }
+.eg-status:hover { background: rgba(255, 255, 255, .12); }
+.btn-git-commit { background: transparent; border-color: var(--border-strong); color: var(--text-2); }
+.btn-git-commit i { color: var(--git); }
+.btn-git-commit:hover { border-color: var(--git); filter: none; }

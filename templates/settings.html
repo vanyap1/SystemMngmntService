@@ -1,167 +1,201 @@
 {% extends 'base.html' %}
 {% block title %}Settings — {% endblock %}
 {% block page_name %}<span class="brand-sub"> — Settings</span>{% endblock %}
+{% block body_class %}page-settings{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('css/settings.css') }}">{% endblock %}
 
-{% block content %}
-<main class="page page-narrow">
+{% macro field(key, label, hint='', type='text', placeholder='', value=None) -%}
+<div class="field">
+    <label for="{{ key }}">{{ label }}</label>
+    <input class="input" type="{{ type }}" id="{{ key }}" data-cfg="{{ key }}" value="{{ cfg[key] if value is none else value }}" placeholder="{{ placeholder }}">
+    {% if hint %}<span class="hint">{{ hint|safe }}</span>{% endif %}
+</div>
+{%- endmacro %}
 
-    <section class="card">
-        <div class="card-head">Host</div>
-        <div class="card-body row">
-            <i class="fa-solid fa-server text-ok"></i>
-            <span class="mono">{{ hostname }}</span>
-            {% if has_host_config %}
-                <span class="badge badge-ok">own config</span>
-                <span class="spacer"></span>
-                <button class="btn btn-warning btn-sm" onclick="Settings.resetHost()"><i class="fa-solid fa-rotate-left"></i> Reset to defaults</button>
-            {% else %}
-                <span class="badge badge-info">using defaults</span>
-                <span class="hint">Saving will create a config section for this host.</span>
-            {% endif %}
+{% macro path_field(key, label, hint) -%}
+<div class="field">
+    <label for="{{ key }}">{{ label }}</label>
+    <div class="path-wrap">
+        <div class="row path-input-row">
+            <input class="input mono" type="text" id="{{ key }}" data-cfg="{{ key }}" value="{{ cfg[key] }}">
+            <button class="btn btn-ghost" type="button" onclick="Settings.openBrowser('{{ key }}')" title="Browse"><i class="fa-solid fa-folder-open"></i></button>
         </div>
-    </section>
-
-    <section class="card">
-        <div class="card-head">General</div>
-        <div class="card-body">
-            <div class="field-row">
-                <div class="field">
-                    <label for="app_title">App Title</label>
-                    <input class="input" type="text" id="app_title" value="{{ cfg.app_title }}">
-                </div>
-                <div class="field">
-                    <label for="page_title">Page Title (browser tab)</label>
-                    <input class="input" type="text" id="page_title" value="{{ cfg.page_title }}">
-                </div>
-            </div>
-            <div class="field">
-                <label for="device_name">Device Name</label>
-                <input class="input" type="text" id="device_name" value="{{ cfg.device_name or '' }}" placeholder="e.g. OrangePi 3 LTS or Server-1">
-                <span class="hint">Displayed in the browser tab title for quick machine identification</span>
-            </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="card-head">Paths</div>
-        <div class="card-body">
-            {% for key, label, hint in [
-                ('target_dir', 'Project Directory (target_dir)', 'The project directory that will be managed and archived'),
-                ('backup_dir', 'Backup Directory (backup_dir)', 'Where backup archives will be stored'),
-            ] %}
-            <div class="field">
-                <label for="{{ key }}">{{ label }}</label>
-                <div class="path-wrap">
-                    <div class="row path-input-row">
-                        <input class="input" type="text" id="{{ key }}" value="{{ cfg[key] }}">
-                        <button class="btn btn-success" onclick="Settings.openBrowser('{{ key }}')"><i class="fa-solid fa-folder-open"></i> Browse</button>
-                    </div>
-                    <div class="dir-dropdown" id="browser-{{ key }}"></div>
-                </div>
-                <span class="hint">{{ hint }}</span>
-            </div>
-            {% endfor %}
-            <div class="field-row">
-                <div class="field">
-                    <label for="archive_name">Archive Name</label>
-                    <input class="input" type="text" id="archive_name" value="{{ cfg.archive_name }}">
-                    <span class="hint">e.g. myproject-backup.tar.gz</span>
-                </div>
-                <div class="field">
-                    <label for="upload_tmp_name">Upload Temp Name</label>
-                    <input class="input" type="text" id="upload_tmp_name" value="{{ cfg.upload_tmp_name }}">
-                    <span class="hint">Temp filename for uploaded archives</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="card-head">Service</div>
-        <div class="card-body">
-            <div class="field">
-                <label for="service_name">Service Name (systemd)</label>
-                <input class="input" type="text" id="service_name" value="{{ cfg.service_name }}" placeholder="myservice.service">
-                <span class="hint">Exact name as shown in <code>systemctl status</code></span>
-            </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="card-head">Test Platform</div>
-        <div class="card-body">
-            <div class="field-row">
-                <div class="field">
-                    <label for="tests_dir">Test Scripts Directory</label>
-                    <input class="input" type="text" id="tests_dir" value="{{ cfg.tests_dir }}">
-                    <span class="hint">Scripts named <code>*_test.py</code>; relative to the project directory</span>
-                </div>
-                <div class="field">
-                    <label for="test_logs_dir">Test Logs Directory</label>
-                    <input class="input" type="text" id="test_logs_dir" value="{{ cfg.test_logs_dir }}">
-                    <span class="hint">One log file per test run</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="card-head">Network</div>
-        <div class="card-body">
-            <div class="field-row">
-                <div class="field">
-                    <label for="host">Host</label>
-                    <input class="input" type="text" id="host" value="{{ cfg.host }}" placeholder="0.0.0.0">
-                </div>
-                <div class="field">
-                    <label for="port">Port</label>
-                    <input class="input" type="number" id="port" value="{{ cfg.port }}" min="1" max="65535">
-                </div>
-            </div>
-            <span class="hint">⚠ Changes take effect after restarting the SystemMngmntService process</span>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="card-head">Authentication</div>
-        <div class="card-body">
-            <div class="check-row">
-                <input type="checkbox" id="auth_enabled" {% if cfg.auth and cfg.auth.enabled %}checked{% endif %}>
-                <label for="auth_enabled">Require login (anonymous visitors only see services)</label>
-            </div>
-            <div class="field-row">
-                <div class="field">
-                    <label for="auth_username">Username</label>
-                    <input class="input" type="text" id="auth_username" value="{{ cfg.auth.username if cfg.auth else '' }}" autocomplete="off">
-                </div>
-                <div class="field">
-                    <label for="auth_password">Password</label>
-                    <input class="input" type="password" id="auth_password" value="" autocomplete="new-password" placeholder="unchanged">
-                    <span class="hint">Leave blank to keep the existing password</span>
-                </div>
-            </div>
-            <div class="field">
-                <label>Service actions allowed without login</label>
-                <div class="row">
-                    {% for action in service_actions %}
-                    <div class="check-row">
-                        <input type="checkbox" class="public-action" id="pa_{{ action }}" value="{{ action }}" {% if action in public_actions %}checked{% endif %}>
-                        <label for="pa_{{ action }}">{{ action }}</label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <div class="row">
-        <button class="btn btn-primary btn-lg" onclick="Settings.save()"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
-        <a href="{{ url_for('dashboard.index') }}" class="btn btn-ghost btn-lg">Cancel</a>
-        <span id="save-status"></span>
+        <div class="dir-dropdown" id="browser-{{ key }}"></div>
     </div>
+    <span class="hint">{{ hint|safe }}</span>
+</div>
+{%- endmacro %}
 
-</main>
+{% block content %}
+<div class="st-app">
+
+    <nav class="st-nav" id="st-nav">
+        <div class="st-host">
+            <i class="fa-solid fa-server"></i>
+            <div>
+                <b class="mono">{{ hostname }}</b>
+                {% if has_host_config %}<span class="badge badge-ok">own config</span>{% else %}<span class="badge badge-info">defaults</span>{% endif %}
+            </div>
+        </div>
+        <a href="#general" data-tab="general"><i class="fa-solid fa-sliders"></i> General</a>
+        <a href="#paths" data-tab="paths"><i class="fa-regular fa-folder"></i> Paths &amp; backups</a>
+        <a href="#service" data-tab="service"><i class="fa-solid fa-gears"></i> Service</a>
+        <a href="#tests" data-tab="tests"><i class="fa-solid fa-vial"></i> Tests &amp; docs</a>
+        <a href="#network" data-tab="network"><i class="fa-solid fa-network-wired"></i> Network</a>
+        <a href="#access" data-tab="access"><i class="fa-solid fa-lock"></i> Access</a>
+        <a href="#git" data-tab="git"><i class="fa-brands fa-git-alt st-git-ico"></i> Git <span class="git-badge st-nav-badge" hidden></span></a>
+    </nav>
+
+    <main class="st-main">
+
+        <section class="st-pane" id="pane-general" data-pane="general">
+            <h2>General</h2>
+            <div class="card"><div class="card-body">
+                <div class="field-row">
+                    {{ field('app_title', 'App title', 'Shown in the top bar') }}
+                    {{ field('page_title', 'Page title', 'Browser tab') }}
+                </div>
+                {{ field('device_name', 'Device name', 'Prefix of the tab title and the top bar — tells machines apart', placeholder='e.g. NAS or Fixture-3') }}
+            </div></div>
+            <div class="card">
+                <div class="card-head">This host <span class="meta mono">{{ hostname }}</span></div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if has_host_config %}
+                            <span>Settings are stored in the section <code>hosts.{{ hostname }}</code> of <code>config.json</code>.</span>
+                            <span class="spacer"></span>
+                            <button class="btn btn-warning btn-sm" type="button" onclick="Settings.resetHost()"><i class="fa-solid fa-rotate-left"></i> Reset to defaults</button>
+                        {% else %}
+                            <span class="muted">This host uses the <code>default</code> section. Saving creates its own section.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="st-pane" id="pane-paths" data-pane="paths" hidden>
+            <h2>Paths &amp; backups</h2>
+            <div class="card"><div class="card-body">
+                {{ path_field('target_dir', 'Project directory', 'Managed project: code editor root, archived by Backups, <b>Git</b> repository “Project”') }}
+                {{ path_field('backup_dir', 'Backup directory', 'Where backup archives are stored') }}
+                <div class="field-row">
+                    {{ field('archive_name', 'Archive name', 'e.g. myproject-backup.tar.gz') }}
+                    {{ field('upload_tmp_name', 'Upload temp name', 'Temporary file name of uploaded archives') }}
+                </div>
+            </div></div>
+        </section>
+
+        <section class="st-pane" id="pane-service" data-pane="service" hidden>
+            <h2>Service</h2>
+            <div class="card"><div class="card-body">
+                {{ field('service_name', 'Target service (systemd)', 'Exact name as in <code>systemctl status</code>; anonymous visitors can control only this one', placeholder='myservice.service') }}
+            </div></div>
+        </section>
+
+        <section class="st-pane" id="pane-tests" data-pane="tests" hidden>
+            <h2>Tests &amp; docs</h2>
+            <div class="card">
+                <div class="card-head">Test platform</div>
+                <div class="card-body">
+                    <div class="field-row">
+                        {{ field('tests_dir', 'Test scripts directory', '<code>*_test.py</code>; relative to the panel directory') }}
+                        {{ field('test_logs_dir', 'Test logs directory', 'One log file per run') }}
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">Documentation</div>
+                <div class="card-body">
+                    {{ field('help_dir', 'Documentation directory', 'Markdown pages, <code>img/</code>, <code>docs/</code>, <code>diagrams/</code>; relative to the panel directory') }}
+                </div>
+            </div>
+        </section>
+
+        <section class="st-pane" id="pane-network" data-pane="network" hidden>
+            <h2>Network</h2>
+            <div class="card"><div class="card-body">
+                <div class="field-row">
+                    {{ field('host', 'Listen address', '<code>0.0.0.0</code> = all interfaces', placeholder='0.0.0.0') }}
+                    {{ field('port', 'Port', '', type='number') }}
+                </div>
+                <div class="st-note"><i class="fa-solid fa-circle-info"></i> Takes effect after restarting <code>systemmngmntservice.service</code>.</div>
+            </div></div>
+        </section>
+
+        <section class="st-pane" id="pane-access" data-pane="access" hidden>
+            <h2>Access</h2>
+            <div class="card"><div class="card-body">
+                <label class="st-switch">
+                    <input type="checkbox" id="auth_enabled" data-cfg="auth.enabled" {% if cfg.auth and cfg.auth.enabled %}checked{% endif %}>
+                    <span><b>Require login</b><br><span class="hint">Anonymous visitors see only the target service and the monitor</span></span>
+                </label>
+                <div class="field-row">
+                    {{ field('auth_username', 'Username', value=(cfg.auth.username if cfg.auth else '')) }}
+                    <div class="field">
+                        <label for="auth_password">New password</label>
+                        <input class="input" type="password" id="auth_password" data-cfg="auth.password" value="" autocomplete="new-password" placeholder="unchanged">
+                        <span class="hint">Leave empty to keep the current password</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Service actions allowed without login</label>
+                    <div class="row">
+                        {% for action in service_actions %}
+                        <label class="check-row"><input type="checkbox" class="public-action" data-cfg="public:{{ action }}" value="{{ action }}" {% if action in public_actions %}checked{% endif %}> {{ action }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div></div>
+        </section>
+
+        <section class="st-pane st-pane-wide" id="pane-git" data-pane="git" hidden>
+            <h2><i class="fa-brands fa-git-alt st-git-ico"></i> Git</h2>
+            <div class="card" id="st-git-cred">
+                <div class="card-head">HTTPS credentials <span class="meta">for push / pull over https:// remotes</span></div>
+                <div class="card-body">
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="git_user">Username</label>
+                            <input class="input" id="git_user" autocomplete="off" placeholder="GitHub / GitLab login">
+                        </div>
+                        <div class="field">
+                            <label for="git_token">Access token</label>
+                            <div class="row path-input-row">
+                                <input class="input mono" type="password" id="git_token" autocomplete="new-password" placeholder="not set">
+                                <button class="btn btn-ghost" type="button" onclick="Settings.toggleToken()" title="Show / hide"><i class="fa-regular fa-eye"></i></button>
+                            </div>
+                            <span class="hint" id="git_token_hint"></span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <button class="btn btn-primary btn-sm" type="button" onclick="Settings.saveGitCred()"><i class="fa-solid fa-key"></i> Save credentials</button>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="Settings.clearGitToken()" id="git_token_clear"><i class="fa-regular fa-trash-can"></i> Remove token</button>
+                        <span class="spacer"></span>
+                    </div>
+                    <div class="st-note"><i class="fa-solid fa-shield-halved"></i>
+                        <span>The token is stored only on this host in <code id="git_cred_path"></code> (mode 600, outside every repository,
+                        never in <code>config.json</code>) and is never shown again. Git gets it through a one-time credential helper —
+                        it is not written to <code>.git/config</code> or the remote URL. Use a token with only the <i>repo / contents</i> scope.</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">Repository</div>
+                <div class="card-body flush" id="st-git"></div>
+            </div>
+        </section>
+
+        <div class="st-savebar" id="st-savebar">
+            <span id="st-dirty" class="muted">No unsaved changes</span>
+            <span class="spacer"></span>
+            <span id="save-status"></span>
+            <button class="btn btn-ghost" type="button" onclick="Settings.revert()" id="st-revert" disabled>Revert</button>
+            <button class="btn btn-primary" type="button" onclick="Settings.save()" id="st-save" disabled><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
+        </div>
+    </main>
+</div>
 {% endblock %}
 
-{% block scripts %}<script src="{{ asset('js/settings.js') }}"></script>{% endblock %}
+{% block scripts %}
+<script src="{{ asset('js/git.js') }}"></script>
+<script src="{{ asset('js/settings.js') }}"></script>
+{% endblock %}

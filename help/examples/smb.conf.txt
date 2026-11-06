@@ -1,0 +1,35 @@
+# ================================================
+# SAMBA CONFIGURATION (Minimal Armbian Setup)
+# ================================================
+# SMB INSTALLATION
+# sudo apt install samba
+# HOW TO ADD A USER:
+# 1. Make sure the user exists on the system:
+#      sudo adduser vanya
+# 2. Add the user to Samba:
+#      sudo smbpasswd -a vanya
+# 3. Enable the Samba user:
+#      sudo smbpasswd -e vanya
+# 4. Restart Samba services:
+#      sudo systemctl restart smbd nmbd
+# ================================================
+
+[global]
+   workgroup = WORKGROUP
+   server string = Samba Server
+   server role = standalone server
+   security = user
+   map to guest = bad user
+   dns proxy = no
+   log file = /var/log/samba/log.%m
+   max log size = 1000
+
+[share]
+   comment = Home Directory
+   path = /home/vanya
+   browseable = yes
+   writable = yes
+   guest ok = no
+   valid users = vanya
+   create mask = 0777
+   directory mask = 0777

@@ -1,0 +1,13 @@
+[Unit]
+Description=GPIO power button (hold to power off)
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/power-button
+ExecStart=/usr/bin/python3 /usr/local/sbin/power-button
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

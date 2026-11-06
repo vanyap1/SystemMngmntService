@@ -1,6 +1,6 @@
 """Second panel instance for manual/visual checks; never touches the live service.
 
-    python3 tests/devserver.py [--port 5099] [--auth]
+    python3 tests/devserver.py [--port 5099] [--auth] [--target DIR]
 
 Auth is disabled in memory unless --auth is given. Saved settings and test-run logs go to a temp dir. Any HTML page accepts
 ``?js=<code>``: the code runs after the page loads — handy for headless screenshots of popups,
@@ -22,11 +22,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=5099)
 parser.add_argument('--auth', action='store_true', help='keep login enabled (anonymous view)')
 parser.add_argument('--logs', help='test logs directory to show (default: an empty temp dir)')
+parser.add_argument('--target', help='target_dir to use instead of the configured one (code editor, Git)')
 args = parser.parse_args()
 
 tmp = tempfile.mkdtemp(prefix='smms-devserver-')
 config.CONFIG_PATH = os.path.join(tmp, 'config.json')   # settings saves never reach the live config.json
 config.CFG['test_logs_dir'] = os.path.abspath(args.logs) if args.logs else os.path.join(tmp, 'testLogs')
+if args.target:
+    config.CFG['target_dir'] = os.path.abspath(args.target)
 if not args.auth:
     config.CFG['auth']['enabled'] = False
 

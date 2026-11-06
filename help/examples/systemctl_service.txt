@@ -1,0 +1,27 @@
+~/.config/systemd/user/opi-psu.service
+
+[Unit]
+Description=OPi Power Supply Controller
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/vanya/opiPowerController.py
+Restart=always
+RestartSec=2
+
+# ВАЖЛИВО
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
+
+
+
+
+systemctl --user daemon-reload
+systemctl --user enable opi-psu.service
+systemctl --user start opi-psu.service
+
+Запуск без активної сесії
+	loginctl enable-linger vanya

@@ -1,8 +1,8 @@
 """Shared test setup: the Flask app with an in-memory config that never touches live files.
 
 Import this module before anything from the project. It loads config.json read-only, then points
-CONFIG_PATH and test_logs_dir to a temporary directory so a test can never overwrite live settings
-or add run logs, and forces known credentials (auth enabled, user/password ``test``).
+CONFIG_PATH, test_logs_dir, help_dir and the credentials file to a temporary directory so a test can never overwrite live settings,
+add run logs or docs, and forces known credentials (auth enabled, user/password ``test``).
 """
 import atexit
 import os
@@ -15,7 +15,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from app import app          # noqa: E402  (loads config.json)
-from core import config      # noqa: E402
+from core import config, credentials  # noqa: E402
 
 TMP = tempfile.mkdtemp(prefix='smms-tests-')
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
@@ -24,6 +24,8 @@ config.CONFIG_PATH = os.path.join(TMP, 'config.json')
 config.CFG['auth'] = {'enabled': True, 'username': 'test', 'password': 'test'}
 config.CFG['public_service_actions'] = ['restart']
 config.CFG['test_logs_dir'] = os.path.join(TMP, 'testLogs')
+config.CFG['help_dir'] = os.path.join(TMP, 'help')
+credentials.PATH = os.path.join(TMP, 'credentials.json')   # never touch the real git token
 app.config['TESTING'] = True
 
 USER, PASSWORD = 'test', 'test'

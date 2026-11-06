@@ -1,0 +1,215 @@
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get -y install apache2
+sudo mount -t cifs //192.168.1.5/NAS_drive /tmp/dt -o username=vanya,password=198808 & mkdir /tmp/dt 
+ls /tmp/dt
+sudo cp  /tmp/dt/OPI3/apache2/apache2.conf /etc/apache2
+sudo nano /etc/apache2/apache2.conf
+sudo nano /etc/apache2/sites-available/000-default.conf
+sudo cp -r  /tmp/dt/OPI3/vanya/www /home/vanya
+sudo chmod -R 777 ~/
+sudo apt-get install samba
+sudo apt-get install samba-common-bin
+sudo cp -r  /tmp/dt/OPI3/samba/samba/smb.conf /etc/samba
+sudo service smbd restart
+ln -s /sys/class/gpio /home/vanya/www/gpio
+sudo apt-get install php-mysql
+sudo apt-get install php-mysql -y
+sudo apt-get install php-xml -y
+sudo apt-get install php-bzopen -y
+sudo apt-get install php8.1-bz2 php8.1-zip -y
+sudo apt install php8.1-bz2 -y
+sudo apt-get install libbz2-dev -y
+systemctl restart apache2
+reboot
+sudo reboot
+sudo apt-get -y install php7.0
+sudo apt-get -y install php8.1
+sudo apt-get -y install libapache2-mod-php
+sudo apt-get install libfreetype6-dev libgl1-mesa-dev libgles2-mesa-dev     libdrm-dev libgbm-dev libudev-dev libasound2-dev liblzma-dev libjpeg-dev     libtiff-dev libwebp-dev git build-essential
+sudo apt-get install gir1.2-ibus-1.0 libdbus-1-dev libegl1-mesa-dev     libibus-1.0-5 libibus-1.0-dev libice-dev libsm-dev libsndio-dev     libwayland-bin  libwayland-dev libxi-dev libxinerama-dev libxkbcommon-dev     libxrandr-dev libxss-dev libxt-dev libxv-dev x11proto-randr-dev      x11proto-scrnsaver-dev x11proto-video-dev x11proto-xinerama-dev
+sudo chmod +x ~/serv.sh 
+ls /home/vanya
+sudo mount -t cifs //192.168.1.5/NAS_drive /tmp/dt -o username=vanya,password=198808 & mkdir /tmp/dt
+sudo cp -r  /tmp/dt/OPI3/vanya/serv.sh /home/vanya
+sudo chmod +x ~/serv.sh 
+~/serv.sh 
+sudo apt-get install php-mysql
+sudo apt-get install php-xml
+sudo apt-get install php-bzopen
+sudo apt-get install php8.1-bz2 php8.1-zip
+sudo apt install php8.1-bz2
+sudo apt-get install libbz2-dev
+wget https://libsdl.org/release/SDL2-2.0.10.tar.gz
+wget https://libsdl.org/projects/SDL_image/release/SDL2_image-2.0.5.tar.gz
+wget https://libsdl.org/projects/SDL_mixer/release/SDL2_mixer-2.0.4.tar.gz
+wget https://libsdl.org/projects/SDL_ttf/release/SDL2_ttf-2.0.15.tar.gz
+tar -zxvf SDL2-2.0.10.tar.gz && tar -zxvf SDL2_image-2.0.5.tar.gz
+tar -zxvf SDL2_mixer-2.0.4.tar.gz && tar -zxvf SDL2_ttf-2.0.15.tar.gz
+pushd SDL2-2.0.10
+./configure --enable-video-kmsdrm --disable-video-opengl --disable-video-x11 --disable-video-rpi
+make -j$(nproc)
+sudo make install
+podp
+popd
+pushd SDL2_image-2.0.5
+./configure
+make -j$(nproc)
+sudo make install
+popd
+pushd SDL2_mixer-2.0.4
+./configure
+sudo make install
+pushd SDL2_ttf-2.0.15
+popd
+pushd SDL2_ttf-2.0.15
+./configure
+make -j$(nproc)
+sudo make install
+popd
+sudo apt install pkg-config libgl1-mesa-dev libgles2-mesa-dev     python3-setuptools libgstreamer1.0-dev git-core     gstreamer1.0-plugins-{bad,base,good,ugly}     gstreamer1.0-{omx,alsa} python3-dev libmtdev-dev     xclip xsel libjpeg-dev
+sudo apt install python3-pip
+sudo apt-get install -y     python3-pip     build-essential     git     python3     python3-dev \
+sudo add-apt-repository ppa:kivy-team/kivy
+sudo apt-get install python3-kivy
+sudo apt-get install -y     libsdl2-dev     libsdl2-image-dev     libsdl2-mixer-dev     libsdl2-ttf-dev     libportmidi-dev     libswscale-dev     libavformat-dev     libavcodec-dev     zlib1g-dev
+sudo apt-get install -y python3-smbus
+sudo apt-get install -y python3-requests
+python3 -m pip install kivy_garden.graph --extra-index-url https://kivy-garden.github.io/simple/
+cd ~/www/GUI/
+python3 main.py
+nano ~/.kivy/config.ini
+python3 main.py
+sudo apt-get install libmtdev-dev
+python3 main.py
+nano ~/.kivy/config.ini
+python3 main.py
+sudo su
+nano /etc/update-motd.d
+motd
+ls /etc/update-motd.d/
+nano /etc/update-motd.d/10-armbian-header 
+nano /etc/update-motd.d/30-armbian-sysinfo 
+echo "${ips[@]}"
+nano /etc/update-motd.d/10-armbian-header 
+/etc/update-motd.d/10-armbian-header 
+nano /etc/update-motd.d/10-armbian-header 
+sudo nano /etc/update-motd.d/10-armbian-header 
+/etc/update-motd.d/10-armbian-header 
+sudo nano /etc/update-motd.d/10-armbian-header 
+/etc/update-motd.d/10-armbian-header 
+sudo nano /etc/update-motd.d/10-armbian-header 
+/etc/update-motd.d/10-armbian-header 
+sudo nano /etc/update-motd.d/10-armbian-header 
+cp /etc/update-motd.d/10-armbian-header 
+echo linux toilet -f standard -F metal $(echo "test")
+echo linux toilet -f standard -F metal $("test")
+sudo nano /etc/update-motd.d/10-armbian-header 
+cp /etc/update-motd.d/10-armbian-header ~/
+python3 main.py
+sudo reboot
+cd ~/www/GUI/
+python3 main.py
+nano ~/.kivy/config.ini
+python3 main.py
+sudo armbian-config
+sudo apt-get install armbian-config
+ls /etc/update-motd.d/
+/etc/update-motd.d/30-armbian-sysinfo 
+/etc/update-motd.d/35-armbian-tips 
+/etc/update-motd.d/40-armbian-updates 
+/etc/update-motd.d/41-armbian-config 
+/etc/update-motd.d/98-armbian-autoreboot-warn 
+/etc/update-motd.d/10-armbian-header 
+sudo armbian-config
+sudo reboot
+sudo nano /lib/systemd/system/autoupdate.service
+sudo chmod 644 /lib/systemd/system/autoupdate.service
+sudo nano /lib/systemd/system/autoupdate.service
+sudo chmod 644 /lib/systemd/system/autoupdate.service
+ls/lib/systemd/system/
+ls /lib/systemd/system/
+sudo nano /lib/systemd/system/autoupdate.service
+sudo chmod 644 /lib/systemd/autoupdate.service
+sudo nano /lib/systemd/autoupdate.service
+sudo chmod 644 /lib/systemd/autoupdate.service
+sudo nano /lib/systemd/autoupdate.service
+sudo armbian-config
+sudo nano /etc/hostname
+sudo reboot
+ls /lib/systemd/auto*
+sudo chmod 644 /lib/systemd/autoupdate.service
+sudo nano /etc/hosts
+sudo nano /etc/hostname
+sudo nano /etc/hosts
+sudo chmod 644 /lib/systemd/autoupdate.service
+sudo systemctl daemon-reload
+sudo systemctl enable autoupdate.service
+cd ~/
+nano GUIRun
+sudo chmod +x GUIRun
+ls
+./GUIRun 
+sudo nano ~/serv.sh 
+reboot
+sudo nano ~/serv.sh 
+reudo shutdown
+sudo poweroff
+sudo nano /etc/hostname
+sudo nano /etc/hosts
+ls /boot/
+sudo nano /boot/armbianEnv.txt
+sudo reboot
+sudo nano /boot/armbianEnv.txt
+sudo su
+sudo nano ~/.kivy/config.ini 
+sudo reboot
+sudo su
+sudo nano ~/.kivy/config.ini 
+sudo reboot
+dmesg
+sudo cp ~/htc_9271.fw /lib/firmware/
+sudo reboot
+dmesg
+sudo su
+sudo nano ~/.kivy/config.ini 
+sudo reboot
+iwconfig
+iwconfig wls8 | grep -i --color quality
+iwconfig wlx00127b649b55 | grep -i --color quality
+iwconfig wlx00127b649b55 | grep -i --color Link
+nmcli dev wifi
+exit
+nano /lib/systemd/autoupdate.service
+nano ~se
+nano ~/serv.sh 
+sudo chmod 777 ~/.bash_history
+exit
+ls 
+ifconfig
+exit
+sudo reboot
+pkill -f python3
+sudo pkill -f python3
+ls ~/
+nano ~/serv.sh
+sudo nano ~/serv.sh
+nano ~/serv.sh
+sudo nano ~/serv.sh
+~/serv.sh
+sudo nano ~/serv.sh
+~/serv.sh
+sudo reboot
+mc
+sudo reboot
+sudo pkill -f python3
+~/serv.sh
+sudo reboot
+scrot
+sudo apt install scrot
+ls /home/vanya/www/
+scrot /home/vanya/www/scr.png
+DISPLAY !=0 scrot /home/vanya/www/scr.png
+DISPLAY!=0 scrot /home/vanya/www/scr.png
+ls /dev/fb*
+sudo chmod 777 /dev/fb0

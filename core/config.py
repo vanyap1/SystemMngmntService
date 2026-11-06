@@ -43,13 +43,15 @@ BUILTIN_DEFAULTS = {
     # Test platform; relative paths are resolved against the project directory.
     'tests_dir':       'testPlatform',
     'test_logs_dir':   'testLogs',
+    # Documentation (Markdown pages, img/ and docs/ subfolders); relative to the project directory.
+    'help_dir':        'help',
 }
 
 # Keys that may be changed through the settings page (auth and
 # public_service_actions are handled separately).
 EDITABLE_KEYS = ('app_title', 'page_title', 'device_name', 'target_dir', 'backup_dir',
                  'archive_name', 'upload_tmp_name', 'service_name', 'host', 'port',
-                 'tests_dir', 'test_logs_dir')
+                 'tests_dir', 'test_logs_dir', 'help_dir')
 
 # Keys written to the host section on save.
 HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions')
@@ -156,6 +158,10 @@ def tests_dir():
 
 def test_logs_dir():
     return _project_path(CFG['test_logs_dir'])
+
+
+def help_dir():
+    return _project_path(CFG['help_dir'])
 
 
 def auth():

@@ -1,0 +1,47 @@
+# Встановити інструменти
+sudo apt-get install mtd-utils
+
+# Створити JFFS2
+sudo mkfs.jffs2 -r /path/to/files -o image.jffs2 -e 0x1000 -l -n
+sudo flashcp image.jffs2 /dev/mtd0
+
+# Монтувати
+sudo mount -t jffs2 /dev/mtdblock0 /mnt
+
+
+
+
+1. Завантажте модуль mtdblock:
+	sudo modprobe mtdblock
+
+Перевірте:
+	ls -l /dev/mtdblock*
+
+2. Додайте в автозавантаження:
+	echo "mtdblock" | sudo tee -a /etc/modules
+
+3. Тепер монтуйте:
+	sudo mkdir -p /mnt/flash
+	sudo mount -t jffs2 /dev/mtdblock0 /mnt/flash
+
+4. Автомонтування через fstab:
+	sudo nano /etc/fstab
+	
+	/dev/mtdblock0  /mnt/flash  jffs2  defaults,noatime  0  0
+
+Альтернатива - використання UBI (краще для flash):
+
+# Форматувати як UBI
+	sudo ubiformat /dev/mtd0
+
+# Прикріпити до UBI
+	sudo ubiattach -p /dev/mtd0
+
+# Створити том
+	sudo ubimkvol /dev/ubi0 -N rootfs -m
+
+# Створити файлову систему UBIFS
+	sudo mkfs.ubifs -r /path/to/files -m 2048 -e 126976 -c 256 -o image.ubifs
+
+# Монтувати
+	sudo mount -t ubifs ubi0:rootfs /mnt/flash

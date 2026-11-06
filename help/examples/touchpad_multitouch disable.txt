@@ -1,0 +1,5 @@
+echo "blacklist hid_multitouch" | sudo tee /etc/modprobe.d/blacklist-hid-multitouch.conf
+
+blacklist hid_multitouch
+
+nano  /etc/modprobe.d/blacklist-hid-multitouch.conf

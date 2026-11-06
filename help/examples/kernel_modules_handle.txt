@@ -1,0 +1,5 @@
+Examples
+
+Find modules - 
+
+		/lib/modules/$(uname -r)/kernel/drivers/media/i2c/ | grep ov

@@ -1,0 +1,1070 @@
+{
+ "version": 1,
+ "title": "DS_H618_Core (U13) — pinout",
+ "width": 1800,
+ "height": 1360,
+ "background": "#ffffff",
+ "grid": 10,
+ "kinds": {
+  "enc": {
+   "label": "ID encoder",
+   "fill": "#7b3fc4",
+   "stroke": "#7b3fc4",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "ENC",
+   "color": "#7b3fc4"
+  },
+  "pwm": {
+   "label": "PWM (selected)",
+   "fill": "#d6157a",
+   "stroke": "#d6157a",
+   "text": "#ffffff",
+   "dash": "5 3",
+   "badge": "",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "emmc0": {
+   "label": "eMMC #1 / SDC0",
+   "fill": "#1f6fd1",
+   "stroke": "#1f6fd1",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "EMMC0",
+   "color": "#1f6fd1"
+  },
+  "emmc1": {
+   "label": "eMMC #2 / SDC1",
+   "fill": "#0e9488",
+   "stroke": "#0e9488",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "EMMC1",
+   "color": "#0e9488"
+  },
+  "ctrl": {
+   "label": "control / detect",
+   "fill": "#374151",
+   "stroke": "#374151",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "CTRL",
+   "color": "#374151"
+  },
+  "led": {
+   "label": "LED",
+   "fill": "#d97706",
+   "stroke": "#d97706",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "LED",
+   "color": "#d97706"
+  },
+  "eth": {
+   "label": "Ethernet",
+   "fill": "#15803d",
+   "stroke": "#15803d",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "ETH",
+   "color": "#15803d"
+  },
+  "dbg": {
+   "label": "debug UART",
+   "fill": "#92400e",
+   "stroke": "#92400e",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "DBG",
+   "color": "#92400e"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#dc2626",
+   "stroke": "#dc2626",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "",
+   "sample": "PWR",
+   "color": "#dc2626"
+  },
+  "free": {
+   "label": "not connected",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "id": "tmwdd49",
+   "type": "text",
+   "x": 40,
+   "y": 52,
+   "text": "DS_H618_Core (U13) — pinout / project functions",
+   "size": 30,
+   "weight": "700",
+   "color": "#111827"
+  },
+  {
+   "id": "tf5d0wr",
+   "type": "text",
+   "x": 40,
+   "y": 82,
+   "size": 16,
+   "color": "#4b5563",
+   "text": "Inside the box: SoC port  ·  Outside: net / function in this project  ·  grey = not connected (alt functions shown)"
+  },
+  {
+   "id": "cen8cny",
+   "type": "chip",
+   "x": 430,
+   "y": 360,
+   "w": 940,
+   "h": 790,
+   "body": "outline",
+   "holes": false,
+   "ic": {
+    "show": false,
+    "title": "",
+    "subtitle": ""
+   },
+   "caption": "",
+   "caption2": "",
+   "pinStyle": "simple",
+   "corner": 70,
+   "corner2": 80,
+   "numbers": true,
+   "pins": {
+    "left": [
+     {
+      "n": 51,
+      "port": "PI7",
+      "fn": "ID_B3 (8)",
+      "kind": "enc",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 52,
+      "port": "PI8",
+      "fn": "ID_B2 (4)",
+      "kind": "enc",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 53,
+      "port": "PI9",
+      "fn": "ID_B1 (2)",
+      "kind": "enc",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 54,
+      "port": "PI10",
+      "fn": "ID_B0 (1)",
+      "kind": "enc",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 55,
+      "port": "PI11",
+      "fn": "PWM_1",
+      "kind": "pwm",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 56,
+      "port": "PI12",
+      "fn": "PWM_2",
+      "kind": "pwm",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 57,
+      "port": "PI13",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "PWM3 / UART4_TX"
+     },
+     {
+      "n": 58,
+      "port": "PI14",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "PWM4 / UART4_RX"
+     },
+     {
+      "n": 59,
+      "port": "PI15",
+      "fn": "USB_BR_EN",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 60,
+      "port": "PI16",
+      "fn": "USB_BR_FB",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 61,
+      "port": "PF6",
+      "fn": "SYS_DET",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 62,
+      "port": "PF0",
+      "fn": "SYS_D1",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 63,
+      "port": "PF1",
+      "fn": "SYS_D0",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 64,
+      "port": "PF2",
+      "fn": "SYS_CLK",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 65,
+      "port": "PF3",
+      "fn": "SYS_CMD",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 66,
+      "port": "PF4",
+      "fn": "SYS_D3",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 67,
+      "port": "PF5",
+      "fn": "SYS_D2",
+      "kind": "emmc0",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 68,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 69,
+      "port": "3V3-OUT",
+      "fn": "3V3_OUT",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 70,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 71,
+      "port": "1V8-OUT",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "1V8 out"
+     },
+     {
+      "n": 72,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     }
+    ],
+    "right": [
+     {
+      "n": 22,
+      "port": "PG14",
+      "fn": "CD",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 21,
+      "port": "PG11",
+      "fn": "MUX_CH",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 20,
+      "port": "PG12",
+      "fn": "EMMC_DET",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 19,
+      "port": "PG13",
+      "fn": "SW_DET",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 18,
+      "port": "PH10",
+      "fn": "MMC_OC",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 17,
+      "port": "PH9",
+      "fn": "MMC_VTG",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 16,
+      "port": "PH8",
+      "fn": "HB_LED",
+      "kind": "led",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 15,
+      "port": "PH7",
+      "fn": "KP_LED",
+      "kind": "led",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 14,
+      "port": "PH6",
+      "fn": "R_LED",
+      "kind": "led",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 13,
+      "port": "PH5",
+      "fn": "Y_LED",
+      "kind": "led",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 12,
+      "port": "PH4",
+      "fn": "G_LED",
+      "kind": "led",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 11,
+      "port": "PH3",
+      "fn": "LNK_ETH",
+      "kind": "eth",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 10,
+      "port": "PH2",
+      "fn": "SPD_ETH",
+      "kind": "eth",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 9,
+      "port": "PH1",
+      "fn": "DEB_RX",
+      "kind": "dbg",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 8,
+      "port": "PH0",
+      "fn": "DEB_TX",
+      "kind": "dbg",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 7,
+      "port": "FEL",
+      "fn": "FEL",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 6,
+      "port": "EPHY_TXP",
+      "fn": "TXP_ETH",
+      "kind": "eth",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 5,
+      "port": "EPHY_TXN",
+      "fn": "TXN_ETH",
+      "kind": "eth",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 4,
+      "port": "EPHY_RXP",
+      "fn": "RXP_ETH",
+      "kind": "eth",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 3,
+      "port": "EPHY_RXN",
+      "fn": "RXN_ETH",
+      "kind": "eth",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 2,
+      "port": "HTX2P",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "HDMI"
+     },
+     {
+      "n": 1,
+      "port": "HTX2N",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "HDMI"
+     }
+    ],
+    "top": [
+     {
+      "n": 50,
+      "port": "PI6",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_RX/TWI0_SDA"
+     },
+     {
+      "n": 49,
+      "port": "PI5",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_TX/TWI0_SCK"
+     },
+     {
+      "n": 48,
+      "port": "PI4",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_DIN0"
+     },
+     {
+      "n": 47,
+      "port": "PI3",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_DOUT0"
+     },
+     {
+      "n": 46,
+      "port": "PI2",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_LRCK"
+     },
+     {
+      "n": 45,
+      "port": "PI1",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_BCLK"
+     },
+     {
+      "n": 44,
+      "port": "PI0",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S0_MCLK"
+     },
+     {
+      "n": 43,
+      "port": "PG17",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_RTS"
+     },
+     {
+      "n": 42,
+      "port": "PG19",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "PWM1"
+     },
+     {
+      "n": 41,
+      "port": "PG18",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_CTS"
+     },
+     {
+      "n": 40,
+      "port": "PG16",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_RX/TWI4_SDA"
+     },
+     {
+      "n": 39,
+      "port": "PG15",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART2_TX/TWI4_SCK"
+     },
+     {
+      "n": 38,
+      "port": "PG10",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "I2S2_MCLK"
+     },
+     {
+      "n": 37,
+      "port": "PG8",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART1_RTS"
+     },
+     {
+      "n": 36,
+      "port": "PG9",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "UART1_CTS"
+     },
+     {
+      "n": 35,
+      "port": "PG7",
+      "fn": "TG_DET_EN",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 34,
+      "port": "PG6",
+      "fn": "TG_DET",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 33,
+      "port": "PWRON",
+      "fn": "PERON",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 32,
+      "port": "5V",
+      "fn": "VCC5V",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 31,
+      "port": "5V",
+      "fn": "VCC5V",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 30,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 29,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 28,
+      "port": "PG4",
+      "fn": "DAT2",
+      "kind": "emmc1",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 27,
+      "port": "PG2",
+      "fn": "DAT0",
+      "kind": "emmc1",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 26,
+      "port": "PG1",
+      "fn": "CMD",
+      "kind": "emmc1",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 25,
+      "port": "PG3",
+      "fn": "DAT1",
+      "kind": "emmc1",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 24,
+      "port": "PG0",
+      "fn": "CLK (22R)",
+      "kind": "emmc1",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 23,
+      "port": "PG5",
+      "fn": "DAT3",
+      "kind": "emmc1",
+      "badge": "",
+      "note": ""
+     }
+    ],
+    "bottom": [
+     {
+      "n": 73,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 74,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 75,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 76,
+      "port": "GND",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 77,
+      "port": "USB0_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 78,
+      "port": "USB0_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 79,
+      "port": "USB1_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 80,
+      "port": "USB1_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 81,
+      "port": "USB2_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 82,
+      "port": "USB2_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 83,
+      "port": "USB3_DM",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 84,
+      "port": "USB3_DP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 85,
+      "port": "AGND",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 86,
+      "port": "LINEOUTL",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 87,
+      "port": "LINEOUTR",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 88,
+      "port": "LRADC",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 89,
+      "port": "TV_OUT",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 90,
+      "port": "RESET",
+      "fn": "RESET",
+      "kind": "ctrl",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 91,
+      "port": "HHPD",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 92,
+      "port": "HSDA",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 93,
+      "port": "HSCL",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 94,
+      "port": "HCEC",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 95,
+      "port": "HTXCN",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 96,
+      "port": "HTXCP",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 97,
+      "port": "HTX0N",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 98,
+      "port": "HTX0P",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 99,
+      "port": "HTX1N",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 100,
+      "port": "HTX1P",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     }
+    ]
+   }
+  },
+  {
+   "id": "tp9n6l5",
+   "type": "text",
+   "x": 600,
+   "y": 580,
+   "text": "DS_H618_Core  (Allwinner H616/H618)",
+   "size": 22,
+   "color": "#111827",
+   "weight": "700"
+  },
+  {
+   "id": "td1b8l5",
+   "type": "text",
+   "x": 600,
+   "y": 640,
+   "text": "ID_B0..B3  — rotary binary encoder U32 (ES07MP-16RBZ)",
+   "size": 15,
+   "color": "#7b3fc4",
+   "weight": "700"
+  },
+  {
+   "id": "tifaezz",
+   "type": "text",
+   "x": 600,
+   "y": 669,
+   "text": "   device ID 0–7 = B2..B0; common → 3V3, 10k pull-down",
+   "size": 14,
+   "color": "#7b3fc4"
+  },
+  {
+   "id": "tatamf2",
+   "type": "text",
+   "x": 600,
+   "y": 697,
+   "text": "SYS_*  (SDC0, PF0–PF6) — eMMC #1 in SD mode",
+   "size": 15,
+   "color": "#1f6fd1",
+   "weight": "700"
+  },
+  {
+   "id": "t8m9z6b",
+   "type": "text",
+   "x": 600,
+   "y": 726,
+   "text": "DAT*/CMD/CLK  (SDC1, PG0–PG5) — eMMC #2 in SD mode",
+   "size": 15,
+   "color": "#0e9488",
+   "weight": "700"
+  },
+  {
+   "id": "tqsgis4",
+   "type": "text",
+   "x": 600,
+   "y": 755,
+   "text": "PWM_1 = PI11 (PWM1),  PWM_2 = PI12 (PWM2)",
+   "size": 15,
+   "color": "#d6157a",
+   "weight": "700"
+  },
+  {
+   "id": "tq9du12",
+   "type": "text",
+   "x": 600,
+   "y": 784,
+   "text": "   spare PWM: PI13 (PWM3), PI14 (PWM4)",
+   "size": 14,
+   "color": "#d6157a"
+  },
+  {
+   "id": "twt551x",
+   "type": "text",
+   "x": 600,
+   "y": 812,
+   "text": "DEB_RX/TX = UART0 debug console",
+   "size": 15,
+   "color": "#92400e",
+   "weight": "700"
+  },
+  {
+   "id": "t0ve7hk",
+   "type": "text",
+   "x": 600,
+   "y": 841,
+   "text": "Ethernet = internal EPHY (RGMII pins unused)",
+   "size": 15,
+   "color": "#15803d",
+   "weight": "700"
+  },
+  {
+   "id": "lvzs0f7",
+   "type": "legend",
+   "x": 40,
+   "y": 1320,
+   "kinds": [
+    "enc",
+    "pwm",
+    "emmc0",
+    "emmc1",
+    "ctrl",
+    "led",
+    "eth",
+    "dbg",
+    "pwr",
+    "free"
+   ],
+   "style": "swatch",
+   "size": 13
+  }
+ ]
+}

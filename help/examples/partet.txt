@@ -1,0 +1,9 @@
+
+
+sudo parted /dev/mmcblk2
+
+показати розділи:
+print
+
+перерозмітити розділ 9:
+resizepart 9 100%

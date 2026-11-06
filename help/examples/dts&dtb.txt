@@ -1,0 +1,13 @@
+decompile dtb to dts 
+
+	dtc -I dtb -O dts -o h3.dts /boot/dtb/h3-plus2e-custom.dtb
+compile dts to dtb
+
+	dtc -I dts -O dtb -o /boot/dtb/h3-plus2e-custom.dtb h3.dts
+
+Sync FS and reboot
+	sync
+	reboot
+
+Readback system name
+	dmesg | grep -i "machine model"

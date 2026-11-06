@@ -1,0 +1,1 @@
+com2tcp --baud 9600 --ignore-dsr \\.\COM4 192.168.1.253 4004

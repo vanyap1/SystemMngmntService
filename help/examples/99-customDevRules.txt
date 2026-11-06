@@ -1,0 +1,46 @@
+
+sudo nano /etc/udev/rules.d/99-customDevRules.rules
+    KERNEL=="i2c-[0-9]*"     , MODE="0777"
+    KERNEL=="gpiochip[0-9]*" , MODE="0777"
+    KERNEL=="spidev[0-9]*.*" , MODE="0777"
+
+
+ls -l /dev/ttyS0
+ls -l /dev/i2c-2
+ls -l /dev/gpiochip0
+ls -l /dev/spidev0.0
+
+
+
+udevadm info -q property -n /dev/i2c-2
+
+sudo usermod -aG dialout vanya
+
+groups vanya
+
+
+
+# UART
+KERNEL=="ttyS[0-9]*", GROUP="dialout", MODE="0660"
+
+# I2C
+SUBSYSTEM=="i2c-dev", KERNEL=="i2c-[0-9]*", GROUP="dialout", MODE="0660"
+
+# GPIO (character device)
+SUBSYSTEM=="gpio", KERNEL=="gpiochip[0-9]*", GROUP="dialout", MODE="0660"
+
+# SPI
+SUBSYSTEM=="spidev", KERNEL=="spidev[0-9]*.*", GROUP="dialout", MODE="0660"
+
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+
+** Command 'i2cdetect' is available in the following places ** Issue
+ * /sbin/i2cdetect
+ * /usr/sbin/i2cdetect
+ 
+ 
+nano ~/.profile
+	add to end of file: export PATH="$PATH:/usr/sbin:/sbin"
+source ~/.profile

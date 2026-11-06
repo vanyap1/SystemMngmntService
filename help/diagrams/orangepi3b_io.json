@@ -1,0 +1,378 @@
+{
+ "version": 1,
+ "title": "Orange Pi 3B · controller I/O",
+ "width": 1660,
+ "height": 1170,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output (LED)",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "I²C bus",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "I2C2",
+   "color": "#0e9488"
+  },
+  "sys": {
+   "label": "used by the kernel",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "SYS",
+   "sample": "SYS",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "id": "t2vixeg",
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "Orange Pi 3B · controller I/O",
+   "size": 32,
+   "weight": "700",
+   "color": "#1f2937"
+  },
+  {
+   "id": "tgskgh0",
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "Pins in use on orangepi3b (gpioinfo, /sys/class/leds, device tree) · number = global GPIO (chip × 32 + line)",
+   "size": 16,
+   "color": "#6b7280"
+  },
+  {
+   "id": "lf2lygg",
+   "type": "legend",
+   "x": 60,
+   "y": 140,
+   "kinds": null,
+   "style": "tags"
+  },
+  {
+   "id": "c68qi9t",
+   "type": "chip",
+   "x": 600,
+   "y": 250,
+   "w": 440,
+   "h": 380,
+   "body": "module",
+   "holes": true,
+   "ic": {
+    "show": true,
+    "title": "RK3566",
+    "subtitle": "Rockchip · 4×A55"
+   },
+   "caption": "Orange Pi 3B v2.1",
+   "caption2": "GPIO in use (gpioinfo)",
+   "pinStyle": "tags",
+   "corner": 80,
+   "portW": 80,
+   "fnW": 112,
+   "numbers": true,
+   "pins": {
+    "left": [
+     {
+      "n": 16,
+      "port": "GPIO0_C0",
+      "fn": "workLed",
+      "kind": "out",
+      "badge": "",
+      "note": "trigger heartbeat"
+     },
+     {
+      "n": 118,
+      "port": "GPIO3_C6",
+      "fn": "greenUILed",
+      "kind": "out",
+      "badge": "",
+      "note": "trigger eth 1 Gbps link"
+     },
+     {
+      "n": 147,
+      "port": "GPIO4_C3",
+      "fn": "redUILed",
+      "kind": "out",
+      "badge": "",
+      "note": "trigger activity"
+     },
+     {
+      "n": 123,
+      "port": "GPIO3_D3",
+      "fn": "extraLed",
+      "kind": "out",
+      "badge": "",
+      "note": "trigger none"
+     }
+    ],
+    "right": [
+     {
+      "n": 128,
+      "port": "GPIO4_A0",
+      "fn": "POWER_BTN",
+      "kind": "in",
+      "badge": "",
+      "note": "hold 1 s → poweroff · pull-down"
+     },
+     {
+      "n": 140,
+      "port": "GPIO4_B4",
+      "fn": "I2C2_SDA",
+      "kind": "bus",
+      "badge": "I2C2",
+      "note": "OLED 0x3C · PCA9535 0x27"
+     },
+     {
+      "n": 141,
+      "port": "GPIO4_B5",
+      "fn": "I2C2_SCL",
+      "kind": "bus",
+      "badge": "I2C2",
+      "note": ""
+     },
+     {
+      "n": 148,
+      "port": "GPIO4_C4",
+      "fn": "PHY_RESET",
+      "kind": "sys",
+      "badge": "",
+      "note": "Ethernet PHY, active-low"
+     }
+    ],
+    "top": [],
+    "bottom": []
+   }
+  },
+  {
+   "id": "wjdywii",
+   "type": "wire",
+   "from": {
+    "x": 60,
+    "y": 720
+   },
+   "to": {
+    "x": 1600,
+    "y": 720
+   },
+   "route": "straight",
+   "arrow": "none",
+   "color": "#e7e5e4",
+   "width": 2
+  },
+  {
+   "id": "tfr0mm3",
+   "type": "text",
+   "x": 60,
+   "y": 770,
+   "text": "Block diagram",
+   "size": 26,
+   "weight": "700",
+   "color": "#1f2937"
+  },
+  {
+   "id": "b4ulnq1",
+   "type": "block",
+   "x": 640,
+   "y": 820,
+   "w": 360,
+   "h": 230,
+   "title": "RK3566 · Armbian 6.14",
+   "lines": [
+    "services:",
+    "`power-button.service",
+    "`oled.service",
+    "`systemmngmntservice",
+    "`  (Docs, Devices → GPIO)"
+   ],
+   "style": "dark"
+  },
+  {
+   "id": "b1nqzbu",
+   "type": "block",
+   "x": 120,
+   "y": 830,
+   "w": 330,
+   "h": 110,
+   "title": "Status LEDs",
+   "lines": [
+    "workLed · redUILed",
+    "greenUILed · extraLed"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bubwyx3",
+   "type": "block",
+   "x": 120,
+   "y": 970,
+   "w": 330,
+   "h": 90,
+   "title": "Power button",
+   "lines": [
+    "active-high · hold 1 s"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "b9mshan",
+   "type": "block",
+   "x": 1190,
+   "y": 810,
+   "w": 330,
+   "h": 90,
+   "title": "OLED SH1106 128×64",
+   "lines": [
+    "`I2C2 · 0x3C · ~/oled.py"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "banu8kb",
+   "type": "block",
+   "x": 1190,
+   "y": 920,
+   "w": 330,
+   "h": 90,
+   "title": "PCA9535 IO expander",
+   "lines": [
+    "`I2C2 · 0x27"
+   ],
+   "style": "light"
+  },
+  {
+   "id": "bq3w8cd",
+   "type": "block",
+   "x": 1190,
+   "y": 1030,
+   "w": 330,
+   "h": 90,
+   "title": "PMIC RK809",
+   "lines": [
+    "`I2C0 · 0x20 · power-off, RTC"
+   ],
+   "style": "accent"
+  },
+  {
+   "id": "wkpfzit",
+   "type": "wire",
+   "from": {
+    "id": "b4ulnq1",
+    "side": "left",
+    "t": 0.17
+   },
+   "to": {
+    "id": "b1nqzbu",
+    "side": "right",
+    "t": 0.4
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "4 × GPIO"
+  },
+  {
+   "id": "wv8cbe1",
+   "type": "wire",
+   "from": {
+    "id": "bubwyx3",
+    "side": "right",
+    "t": 0.5
+   },
+   "to": {
+    "id": "b4ulnq1",
+    "side": "left",
+    "t": 0.83
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "GPIO4_A0"
+  },
+  {
+   "id": "wd677vj",
+   "type": "wire",
+   "from": {
+    "id": "b4ulnq1",
+    "side": "right",
+    "t": 0.17
+   },
+   "to": {
+    "id": "b9mshan",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "I2C2"
+  },
+  {
+   "id": "wk6q4sp",
+   "type": "wire",
+   "from": {
+    "id": "b4ulnq1",
+    "side": "right",
+    "t": 0.52
+   },
+   "to": {
+    "id": "banu8kb",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "I2C2"
+  },
+  {
+   "id": "w4gd4ev",
+   "type": "wire",
+   "from": {
+    "id": "b4ulnq1",
+    "side": "right",
+    "t": 0.87
+   },
+   "to": {
+    "id": "bq3w8cd",
+    "side": "left",
+    "t": 0.5
+   },
+   "route": "ortho",
+   "arrow": "both",
+   "label": "I2C0",
+   "dashed": true
+  }
+ ]
+}

@@ -7,6 +7,7 @@ NAV_ITEMS = [
     NavItem('dashboard.index', 'Main', 'fa-solid fa-house', True),
     NavItem('tests.tests', 'Tests', 'fa-solid fa-vial', False),
     NavItem('logs.logs', 'Logs', 'fa-solid fa-file-lines', False),
+    NavItem('help.help_page', 'Docs', 'fa-solid fa-book', False),
     NavItem('editor.editor', 'Code Editor', 'fa-solid fa-code', False),
     NavItem('settings.settings', 'Settings', 'fa-solid fa-gear', False),
 ]

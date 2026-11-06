@@ -131,6 +131,8 @@ function buildTree(items, depth) {
         li.className = 'tree-node';
         const row = document.createElement('div');
         row.className = 'tree-row';
+        row.dataset.path = item.path;
+        row.dataset.type = item.type;
         row.style.paddingLeft = (8 + depth * 16) + 'px';
 
         if (item.type === 'dir') {
@@ -185,6 +187,7 @@ function reloadTree() {
             const el = document.getElementById('file-tree');
             el.innerHTML = '';
             el.appendChild(buildTree(tree, 0));
+            if (typeof EditorGit !== 'undefined') EditorGit.refresh();
         })
         .catch(() => {
             document.getElementById('file-tree').innerHTML =
@@ -327,6 +330,7 @@ function activateTab(path) {
     document.getElementById('save-ok').style.display = 'none';
     renderTabs();
     updateOutline();
+    if (typeof EditorGit !== 'undefined') EditorGit.showStatus();
 }
 
 function closeTab(path, event) {
@@ -388,6 +392,7 @@ function saveFile() {
         if (d.success) {
             const tab = tabs.get(currentPath);
             if (tab) { tab.dirty = false; renderTabs(); }
+            if (typeof EditorGit !== 'undefined') EditorGit.refresh();
             const ok = document.getElementById('save-ok');
             ok.style.display = 'inline';
             setTimeout(() => ok.style.display = 'none', 2500);

@@ -11,7 +11,7 @@ python3 -m unittest tests.test_access.Anonymous   # one class
 ## Safety
 
 `tests/support.py` must be imported first (every test module does it). It imports the app, then redirects
-`config.CONFIG_PATH` and `test_logs_dir` to a temporary directory and forces known credentials
+`config.CONFIG_PATH`, `test_logs_dir` and `help_dir` to a temporary directory and forces known credentials
 (`test` / `test`, auth enabled). Tests therefore never modify `config.json`, never add files to `testLogs/`
 and never touch the live `systemmngmntservice.service`. Keep it that way:
 
@@ -28,6 +28,8 @@ and never touch the live `systemmngmntservice.service`. Keep it that way:
 | `test_config.py` | `config.json` store: migration, per-host sections, update, reset |
 | `test_monitor.py` | system monitor sampler, lease, default-route interface, `/api/monitor` |
 | `test_logs.py` | test log viewer: parsing, filters, statistics, CSV, `/api/logs*` |
+| `test_help.py` | documentation store and `/api/help*` (temp `help_dir`) |
+| `test_git.py` | git panel on temporary repositories; the credentials file is redirected to the temp dir |
 | `test_test_runner.py` | operator answer validation, demo script runs, stop while waiting |
 | `test_net.py` | CAN frame parsing, interface name validation |
 | `test_udev.py` | rule file names, rules linter |
@@ -37,7 +39,8 @@ and never touch the live `systemmngmntservice.service`. Keep it that way:
 ## Visual checks
 
 ```bash
-python3 tests/devserver.py &                  # port 5099, login disabled in memory (--logs testLogs: real run logs)
+python3 tests/devserver.py &                  # port 5099, login disabled in memory (--logs testLogs: real run logs,
+                                              #   --target DIR: other target_dir for the editor / Git)
 python3 tests/devserver.py --port 5098 --auth &   # anonymous view
 tests/screenshot.sh / /tmp/x.png              # prints JS "Uncaught" errors to stderr
 tests/screenshot.sh '/tests?js=MonitorFloat.open()' /tmp/x.png 1400x900 9000

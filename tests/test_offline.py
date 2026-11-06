@@ -9,7 +9,9 @@ EXTERNAL = re.compile(r'''(?:src|href)\s*=\s*["']\s*(?:https?:)?//|url\(\s*["']?
 VENDORED = ['fontawesome/css/all.min.css', 'fontawesome/webfonts/fa-solid-900.woff2',
             'fontawesome/webfonts/fa-regular-400.woff2', 'fontawesome/webfonts/fa-brands-400.woff2',
             'monaco/vs/loader.js', 'monaco/vs/editor/editor.main.js', 'monaco/vs/base/worker/workerMain.js',
-            'xterm/xterm.js', 'xterm/xterm.css', 'xterm/xterm-addon-fit.js']
+            'xterm/xterm.js', 'xterm/xterm.css', 'xterm/xterm-addon-fit.js',
+            'marked/marked.min.js', 'dompurify/purify.min.js', 'highlight/highlight.min.js',
+            'highlight/github-dark.min.css']
 
 
 class Offline(unittest.TestCase):
@@ -38,7 +40,7 @@ class Offline(unittest.TestCase):
 
     def test_rendered_pages_have_no_external_urls(self):
         c = client(logged_in=True)
-        for url in ['/', '/editor', '/settings', '/tests', '/login']:
+        for url in ['/', '/editor', '/settings', '/tests', '/help', '/login']:
             with self.subTest(url=url):
                 html = c.get(url).get_data(as_text=True)
                 self.assertIsNone(EXTERNAL.search(html), EXTERNAL.search(html) and html[EXTERNAL.search(html).start():][:120])

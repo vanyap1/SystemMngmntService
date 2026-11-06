@@ -1,0 +1,6 @@
+ dd if=/dev/mmcblk0 bs=10M | gzip -c > /media/vanya/86C48854C48847FF/opi_zero2.img.gz
+
+ gunzip -c /path/to/Armbian-clone.img.gz | dd of=/dev/mmcblk0 bs=10M
+
+
+dd if=/dev/mmcblk0 of=/media/vanya/86C48854C48847FF/opi_zero2.img

@@ -1,0 +1,26 @@
+
+Створи дамп на сервері А
+	mysqldump -u root -p machineDb > machineDb_dump.sql
+	
+Варіант із SSH (здалеку):
+	mysqldump -u root -p machineDb | gzip > machineDb_dump.sql.gz
+
+Передай дамп на сервер Б:
+	scp machineDb_dump.sql user@serverB:/tmp/
+	rsync -avz machineDb_dump.sql user@serverB:/tmp/
+	
+Розгорни дамп на сервері Б:
+	ssh user@serverB
+	mysql -u root -p -e "CREATE DATABASE machineDb;"
+	mysql -u root -p machineDb < /tmp/machineDb_dump.sql
+	
+	GRANT ALL PRIVILEGES ON machineDb.* TO 'your_user'@'%';
+	FLUSH PRIVILEGES;
+
+Перевірка:
+	mysql -u root -p -e "SHOW DATABASES;"
+	або
+	
+	mysql -u root -p
+	SHOW DATABASES;
+	ssh user@serverA "mysql -u root -p -e 'SHOW DATABASES;'"

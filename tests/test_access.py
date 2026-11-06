@@ -5,10 +5,20 @@ from tests.support import client, config
 
 PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/tree', '/api/macros', '/api/video_devices',
                  '/api/browse', '/api/devices/gpio', '/api/devices/list', '/api/udev/rules',
-                 '/api/net/interfaces', '/api/tests/scripts', '/api/logs', '/api/logs/export.csv']
+                 '/api/net/interfaces', '/api/tests/scripts', '/api/logs', '/api/logs/export.csv',
+                 '/api/help/tree', '/api/help/search?q=x', '/api/help/assets?kind=img',
+                 '/api/help/diagrams', '/api/git/repos', '/api/git/status', '/api/git/summary', '/api/git/credentials',
+                 '/api/git/tree_status']
 PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/backups/create', '/api/settings',
-                  '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start']
-PROTECTED_PAGES = ['/editor', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz']
+                  '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
+                  '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
+                  '/api/help/asset_delete', '/api/help/diagram/create', '/api/help/diagram/save',
+                  '/api/help/diagram/rename', '/api/help/diagram/delete', '/api/git/commit', '/api/git/push',
+                  '/api/git/pull', '/api/git/fetch', '/api/git/branch', '/api/git/checkout', '/api/git/discard',
+                  '/api/git/reset', '/api/git/fix', '/api/git/identity', '/api/git/credentials', '/api/git/clone',
+                  '/api/git/init']
+PROTECTED_PAGES = ['/editor', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
+                   '/help/file/img/x.png', '/help?diagram=x']
 
 
 class Anonymous(unittest.TestCase):
@@ -23,7 +33,7 @@ class Anonymous(unittest.TestCase):
                              ('monitor.js', True), (config.service_name(), True), ('> Login', True),
                              ("svcAction('restart')", True), ("svcAction('stop')", False),
                              ('svc-select', False), ('Services.openModal', False), ('Archives', False),
-                             ('Code Editor', False), ('power-dropdown', False), ('video-dev-select', False),
+                             ('Code Editor', False), ('href="/help"', False), ('power-dropdown', False), ('video-dev-select', False),
                              ('sysinfo.js', False), ('id="mon-float"', False), ('MonitorFloat.toggle', False),
                              ('devices.js', False)]:
             with self.subTest(needle=needle):
@@ -76,7 +86,7 @@ class LoggedIn(unittest.TestCase):
 
     def test_index_has_everything(self):
         html = self.c.get('/').get_data(as_text=True)
-        for needle in ['Archives', 'System Monitor', 'svc-select', 'Code Editor', 'Settings', 'Logout',
+        for needle in ['Archives', 'System Monitor', 'svc-select', 'Code Editor', 'Settings', 'href="/help"', 'Logout',
                        "svcAction('stop')", 'power-dropdown', 'Devices.open']:
             with self.subTest(needle=needle):
                 self.assertIn(needle, html)

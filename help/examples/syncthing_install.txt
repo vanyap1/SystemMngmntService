@@ -1,0 +1,14 @@
+
+https://syncthing.net/downloads/
+
+create - syncthing_start.vbs
+
+content - 
+
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run """C:\Syncthing\syncthing.exe"" --no-browser", 0, False
+
+
+autostart - 
+
+Win + R > shell:startup

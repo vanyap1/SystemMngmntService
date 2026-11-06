@@ -1,0 +1,9 @@
+KERNEL=="i2c-[0-9]*", MODE="0777"
+KERNEL=="spidev[0-9]*", MODE="0777"
+KERNEL=="gpiochip[0-9]*", MODE="0777"
+KERNEL=="ttyUSB[0-9]*", MODE="0777"
+
+sudo nano /etc/udev/rules.d/99-custom-permissions.rules
+
+sudo udevadm control --reload-rules
+

@@ -1,0 +1,11 @@
+{# Git popup (static/js/git.js). Include in {% block modals %} and load js/git.js; open with Git.openModal('<repo>'). #}
+<div id="git-overlay" class="modal-overlay" onclick="if (event.target === this) Git.closeModal()">
+    <div class="modal-box git-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-brands fa-git-alt git-logo"></i> Git</span>
+            <a class="btn btn-ghost btn-sm" href="/settings#git" title="Token, identity and the full panel"><i class="fa-solid fa-gear"></i> Settings</a>
+            <button class="modal-close" onclick="Git.closeModal()">&#215;</button>
+        </div>
+        <div class="modal-body git-modal-body" id="git-modal-body"></div>
+    </div>
+</div>

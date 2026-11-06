@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% block title %}Docs — {% endblock %}
+{% block page_name %}<span class="brand-sub"> — Docs</span>{% endblock %}
+{% block body_class %}page-help{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ asset('vendor/highlight/github-dark.min.css') }}">
+<link rel="stylesheet" href="{{ asset('css/help.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="hp-app">
+
+    <aside id="hp-side">
+        <div class="hp-side-head">
+            <div class="hp-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="hp-q" class="input input-sm" placeholder="Search docs…  ( / )" autocomplete="off" spellcheck="false">
+                <button class="btn-icon" id="hp-q-clear" onclick="Help.clearSearch()" title="Clear" hidden><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <button class="btn btn-success btn-sm" onclick="Help.openNew()" title="New document"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        <div id="hp-tree" class="hp-tree"><div class="tbl-empty">Loading…</div></div>
+        <div class="hp-side-foot">
+            <button class="btn btn-ghost btn-sm" onclick="Help.openAssets('img')" title="Images in img/"><i class="fa-regular fa-image"></i> Images</button>
+            <button class="btn btn-ghost btn-sm" onclick="Help.openAssets('docs')" title="Attached files in docs/"><i class="fa-solid fa-paperclip"></i> Files</button>
+            <span class="spacer"></span>
+            <button class="btn-icon git-btn" data-git-badge="help" onclick="Git.openModal('help')" title="Git"><i class="fa-brands fa-git-alt"></i><span class="git-badge" hidden></span></button>
+            <button class="btn-icon" onclick="Help.loadTree()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+        </div>
+    </aside>
+
+    <section id="hp-main">
+        <div id="hp-bar">
+            <button class="btn-icon hp-side-toggle" onclick="Help.toggleSide()" title="Toggle sidebar"><i class="fa-solid fa-bars"></i></button>
+            <div class="hp-crumbs" id="hp-crumbs"></div>
+            <span id="hp-dirty" class="badge badge-info" hidden>modified</span>
+            <span class="spacer"></span>
+            <span id="hp-meta" class="meta small faint"></span>
+
+            <div class="hp-actions" id="hp-view-actions" hidden>
+                <button class="btn btn-primary btn-sm" onclick="Help.edit()" title="Edit (E)"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn-icon" onclick="Help.openRename()" title="Rename / move"><i class="fa-solid fa-i-cursor"></i></button>
+                <a class="btn-icon" id="hp-download" href="#" title="Download .md"><i class="fa-solid fa-download"></i></a>
+                <button class="btn-icon" onclick="window.print()" title="Print"><i class="fa-solid fa-print"></i></button>
+                <button class="btn-icon hp-del" onclick="Help.remove()" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+            </div>
+
+            <div class="hp-actions" id="hp-edit-actions" hidden>
+                <div class="gpio-seg hp-modes" id="hp-modes">
+                    <button type="button" data-mode="edit" onclick="Help.setMode('edit')" title="Editor only"><i class="fa-solid fa-code"></i></button>
+                    <button type="button" data-mode="split" onclick="Help.setMode('split')" title="Editor + preview"><i class="fa-solid fa-table-columns"></i></button>
+                    <button type="button" data-mode="preview" onclick="Help.setMode('preview')" title="Preview only"><i class="fa-regular fa-eye"></i></button>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="Help.cancel()" title="Close the editor">Close</button>
+                <button class="btn btn-success btn-sm" onclick="Help.save()" title="Save (Ctrl+S)"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            </div>
+        </div>
+
+        <div id="hp-toolbar" class="hp-toolbar" hidden>
+            <button onclick="Help.fmt('h1')" title="Heading 1">H1</button>
+            <button onclick="Help.fmt('h2')" title="Heading 2">H2</button>
+            <button onclick="Help.fmt('h3')" title="Heading 3">H3</button>
+            <i class="hp-tsep"></i>
+            <button onclick="Help.fmt('bold')" title="Bold (Ctrl+B)"><i class="fa-solid fa-bold"></i></button>
+            <button onclick="Help.fmt('italic')" title="Italic (Ctrl+I)"><i class="fa-solid fa-italic"></i></button>
+            <button onclick="Help.fmt('strike')" title="Strikethrough"><i class="fa-solid fa-strikethrough"></i></button>
+            <button onclick="Help.fmt('code')" title="Inline code"><i class="fa-solid fa-terminal"></i></button>
+            <i class="hp-tsep"></i>
+            <button onclick="Help.fmt('ul')" title="Bulleted list"><i class="fa-solid fa-list-ul"></i></button>
+            <button onclick="Help.fmt('ol')" title="Numbered list"><i class="fa-solid fa-list-ol"></i></button>
+            <button onclick="Help.fmt('task')" title="Task list"><i class="fa-regular fa-square-check"></i></button>
+            <button onclick="Help.fmt('quote')" title="Quote"><i class="fa-solid fa-quote-left"></i></button>
+            <button onclick="Help.fmt('note')" title="Note / warning box"><i class="fa-solid fa-circle-exclamation"></i></button>
+            <i class="hp-tsep"></i>
+            <button onclick="Help.fmt('codeblock')" title="Code block"><i class="fa-solid fa-code"></i></button>
+            <button onclick="Help.fmt('table')" title="Table"><i class="fa-solid fa-table"></i></button>
+            <button onclick="Help.fmt('hr')" title="Horizontal line"><i class="fa-solid fa-minus"></i></button>
+            <i class="hp-tsep"></i>
+            <button onclick="Help.fmt('link')" title="Link (Ctrl+K)"><i class="fa-solid fa-link"></i></button>
+            <button onclick="Help.fmt('doclink')" title="Link to another document"><i class="fa-solid fa-book"></i></button>
+            <button onclick="Help.openAssets('img', true)" title="Insert image (paste or drop works too)"><i class="fa-regular fa-image"></i></button>
+            <button onclick="Help.openAssets('docs', true)" title="Attach a file"><i class="fa-solid fa-paperclip"></i></button>
+            <button onclick="Help.openAssets('diagrams', true)" title="Insert a diagram (pinout / block diagram)"><i class="fa-solid fa-diagram-project"></i></button>
+            <span class="spacer"></span>
+            <span class="hint">Paste or drop images/files into the editor to upload them</span>
+        </div>
+
+        <div id="hp-body">
+            <div id="hp-editor" hidden></div>
+            <div id="hp-view">
+                <article id="hp-article" class="md"></article>
+            </div>
+            <nav id="hp-toc" class="hp-toc" hidden></nav>
+        </div>
+
+        <!-- Diagram editor (static/js/diagrams.js) -->
+        <div id="dg-pane" hidden>
+            <div class="dg-bar">
+                <button class="btn-icon hp-side-toggle" onclick="Help.toggleSide()" title="Toggle sidebar"><i class="fa-solid fa-bars"></i></button>
+                <div class="hp-crumbs"><span>Diagrams</span><i class="fa-solid fa-chevron-right"></i><b id="dg-title"></b></div>
+                <span id="dg-dirty" class="badge badge-info" hidden>modified</span>
+                <span id="dg-name" class="meta small faint mono"></span>
+                <span id="dg-used" class="meta small faint"></span>
+                <span class="spacer"></span>
+                <button class="btn-icon" onclick="Diagrams.rename()" title="Rename"><i class="fa-solid fa-i-cursor"></i></button>
+                <button class="btn-icon hp-del" onclick="Diagrams.remove()" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+                <button class="btn btn-ghost btn-sm" onclick="Diagrams.close()">Close</button>
+                <button class="btn btn-success btn-sm" onclick="Diagrams.save()" title="Save (Ctrl+S) — also writes the .svg used in docs"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            </div>
+            <div class="dg-toolbar">
+                <div class="gpio-seg dg-tools" id="dg-tools">
+                    <button type="button" data-tool="select" onclick="Diagrams.setTool('select')" title="Select / move (V)"><i class="fa-solid fa-arrow-pointer"></i></button>
+                    <button type="button" data-tool="block" onclick="Diagrams.setTool('block')" title="Block: click or drag (B)"><i class="fa-regular fa-square"></i> Block</button>
+                    <button type="button" data-tool="wire" onclick="Diagrams.setTool('wire')" title="Wire / arrow: drag from a block to a block (W)"><i class="fa-solid fa-arrow-right-long"></i> Wire</button>
+                    <button type="button" data-tool="chip" onclick="Diagrams.setTool('chip')" title="Chip / module with pins (C)"><i class="fa-solid fa-microchip"></i> Chip</button>
+                    <button type="button" data-tool="text" onclick="Diagrams.setTool('text')" title="Text (T)"><i class="fa-solid fa-font"></i> Text</button>
+                    <button type="button" data-tool="legend" onclick="Diagrams.setTool('legend')" title="Legend of pin kinds (L)"><i class="fa-solid fa-list"></i> Legend</button>
+                </div>
+                <i class="hp-tsep"></i>
+                <button class="btn-icon" id="dg-undo" onclick="Diagrams.undo()" title="Undo (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+                <button class="btn-icon" id="dg-redo" onclick="Diagrams.redo()" title="Redo (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+                <i class="hp-tsep"></i>
+                <button class="btn-icon" onclick="Diagrams.zoom(0.8)" title="Zoom out (-)"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <button class="btn btn-ghost btn-sm dg-zoom" id="dg-zoom" onclick="Diagrams.zoom100()" title="100% (0)">100%</button>
+                <button class="btn-icon" onclick="Diagrams.zoom(1.25)" title="Zoom in (+)"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button class="btn-icon" onclick="Diagrams.fit()" title="Fit page (F)"><i class="fa-solid fa-expand"></i></button>
+                <button class="btn-icon dg-toggle" id="dg-grid-btn" onclick="Diagrams.toggleGrid()" title="Grid"><i class="fa-solid fa-border-all"></i></button>
+                <span class="spacer"></span>
+                <button class="btn btn-ghost btn-sm" onclick="Diagrams.exportSvg()" title="Download SVG"><i class="fa-solid fa-download"></i> SVG</button>
+                <button class="btn btn-ghost btn-sm" onclick="Diagrams.exportPng()" title="Download PNG (2×)"><i class="fa-solid fa-download"></i> PNG</button>
+            </div>
+            <div class="dg-main">
+                <div class="dg-canvas" id="dg-canvas">
+                    <svg id="dg-svg" xmlns="http://www.w3.org/2000/svg">
+                        <defs><pattern id="dg-grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 0 0 50" fill="none" stroke="#000" stroke-opacity=".07" vector-effect="non-scaling-stroke"/></pattern></defs>
+                        <rect id="dg-page" x="0" y="0" width="100" height="100" fill="#fff"/>
+                        <rect id="dg-page-grid" x="0" y="0" width="100" height="100" fill="url(#dg-grid)" pointer-events="none"/>
+                        <g id="dg-content"></g>
+                        <g id="dg-overlay"></g>
+                    </svg>
+                </div>
+                <aside class="dg-props" id="dg-props"></aside>
+            </div>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+{% block modals %}
+{% include 'partials/git_modal.html' %}
+<!-- New document / rename -->
+<div id="hp-doc-overlay" class="modal-overlay" onclick="if (event.target === this) Help.closeDocModal()">
+    <div class="modal-box hp-doc-box">
+        <div class="modal-head">
+            <span class="modal-title" id="hp-doc-title"></span>
+            <button class="modal-close" onclick="Help.closeDocModal()">&#215;</button>
+        </div>
+        <form class="modal-body hp-form" id="hp-doc-form" onsubmit="event.preventDefault(); Help.submitDocModal()">
+            <div class="field" id="hp-f-title-row">
+                <label for="hp-f-title">Title</label>
+                <input class="input" id="hp-f-title" autocomplete="off" placeholder="e.g. Network setup">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="hp-f-folder">Folder</label>
+                    <input class="input" id="hp-f-folder" list="hp-folders" autocomplete="off" placeholder="(top level)">
+                    <datalist id="hp-folders"></datalist>
+                    <span class="hint">Pick one or type a new one, e.g. <code>linux/network</code></span>
+                </div>
+                <div class="field">
+                    <label for="hp-f-name">File name</label>
+                    <input class="input mono" id="hp-f-name" autocomplete="off" spellcheck="false">
+                    <span class="hint">.md is added automatically</span>
+                </div>
+            </div>
+        </form>
+        <div class="modal-foot">
+            <span class="hint mono" id="hp-f-path"></span>
+            <span class="spacer"></span>
+            <button class="btn btn-ghost" onclick="Help.closeDocModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="Help.submitDocModal()" id="hp-f-submit">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- Images / attachments -->
+<div id="hp-as-overlay" class="modal-overlay" onclick="if (event.target === this) Help.closeAssets()">
+    <div class="modal-box hp-as-box">
+        <div class="modal-head">
+            <div class="gpio-seg" id="hp-as-kinds">
+                <button type="button" data-kind="img" onclick="Help.openAssets('img', Help.as.insert)"><i class="fa-regular fa-image"></i> Images</button>
+                <button type="button" data-kind="docs" onclick="Help.openAssets('docs', Help.as.insert)"><i class="fa-solid fa-paperclip"></i> Files</button>
+            </div>
+            <span class="meta small faint mono" id="hp-as-dir"></span>
+            <input id="hp-as-q" class="input input-sm hp-as-q" placeholder="Filter…" autocomplete="off">
+            <span class="spacer"></span>
+            <label class="btn btn-success btn-sm"><i class="fa-solid fa-upload"></i> Upload
+                <input type="file" id="hp-as-file" multiple hidden onchange="Help.uploadPicked(this)">
+            </label>
+            <button class="modal-close" onclick="Help.closeAssets()">&#215;</button>
+        </div>
+        <div class="modal-body" id="hp-as-body"></div>
+        <div class="modal-foot">
+            <span class="hint" id="hp-as-hint"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Diagram: pin table -->
+<div id="dg-pins-overlay" class="modal-overlay" onclick="if (event.target === this) Diagrams.closePins()">
+    <div class="modal-box dg-pins-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-microchip text-ok"></i> <span id="dg-pins-title"></span></span>
+            <div class="gpio-seg" id="dg-pin-sides">
+                <button type="button" data-side="left" onclick="Diagrams.setPinSide('left')">Left <span></span></button>
+                <button type="button" data-side="top" onclick="Diagrams.setPinSide('top')">Top <span></span></button>
+                <button type="button" data-side="right" onclick="Diagrams.setPinSide('right')">Right <span></span></button>
+                <button type="button" data-side="bottom" onclick="Diagrams.setPinSide('bottom')">Bottom <span></span></button>
+            </div>
+            <span class="spacer"></span>
+            <button class="btn btn-success btn-sm" onclick="Diagrams.pinCmd('add')"><i class="fa-solid fa-plus"></i> Add</button>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('number')" title="Renumber this side">1, 2, 3…</button>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('reverse')" title="Reverse the order"><i class="fa-solid fa-arrow-down-up-across-line"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('copy')" title="Copy this side as TSV for Excel"><i class="fa-regular fa-copy"></i> TSV</button>
+            <button class="btn btn-danger btn-sm" onclick="Diagrams.pinCmd('clear')" title="Delete all pins of this side"><i class="fa-regular fa-trash-can"></i></button>
+            <button class="modal-close" onclick="Diagrams.closePins()">&#215;</button>
+        </div>
+        <div class="modal-body" id="dg-pins-body"></div>
+        <div class="modal-foot">
+            <span class="hint" id="dg-pins-order"></span>
+            <span class="hint">· Paste rows from Excel / CSV into any cell (columns: pin, port, function, kind, dir, note). Empty “Dir” = from the kind. Changes apply live; Ctrl+Z after closing undoes them.</span>
+        </div>
+    </div>
+</div>
+
+<!-- Diagram: new -->
+<div id="dg-new-overlay" class="modal-overlay" onclick="if (event.target === this) Diagrams.closeNew()">
+    <div class="modal-box hp-doc-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-diagram-project text-ok"></i> New diagram</span>
+            <button class="modal-close" onclick="Diagrams.closeNew()">&#215;</button>
+        </div>
+        <form class="modal-body hp-form" onsubmit="event.preventDefault(); Diagrams.submitNew()" oninput="Diagrams.newInput(event)">
+            <div class="field">
+                <label for="dg-new-title">Title</label>
+                <input class="input" id="dg-new-title" autocomplete="off" placeholder="e.g. Controller board pinout">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="dg-new-name">File name</label>
+                    <input class="input mono" id="dg-new-name" autocomplete="off" spellcheck="false">
+                    <span class="hint">help/diagrams/&lt;name&gt;.json + .svg</span>
+                </div>
+                <div class="field">
+                    <label for="dg-new-tpl">Start from</label>
+                    <select class="input" id="dg-new-tpl">
+                        <option value="pinout">Pinout (module with pins + legend)</option>
+                        <option value="block">Block diagram</option>
+                        <option value="blank">Empty</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+        <div class="modal-foot">
+            <span class="spacer"></span>
+            <button class="btn btn-ghost" onclick="Diagrams.closeNew()">Cancel</button>
+            <button class="btn btn-primary" onclick="Diagrams.submitNew()">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image zoom -->
+<div id="hp-lightbox" class="modal-overlay" onclick="Help.closeLightbox()">
+    <img id="hp-lightbox-img" alt="">
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ asset('vendor/marked/marked.min.js') }}"></script>
+<script src="{{ asset('vendor/dompurify/purify.min.js') }}"></script>
+<script src="{{ asset('vendor/highlight/highlight.min.js') }}"></script>
+<script src="{{ asset('vendor/highlight/languages/dos.min.js') }}"></script>
+<script src="{{ asset('vendor/highlight/languages/powershell.min.js') }}"></script>
+<script src="{{ asset('js/diagram_render.js') }}"></script>
+<script src="{{ asset('js/diagrams.js') }}"></script>
+<script src="{{ asset('js/help.js') }}"></script>
+<script src="{{ asset('js/git.js') }}"></script>
+{% endblock %}

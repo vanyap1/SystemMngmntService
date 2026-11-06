@@ -10,6 +10,7 @@
 {% block topbar_tools %}
     <div id="macro-bar"></div>
     <button id="btn-macro-edit" class="btn btn-macro-edit" onclick="openMacrosModal()" title="Edit macros"><i class="fa-solid fa-sliders"></i></button>
+    <button class="btn btn-macro-edit git-btn" id="eg-btn" onclick="EditorGit.open()" title="Git"><i class="fa-brands fa-git-alt"></i><span class="git-badge" hidden></span></button>
     <div class="topbar-sep"></div>
     <select id="svc-select" class="select-mono">
         <option value="{{ service_name }}">{{ service_name }}</option>
@@ -59,6 +60,7 @@
                         <div class="tab-actions">
                             <span id="save-ok">✓ Saved</span>
                             <button class="btn btn-primary btn-sm" onclick="saveFile()" title="Save (Ctrl+S)"><i class="fa-solid fa-floppy-disk"></i></button>
+                            <button class="btn btn-sm btn-git-commit" id="eg-commit" onclick="EditorGit.commitCurrent()" title="Commit this file (git)" hidden><i class="fa-brands fa-git-alt"></i> Commit</button>
                             <button id="btn-outline-tab" class="btn btn-sm btn-outline-toggle active" onclick="toggleOutline()" title="Toggle Outline"><i class="fa-solid fa-bars-staggered"></i> <span>Outline</span></button>
                         </div>
                     </div>
@@ -119,6 +121,7 @@
         <div id="svc-dot" class="svc-dot"></div>
         <span style="font-weight:600;flex-shrink:0">{{ service_name }}</span>
         <span id="status-detail">Loading…</span>
+        <span id="eg-status" class="eg-status" onclick="EditorGit.open()" title="Git repository of the open file"></span>
     </div>
 
 
@@ -126,6 +129,7 @@
 {% endblock %}
 
 {% block modals %}
+{% include 'partials/git_modal.html' %}
 <!-- Image Preview -->
 <div id="img-overlay" onclick="if(event.target===this)closeImage()">
     <img id="img-preview" src="" alt="">
@@ -187,4 +191,6 @@
 <script src="{{ asset('vendor/xterm/xterm.js') }}"></script>
 <script src="{{ asset('vendor/xterm/xterm-addon-fit.js') }}"></script>
 <script src="{{ asset('js/editor.js') }}"></script>
+<script src="{{ asset('js/git.js') }}"></script>
+<script src="{{ asset('js/editor_git.js') }}"></script>
 {% endblock %}

@@ -40,15 +40,21 @@ core/
   net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
   udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
   monitor.py           system monitor sampler (CPU/RAM/temp/active iface/disk I/O, 15 min history, lease)
+  help_docs.py         documentation store: Markdown pages in help_dir, img/ + docs/ assets, search, .trash
+  git_ops.py           git for target_dir / panel / help_dir repos: status, actions, problems + fixes (runs as repo owner)
+  credentials.py       host secrets (git token) in ~/.config/systemmngmntservice/credentials.json — outside repos
+  diagrams.py          diagram store: help_dir/diagrams/<name>.json + exported <name>.svg, rename relinks pages
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
   partials/            flash, services modal, video controls/modal, devices modal, power menu, monitor_float
   <page>.html          extends base.html
+help/                  documentation (user content): *.md pages, img/, docs/ attachments, examples/ raw notes
 tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
 docs/img/              README screenshots
 static/
-  vendor/              Font Awesome 6.5.1, Monaco 0.44.0, xterm 5.3.0 (+fit) — local copies, see vendor/README.md
+  vendor/              Font Awesome 6.5.1, Monaco 0.44.0, xterm 5.3.0 (+fit), marked 12, DOMPurify 3, highlight.js 11
+                       — local copies, see vendor/README.md
   css/base.css         tokens (CSS variables), reset, top bar, buttons, forms, cards, modal, table, badges, utils
   css/components.css   shared widgets: services, status log, sysinfo, video, power menu
   css/<page>.css       page-only styles
@@ -130,6 +136,38 @@ static/
 - Log viewer: `core/test_logs.py` (parser + cache, filters, statistics), `routes/logs.py`, `templates/logs.html`,
   `static/js/logs.js`, `static/css/logs.css`. It parses the text format written by `TestRunner._add_result` /
   `_open_log` / `_close_log` — if that format changes, update the parser and `tests/test_logs.py` together.
+
+## Documentation (Docs page)
+- `core/help_docs.py` + `routes/help.py` + `templates/help.html` + `static/js/help.js` + `static/css/help.css`,
+  tests in `tests/test_help.py` (support.py points `help_dir` to a temp dir). Login only, including `/help/file/…`.
+- Page paths are relative to `help_dir` and validated by `check_doc_path` (no `..`, hidden or reserved top-level
+  folders `img`, `docs`, `examples`; max 3 folder levels). Assets: uploads get `safe_file_name`, images only with
+  image extensions. Delete/remove = move to `help_dir/.trash`, never `os.remove`.
+- Links inside pages stay **relative to the page** (portable Markdown); the front end resolves them
+  (`Help._resolve`) to `/help/file/<path>` or `?doc=`. `rename_doc` rewrites `img/`/`docs/` links (`relink`).
+- Rendered HTML always goes through DOMPurify; served files get a sandbox CSP (`_RAW_HEADERS`).
+- `help/examples/` holds the user's raw notes — source material, do not edit or serve it as pages.
+- Diagram editor lives **only inside the Docs page** (no own page/nav item): `#dg-pane` in `help.html`,
+  `static/js/diagrams.js` (editor) + `static/js/diagram_render.js` (model → SVG, the model is documented at its top),
+  API `/api/help/diagram*` in `routes/help.py`, store `core/diagrams.py`. The renderer is the single source of the
+  SVG look: the editor shows `renderItems(..., {editor: true})`, saving uploads `toSvg()`. Keep `kinds` key order
+  (legend order): the diagram GET avoids `jsonify` (it sorts keys).
+
+## Git (Settings → Git, popup in editor / docs)
+- `core/git_ops.py` + `routes/git.py` + `static/js/git.js` (one `Git` panel: `Git.mount(el, repo)` on Settings,
+  `Git.openModal(repo)` with `partials/git_modal.html`; toolbar icons use `data-git-badge="<repo>"`), styles in
+  `components.css`, tests `tests/test_git.py` (temporary repos only — never run git actions on the real repo in tests).
+- Repos inside target_dir (cloned projects) are found by `scan_target()` and addressed as `dir:<rel>`; `resolve()`
+  confines them to target_dir and requires a `.git`. Editor integration: `static/js/editor_git.js` (`EditorGit`,
+  tree marks from `/api/git/tree_status`, refreshed on tree load, save and the `git-changed` DOM event that `Git`
+  fires after every action). From editor.js reach it with `typeof EditorGit !== 'undefined'` (`const` is not on window).
+  Visual checks with another target_dir: `python3 tests/devserver.py --target DIR`.
+- Git always runs through `git_ops._run_raw` (as the repo owner, `GIT_TERMINAL_PROMPT=0`, timeouts). Paths from the
+  client must pass `check_paths` (current status list), branch names `check_branch`; keep `--` before paths.
+- **The token must never reach a repository or the browser**: only `core/credentials.py` stores it (outside repos,
+  0600, never in config.json); pass it only via `token=` (one-shot credential helper + env); run every text shown to
+  the user through `scrub()`; `credentials.public()` is the only thing returned. Destructive actions create a
+  backup first (`Repo.backup()`). New problem ⇒ `Repo.problems()` + its fix in `Repo.fix()` + a test.
 
 ## Adding a page
 1. `routes/<name>.py`: `bp = Blueprint('<name>', __name__)`, view decorated with `@login_required`

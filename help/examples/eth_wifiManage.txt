@@ -1,0 +1,46 @@
+1. Редагуємо файл Netplan
+
+	sudo nano /etc/netplan/10-dhcp-all-interfaces.yaml
+
+2. Змінюємо рендерер
+
+	network:
+		version: 2
+		renderer: networkd >> NetworkManager
+		ethernets:
+			all-eth-interfaces:
+			...
+
+3. Застосовуємо налаштування
+	sudo netplan apply
+	nmcli device status
+
+4. Створюємоємо dispatcher-скрипт
+	
+'
+#!/bin/bash
+
+LAN_INTERFACE="eth0"
+INTERFACE=$1
+ACTION=$2
+
+NMCLI="/usr/bin/nmcli"
+LOGGER="/usr/bin/logger"
+
+if [ "$INTERFACE" = "$LAN_INTERFACE" ]; then
+    case "$ACTION" in
+        up|activated)
+            $LOGGER -t "NM-Toggle" "Кабель підключено на eth0. Вимикаємо Wi-Fi."
+            $NMCLI radio wifi off
+            ;;
+        down|deactivated)
+            $LOGGER -t "NM-Toggle" "Кабель відключено з eth0. Вмикаємо Wi-Fi."
+            $NMCLI radio wifi on
+            ;;
+    esac
+fi
+'
+
+sudo chown root:root /etc/NetworkManager/dispatcher.d/99-wifi-toggle
+sudo chmod 755 /etc/NetworkManager/dispatcher.d/99-wifi-toggle
+

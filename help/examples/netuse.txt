@@ -1,0 +1,14 @@
+net use 											- Перевірити активні з'єднання
+net use * /delete /y 								- Видалити ВСІ підключення
+net use \\192.168.1.141\share /delete				- Видалити КОНКРЕТНЕ підключення
+net use * \\192.168.1.141\share /user:pi			- Підключення з вказаним користувачем
+net use Z: \\192.168.1.141\share /persistent:yes	- Підключити з диском (Z:) і автопідключенням
+net use Z: /delete									- Відключити диск Z:
+
+cmdkey /list										- Показати збережені облікові дані
+cmdkey /delete:192.168.1.141						- Видалити облікові дані за IP
+cmdkey /delete:TERMSRV/192.168.1.141				- Видалити облікові для RDP
+cmdkey /add:192.168.1.141 /user:vanya /pass:1234	- Додати облікові дані вручну
+
+net config workstation								- Перевірити поточне ім’я користувача та домен
+net help use										- Довідка по net use

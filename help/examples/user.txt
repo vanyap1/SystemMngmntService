@@ -1,0 +1,9 @@
+
+Add user:
+	sudo adduser vanya
+	
+Set user as root:
+	sudo usermod -aG sudo vanya
+	
+Remove user:
+	sudo deluser --remove-home pi

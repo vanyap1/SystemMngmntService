@@ -1,0 +1,438 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1360" viewBox="0 0 1800 1360" font-family="Consolas, 'DejaVu Sans Mono', monospace">
+<rect width="1800" height="1360" fill="#ffffff"/>
+<text x="40" y="52" font-size="30" font-weight="bold" fill="#111827" font-family="Segoe UI, Arial">DS_H618_Core (U13) — pinout / project functions</text>
+<text x="40" y="82" font-size="16" fill="#4b5563" font-family="Segoe UI, Arial">Inside the box: SoC port  ·  Outside: net / function in this project  ·  grey = not connected (alt functions shown)</text>
+<rect x="430" y="360" width="940" height="790" fill="#f9fafb" stroke="#111827" stroke-width="3"/>
+<line x1="396" y1="430.0" x2="430" y2="430.0" stroke="#7b3fc4" stroke-width="2.5"/>
+<text x="413.0" y="426.0" font-size="11" text-anchor="middle" fill="#6b7280">51</text>
+<text x="438" y="435.0" font-size="15" fill="#111827">PI7</text>
+<text x="388" y="435.0" font-size="16" font-weight="bold" text-anchor="end" fill="#7b3fc4">ID_B3 (8)</text>
+<line x1="396" y1="460.95238095238096" x2="430" y2="460.95238095238096" stroke="#7b3fc4" stroke-width="2.5"/>
+<text x="413.0" y="456.95238095238096" font-size="11" text-anchor="middle" fill="#6b7280">52</text>
+<text x="438" y="465.95238095238096" font-size="15" fill="#111827">PI8</text>
+<text x="388" y="465.95238095238096" font-size="16" font-weight="bold" text-anchor="end" fill="#7b3fc4">ID_B2 (4)</text>
+<line x1="396" y1="491.9047619047619" x2="430" y2="491.9047619047619" stroke="#7b3fc4" stroke-width="2.5"/>
+<text x="413.0" y="487.9047619047619" font-size="11" text-anchor="middle" fill="#6b7280">53</text>
+<text x="438" y="496.9047619047619" font-size="15" fill="#111827">PI9</text>
+<text x="388" y="496.9047619047619" font-size="16" font-weight="bold" text-anchor="end" fill="#7b3fc4">ID_B1 (2)</text>
+<line x1="396" y1="522.8571428571429" x2="430" y2="522.8571428571429" stroke="#7b3fc4" stroke-width="2.5"/>
+<text x="413.0" y="518.8571428571429" font-size="11" text-anchor="middle" fill="#6b7280">54</text>
+<text x="438" y="527.8571428571429" font-size="15" fill="#111827">PI10</text>
+<text x="388" y="527.8571428571429" font-size="16" font-weight="bold" text-anchor="end" fill="#7b3fc4">ID_B0 (1)</text>
+<line x1="396" y1="553.8095238095239" x2="430" y2="553.8095238095239" stroke="#d6157a" stroke-width="2.5"/>
+<text x="413.0" y="549.8095238095239" font-size="11" text-anchor="middle" fill="#6b7280">55</text>
+<text x="438" y="558.8095238095239" font-size="15" fill="#111827">PI11</text>
+<text x="388" y="558.8095238095239" font-size="16" font-weight="bold" text-anchor="end" fill="#d6157a">PWM_1</text>
+<rect x="246" y="541.8095238095239" width="264" height="24" rx="5" fill="none" stroke="#d6157a" stroke-width="2" stroke-dasharray="5 3"/>
+<line x1="396" y1="584.7619047619048" x2="430" y2="584.7619047619048" stroke="#d6157a" stroke-width="2.5"/>
+<text x="413.0" y="580.7619047619048" font-size="11" text-anchor="middle" fill="#6b7280">56</text>
+<text x="438" y="589.7619047619048" font-size="15" fill="#111827">PI12</text>
+<text x="388" y="589.7619047619048" font-size="16" font-weight="bold" text-anchor="end" fill="#d6157a">PWM_2</text>
+<rect x="246" y="572.7619047619048" width="264" height="24" rx="5" fill="none" stroke="#d6157a" stroke-width="2" stroke-dasharray="5 3"/>
+<line x1="396" y1="615.7142857142858" x2="430" y2="615.7142857142858" stroke="#9ca3af" stroke-width="2.5"/>
+<text x="413.0" y="611.7142857142858" font-size="11" text-anchor="middle" fill="#6b7280">57</text>
+<text x="438" y="620.7142857142858" font-size="15" fill="#111827">PI13</text>
+<text x="388" y="620.7142857142858" font-size="16" font-weight="normal" text-anchor="end" fill="#9ca3af">· PWM3 / UART4_TX</text>
+<line x1="396" y1="646.6666666666666" x2="430" y2="646.6666666666666" stroke="#9ca3af" stroke-width="2.5"/>
+<text x="413.0" y="642.6666666666666" font-size="11" text-anchor="middle" fill="#6b7280">58</text>
+<text x="438" y="651.6666666666666" font-size="15" fill="#111827">PI14</text>
+<text x="388" y="651.6666666666666" font-size="16" font-weight="normal" text-anchor="end" fill="#9ca3af">· PWM4 / UART4_RX</text>
+<line x1="396" y1="677.6190476190476" x2="430" y2="677.6190476190476" stroke="#374151" stroke-width="2.5"/>
+<text x="413.0" y="673.6190476190476" font-size="11" text-anchor="middle" fill="#6b7280">59</text>
+<text x="438" y="682.6190476190476" font-size="15" fill="#111827">PI15</text>
+<text x="388" y="682.6190476190476" font-size="16" font-weight="bold" text-anchor="end" fill="#374151">USB_BR_EN</text>
+<line x1="396" y1="708.5714285714286" x2="430" y2="708.5714285714286" stroke="#374151" stroke-width="2.5"/>
+<text x="413.0" y="704.5714285714286" font-size="11" text-anchor="middle" fill="#6b7280">60</text>
+<text x="438" y="713.5714285714286" font-size="15" fill="#111827">PI16</text>
+<text x="388" y="713.5714285714286" font-size="16" font-weight="bold" text-anchor="end" fill="#374151">USB_BR_FB</text>
+<line x1="396" y1="739.5238095238095" x2="430" y2="739.5238095238095" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="735.5238095238095" font-size="11" text-anchor="middle" fill="#6b7280">61</text>
+<text x="438" y="744.5238095238095" font-size="15" fill="#111827">PF6</text>
+<text x="388" y="744.5238095238095" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_DET</text>
+<line x1="396" y1="770.4761904761905" x2="430" y2="770.4761904761905" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="766.4761904761905" font-size="11" text-anchor="middle" fill="#6b7280">62</text>
+<text x="438" y="775.4761904761905" font-size="15" fill="#111827">PF0</text>
+<text x="388" y="775.4761904761905" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_D1</text>
+<line x1="396" y1="801.4285714285714" x2="430" y2="801.4285714285714" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="797.4285714285714" font-size="11" text-anchor="middle" fill="#6b7280">63</text>
+<text x="438" y="806.4285714285714" font-size="15" fill="#111827">PF1</text>
+<text x="388" y="806.4285714285714" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_D0</text>
+<line x1="396" y1="832.3809523809524" x2="430" y2="832.3809523809524" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="828.3809523809524" font-size="11" text-anchor="middle" fill="#6b7280">64</text>
+<text x="438" y="837.3809523809524" font-size="15" fill="#111827">PF2</text>
+<text x="388" y="837.3809523809524" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_CLK</text>
+<line x1="396" y1="863.3333333333333" x2="430" y2="863.3333333333333" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="859.3333333333333" font-size="11" text-anchor="middle" fill="#6b7280">65</text>
+<text x="438" y="868.3333333333333" font-size="15" fill="#111827">PF3</text>
+<text x="388" y="868.3333333333333" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_CMD</text>
+<line x1="396" y1="894.2857142857142" x2="430" y2="894.2857142857142" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="890.2857142857142" font-size="11" text-anchor="middle" fill="#6b7280">66</text>
+<text x="438" y="899.2857142857142" font-size="15" fill="#111827">PF4</text>
+<text x="388" y="899.2857142857142" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_D3</text>
+<line x1="396" y1="925.2380952380952" x2="430" y2="925.2380952380952" stroke="#1f6fd1" stroke-width="2.5"/>
+<text x="413.0" y="921.2380952380952" font-size="11" text-anchor="middle" fill="#6b7280">67</text>
+<text x="438" y="930.2380952380952" font-size="15" fill="#111827">PF5</text>
+<text x="388" y="930.2380952380952" font-size="16" font-weight="bold" text-anchor="end" fill="#1f6fd1">SYS_D2</text>
+<line x1="396" y1="956.1904761904761" x2="430" y2="956.1904761904761" stroke="#dc2626" stroke-width="2.5"/>
+<text x="413.0" y="952.1904761904761" font-size="11" text-anchor="middle" fill="#6b7280">68</text>
+<text x="438" y="961.1904761904761" font-size="15" fill="#111827">GND</text>
+<text x="388" y="961.1904761904761" font-size="16" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="396" y1="987.1428571428571" x2="430" y2="987.1428571428571" stroke="#dc2626" stroke-width="2.5"/>
+<text x="413.0" y="983.1428571428571" font-size="11" text-anchor="middle" fill="#6b7280">69</text>
+<text x="438" y="992.1428571428571" font-size="15" fill="#111827">3V3-OUT</text>
+<text x="388" y="992.1428571428571" font-size="16" font-weight="bold" text-anchor="end" fill="#dc2626">3V3_OUT</text>
+<line x1="396" y1="1018.0952380952381" x2="430" y2="1018.0952380952381" stroke="#dc2626" stroke-width="2.5"/>
+<text x="413.0" y="1014.0952380952381" font-size="11" text-anchor="middle" fill="#6b7280">70</text>
+<text x="438" y="1023.0952380952381" font-size="15" fill="#111827">GND</text>
+<text x="388" y="1023.0952380952381" font-size="16" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="396" y1="1049.047619047619" x2="430" y2="1049.047619047619" stroke="#9ca3af" stroke-width="2.5"/>
+<text x="413.0" y="1045.047619047619" font-size="11" text-anchor="middle" fill="#6b7280">71</text>
+<text x="438" y="1054.047619047619" font-size="15" fill="#111827">1V8-OUT</text>
+<text x="388" y="1054.047619047619" font-size="16" font-weight="normal" text-anchor="end" fill="#9ca3af">· 1V8 out</text>
+<line x1="396" y1="1080.0" x2="430" y2="1080.0" stroke="#dc2626" stroke-width="2.5"/>
+<text x="413.0" y="1076.0" font-size="11" text-anchor="middle" fill="#6b7280">72</text>
+<text x="438" y="1085.0" font-size="15" fill="#111827">GND</text>
+<text x="388" y="1085.0" font-size="16" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="1370" y1="430.0" x2="1404" y2="430.0" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="426.0" font-size="11" text-anchor="middle" fill="#6b7280">22</text>
+<text x="1362" y="435.0" font-size="15" text-anchor="end" fill="#111827">PG14</text>
+<text x="1412" y="435.0" font-size="16" font-weight="bold" fill="#374151">CD</text>
+<line x1="1370" y1="460.95238095238096" x2="1404" y2="460.95238095238096" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="456.95238095238096" font-size="11" text-anchor="middle" fill="#6b7280">21</text>
+<text x="1362" y="465.95238095238096" font-size="15" text-anchor="end" fill="#111827">PG11</text>
+<text x="1412" y="465.95238095238096" font-size="16" font-weight="bold" fill="#374151">MUX_CH</text>
+<line x1="1370" y1="491.9047619047619" x2="1404" y2="491.9047619047619" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="487.9047619047619" font-size="11" text-anchor="middle" fill="#6b7280">20</text>
+<text x="1362" y="496.9047619047619" font-size="15" text-anchor="end" fill="#111827">PG12</text>
+<text x="1412" y="496.9047619047619" font-size="16" font-weight="bold" fill="#374151">EMMC_DET</text>
+<line x1="1370" y1="522.8571428571429" x2="1404" y2="522.8571428571429" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="518.8571428571429" font-size="11" text-anchor="middle" fill="#6b7280">19</text>
+<text x="1362" y="527.8571428571429" font-size="15" text-anchor="end" fill="#111827">PG13</text>
+<text x="1412" y="527.8571428571429" font-size="16" font-weight="bold" fill="#374151">SW_DET</text>
+<line x1="1370" y1="553.8095238095239" x2="1404" y2="553.8095238095239" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="549.8095238095239" font-size="11" text-anchor="middle" fill="#6b7280">18</text>
+<text x="1362" y="558.8095238095239" font-size="15" text-anchor="end" fill="#111827">PH10</text>
+<text x="1412" y="558.8095238095239" font-size="16" font-weight="bold" fill="#374151">MMC_OC</text>
+<line x1="1370" y1="584.7619047619048" x2="1404" y2="584.7619047619048" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="580.7619047619048" font-size="11" text-anchor="middle" fill="#6b7280">17</text>
+<text x="1362" y="589.7619047619048" font-size="15" text-anchor="end" fill="#111827">PH9</text>
+<text x="1412" y="589.7619047619048" font-size="16" font-weight="bold" fill="#374151">MMC_VTG</text>
+<line x1="1370" y1="615.7142857142858" x2="1404" y2="615.7142857142858" stroke="#d97706" stroke-width="2.5"/>
+<text x="1387.0" y="611.7142857142858" font-size="11" text-anchor="middle" fill="#6b7280">16</text>
+<text x="1362" y="620.7142857142858" font-size="15" text-anchor="end" fill="#111827">PH8</text>
+<text x="1412" y="620.7142857142858" font-size="16" font-weight="bold" fill="#d97706">HB_LED</text>
+<line x1="1370" y1="646.6666666666666" x2="1404" y2="646.6666666666666" stroke="#d97706" stroke-width="2.5"/>
+<text x="1387.0" y="642.6666666666666" font-size="11" text-anchor="middle" fill="#6b7280">15</text>
+<text x="1362" y="651.6666666666666" font-size="15" text-anchor="end" fill="#111827">PH7</text>
+<text x="1412" y="651.6666666666666" font-size="16" font-weight="bold" fill="#d97706">KP_LED</text>
+<line x1="1370" y1="677.6190476190476" x2="1404" y2="677.6190476190476" stroke="#d97706" stroke-width="2.5"/>
+<text x="1387.0" y="673.6190476190476" font-size="11" text-anchor="middle" fill="#6b7280">14</text>
+<text x="1362" y="682.6190476190476" font-size="15" text-anchor="end" fill="#111827">PH6</text>
+<text x="1412" y="682.6190476190476" font-size="16" font-weight="bold" fill="#d97706">R_LED</text>
+<line x1="1370" y1="708.5714285714286" x2="1404" y2="708.5714285714286" stroke="#d97706" stroke-width="2.5"/>
+<text x="1387.0" y="704.5714285714286" font-size="11" text-anchor="middle" fill="#6b7280">13</text>
+<text x="1362" y="713.5714285714286" font-size="15" text-anchor="end" fill="#111827">PH5</text>
+<text x="1412" y="713.5714285714286" font-size="16" font-weight="bold" fill="#d97706">Y_LED</text>
+<line x1="1370" y1="739.5238095238095" x2="1404" y2="739.5238095238095" stroke="#d97706" stroke-width="2.5"/>
+<text x="1387.0" y="735.5238095238095" font-size="11" text-anchor="middle" fill="#6b7280">12</text>
+<text x="1362" y="744.5238095238095" font-size="15" text-anchor="end" fill="#111827">PH4</text>
+<text x="1412" y="744.5238095238095" font-size="16" font-weight="bold" fill="#d97706">G_LED</text>
+<line x1="1370" y1="770.4761904761905" x2="1404" y2="770.4761904761905" stroke="#15803d" stroke-width="2.5"/>
+<text x="1387.0" y="766.4761904761905" font-size="11" text-anchor="middle" fill="#6b7280">11</text>
+<text x="1362" y="775.4761904761905" font-size="15" text-anchor="end" fill="#111827">PH3</text>
+<text x="1412" y="775.4761904761905" font-size="16" font-weight="bold" fill="#15803d">LNK_ETH</text>
+<line x1="1370" y1="801.4285714285714" x2="1404" y2="801.4285714285714" stroke="#15803d" stroke-width="2.5"/>
+<text x="1387.0" y="797.4285714285714" font-size="11" text-anchor="middle" fill="#6b7280">10</text>
+<text x="1362" y="806.4285714285714" font-size="15" text-anchor="end" fill="#111827">PH2</text>
+<text x="1412" y="806.4285714285714" font-size="16" font-weight="bold" fill="#15803d">SPD_ETH</text>
+<line x1="1370" y1="832.3809523809524" x2="1404" y2="832.3809523809524" stroke="#92400e" stroke-width="2.5"/>
+<text x="1387.0" y="828.3809523809524" font-size="11" text-anchor="middle" fill="#6b7280">9</text>
+<text x="1362" y="837.3809523809524" font-size="15" text-anchor="end" fill="#111827">PH1</text>
+<text x="1412" y="837.3809523809524" font-size="16" font-weight="bold" fill="#92400e">DEB_RX</text>
+<line x1="1370" y1="863.3333333333333" x2="1404" y2="863.3333333333333" stroke="#92400e" stroke-width="2.5"/>
+<text x="1387.0" y="859.3333333333333" font-size="11" text-anchor="middle" fill="#6b7280">8</text>
+<text x="1362" y="868.3333333333333" font-size="15" text-anchor="end" fill="#111827">PH0</text>
+<text x="1412" y="868.3333333333333" font-size="16" font-weight="bold" fill="#92400e">DEB_TX</text>
+<line x1="1370" y1="894.2857142857142" x2="1404" y2="894.2857142857142" stroke="#374151" stroke-width="2.5"/>
+<text x="1387.0" y="890.2857142857142" font-size="11" text-anchor="middle" fill="#6b7280">7</text>
+<text x="1362" y="899.2857142857142" font-size="15" text-anchor="end" fill="#111827">FEL</text>
+<text x="1412" y="899.2857142857142" font-size="16" font-weight="bold" fill="#374151">FEL</text>
+<line x1="1370" y1="925.2380952380952" x2="1404" y2="925.2380952380952" stroke="#15803d" stroke-width="2.5"/>
+<text x="1387.0" y="921.2380952380952" font-size="11" text-anchor="middle" fill="#6b7280">6</text>
+<text x="1362" y="930.2380952380952" font-size="15" text-anchor="end" fill="#111827">EPHY_TXP</text>
+<text x="1412" y="930.2380952380952" font-size="16" font-weight="bold" fill="#15803d">TXP_ETH</text>
+<line x1="1370" y1="956.1904761904761" x2="1404" y2="956.1904761904761" stroke="#15803d" stroke-width="2.5"/>
+<text x="1387.0" y="952.1904761904761" font-size="11" text-anchor="middle" fill="#6b7280">5</text>
+<text x="1362" y="961.1904761904761" font-size="15" text-anchor="end" fill="#111827">EPHY_TXN</text>
+<text x="1412" y="961.1904761904761" font-size="16" font-weight="bold" fill="#15803d">TXN_ETH</text>
+<line x1="1370" y1="987.1428571428571" x2="1404" y2="987.1428571428571" stroke="#15803d" stroke-width="2.5"/>
+<text x="1387.0" y="983.1428571428571" font-size="11" text-anchor="middle" fill="#6b7280">4</text>
+<text x="1362" y="992.1428571428571" font-size="15" text-anchor="end" fill="#111827">EPHY_RXP</text>
+<text x="1412" y="992.1428571428571" font-size="16" font-weight="bold" fill="#15803d">RXP_ETH</text>
+<line x1="1370" y1="1018.0952380952381" x2="1404" y2="1018.0952380952381" stroke="#15803d" stroke-width="2.5"/>
+<text x="1387.0" y="1014.0952380952381" font-size="11" text-anchor="middle" fill="#6b7280">3</text>
+<text x="1362" y="1023.0952380952381" font-size="15" text-anchor="end" fill="#111827">EPHY_RXN</text>
+<text x="1412" y="1023.0952380952381" font-size="16" font-weight="bold" fill="#15803d">RXN_ETH</text>
+<line x1="1370" y1="1049.047619047619" x2="1404" y2="1049.047619047619" stroke="#9ca3af" stroke-width="2.5"/>
+<text x="1387.0" y="1045.047619047619" font-size="11" text-anchor="middle" fill="#6b7280">2</text>
+<text x="1362" y="1054.047619047619" font-size="15" text-anchor="end" fill="#111827">HTX2P</text>
+<text x="1412" y="1054.047619047619" font-size="16" font-weight="normal" fill="#9ca3af">· HDMI</text>
+<line x1="1370" y1="1080.0" x2="1404" y2="1080.0" stroke="#9ca3af" stroke-width="2.5"/>
+<text x="1387.0" y="1076.0" font-size="11" text-anchor="middle" fill="#6b7280">1</text>
+<text x="1362" y="1085.0" font-size="15" text-anchor="end" fill="#111827">HTX2N</text>
+<text x="1412" y="1085.0" font-size="16" font-weight="normal" fill="#9ca3af">· HDMI</text>
+<line x1="510.0" y1="326" x2="510.0" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(507.0,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">50</text>
+<text transform="translate(515.0,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI6</text>
+<text transform="translate(515.0,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART2_RX/TWI0_SDA</text>
+<line x1="538.8888888888889" y1="326" x2="538.8888888888889" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(535.8888888888889,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">49</text>
+<text transform="translate(543.8888888888889,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI5</text>
+<text transform="translate(543.8888888888889,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART2_TX/TWI0_SCK</text>
+<line x1="567.7777777777778" y1="326" x2="567.7777777777778" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(564.7777777777778,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">48</text>
+<text transform="translate(572.7777777777778,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI4</text>
+<text transform="translate(572.7777777777778,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· I2S0_DIN0</text>
+<line x1="596.6666666666666" y1="326" x2="596.6666666666666" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(593.6666666666666,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">47</text>
+<text transform="translate(601.6666666666666,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI3</text>
+<text transform="translate(601.6666666666666,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· I2S0_DOUT0</text>
+<line x1="625.5555555555555" y1="326" x2="625.5555555555555" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(622.5555555555555,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">46</text>
+<text transform="translate(630.5555555555555,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI2</text>
+<text transform="translate(630.5555555555555,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· I2S0_LRCK</text>
+<line x1="654.4444444444445" y1="326" x2="654.4444444444445" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(651.4444444444445,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">45</text>
+<text transform="translate(659.4444444444445,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI1</text>
+<text transform="translate(659.4444444444445,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· I2S0_BCLK</text>
+<line x1="683.3333333333334" y1="326" x2="683.3333333333334" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(680.3333333333334,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">44</text>
+<text transform="translate(688.3333333333334,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PI0</text>
+<text transform="translate(688.3333333333334,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· I2S0_MCLK</text>
+<line x1="712.2222222222222" y1="326" x2="712.2222222222222" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(709.2222222222222,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">43</text>
+<text transform="translate(717.2222222222222,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG17</text>
+<text transform="translate(717.2222222222222,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART2_RTS</text>
+<line x1="741.1111111111111" y1="326" x2="741.1111111111111" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(738.1111111111111,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">42</text>
+<text transform="translate(746.1111111111111,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG19</text>
+<text transform="translate(746.1111111111111,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· PWM1</text>
+<line x1="770.0" y1="326" x2="770.0" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(767.0,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">41</text>
+<text transform="translate(775.0,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG18</text>
+<text transform="translate(775.0,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART2_CTS</text>
+<line x1="798.8888888888889" y1="326" x2="798.8888888888889" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(795.8888888888889,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">40</text>
+<text transform="translate(803.8888888888889,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG16</text>
+<text transform="translate(803.8888888888889,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART2_RX/TWI4_SDA</text>
+<line x1="827.7777777777778" y1="326" x2="827.7777777777778" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(824.7777777777778,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">39</text>
+<text transform="translate(832.7777777777778,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG15</text>
+<text transform="translate(832.7777777777778,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART2_TX/TWI4_SCK</text>
+<line x1="856.6666666666667" y1="326" x2="856.6666666666667" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(853.6666666666667,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">38</text>
+<text transform="translate(861.6666666666667,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG10</text>
+<text transform="translate(861.6666666666667,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· I2S2_MCLK</text>
+<line x1="885.5555555555555" y1="326" x2="885.5555555555555" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(882.5555555555555,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">37</text>
+<text transform="translate(890.5555555555555,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG8</text>
+<text transform="translate(890.5555555555555,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART1_RTS</text>
+<line x1="914.4444444444445" y1="326" x2="914.4444444444445" y2="360" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(911.4444444444445,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">36</text>
+<text transform="translate(919.4444444444445,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG9</text>
+<text transform="translate(919.4444444444445,318) rotate(-90)" font-size="15" font-weight="normal" fill="#9ca3af">· UART1_CTS</text>
+<line x1="943.3333333333333" y1="326" x2="943.3333333333333" y2="360" stroke="#374151" stroke-width="2.5"/>
+<text transform="translate(940.3333333333333,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">35</text>
+<text transform="translate(948.3333333333333,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG7</text>
+<text transform="translate(948.3333333333333,318) rotate(-90)" font-size="15" font-weight="bold" fill="#374151">TG_DET_EN</text>
+<line x1="972.2222222222222" y1="326" x2="972.2222222222222" y2="360" stroke="#374151" stroke-width="2.5"/>
+<text transform="translate(969.2222222222222,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">34</text>
+<text transform="translate(977.2222222222222,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG6</text>
+<text transform="translate(977.2222222222222,318) rotate(-90)" font-size="15" font-weight="bold" fill="#374151">TG_DET</text>
+<line x1="1001.1111111111111" y1="326" x2="1001.1111111111111" y2="360" stroke="#374151" stroke-width="2.5"/>
+<text transform="translate(998.1111111111111,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">33</text>
+<text transform="translate(1006.1111111111111,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PWRON</text>
+<text transform="translate(1006.1111111111111,318) rotate(-90)" font-size="15" font-weight="bold" fill="#374151">PERON</text>
+<line x1="1030.0" y1="326" x2="1030.0" y2="360" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(1027.0,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">32</text>
+<text transform="translate(1035.0,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">5V</text>
+<text transform="translate(1035.0,318) rotate(-90)" font-size="15" font-weight="bold" fill="#dc2626">VCC5V</text>
+<line x1="1058.888888888889" y1="326" x2="1058.888888888889" y2="360" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(1055.888888888889,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">31</text>
+<text transform="translate(1063.888888888889,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">5V</text>
+<text transform="translate(1063.888888888889,318) rotate(-90)" font-size="15" font-weight="bold" fill="#dc2626">VCC5V</text>
+<line x1="1087.7777777777778" y1="326" x2="1087.7777777777778" y2="360" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(1084.7777777777778,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">30</text>
+<text transform="translate(1092.7777777777778,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">GND</text>
+<text transform="translate(1092.7777777777778,318) rotate(-90)" font-size="15" font-weight="bold" fill="#dc2626">GND</text>
+<line x1="1116.6666666666665" y1="326" x2="1116.6666666666665" y2="360" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(1113.6666666666665,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">29</text>
+<text transform="translate(1121.6666666666665,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">GND</text>
+<text transform="translate(1121.6666666666665,318) rotate(-90)" font-size="15" font-weight="bold" fill="#dc2626">GND</text>
+<line x1="1145.5555555555557" y1="326" x2="1145.5555555555557" y2="360" stroke="#0e9488" stroke-width="2.5"/>
+<text transform="translate(1142.5555555555557,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">28</text>
+<text transform="translate(1150.5555555555557,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG4</text>
+<text transform="translate(1150.5555555555557,318) rotate(-90)" font-size="15" font-weight="bold" fill="#0e9488">DAT2</text>
+<line x1="1174.4444444444443" y1="326" x2="1174.4444444444443" y2="360" stroke="#0e9488" stroke-width="2.5"/>
+<text transform="translate(1171.4444444444443,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">27</text>
+<text transform="translate(1179.4444444444443,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG2</text>
+<text transform="translate(1179.4444444444443,318) rotate(-90)" font-size="15" font-weight="bold" fill="#0e9488">DAT0</text>
+<line x1="1203.3333333333335" y1="326" x2="1203.3333333333335" y2="360" stroke="#0e9488" stroke-width="2.5"/>
+<text transform="translate(1200.3333333333335,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">26</text>
+<text transform="translate(1208.3333333333335,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG1</text>
+<text transform="translate(1208.3333333333335,318) rotate(-90)" font-size="15" font-weight="bold" fill="#0e9488">CMD</text>
+<line x1="1232.2222222222222" y1="326" x2="1232.2222222222222" y2="360" stroke="#0e9488" stroke-width="2.5"/>
+<text transform="translate(1229.2222222222222,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">25</text>
+<text transform="translate(1237.2222222222222,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG3</text>
+<text transform="translate(1237.2222222222222,318) rotate(-90)" font-size="15" font-weight="bold" fill="#0e9488">DAT1</text>
+<line x1="1261.111111111111" y1="326" x2="1261.111111111111" y2="360" stroke="#0e9488" stroke-width="2.5"/>
+<text transform="translate(1258.111111111111,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">24</text>
+<text transform="translate(1266.111111111111,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG0</text>
+<text transform="translate(1266.111111111111,318) rotate(-90)" font-size="15" font-weight="bold" fill="#0e9488">CLK (22R)</text>
+<line x1="1290.0" y1="326" x2="1290.0" y2="360" stroke="#0e9488" stroke-width="2.5"/>
+<text transform="translate(1287.0,343.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">23</text>
+<text transform="translate(1295.0,368) rotate(-90)" font-size="14" text-anchor="end" fill="#111827">PG5</text>
+<text transform="translate(1295.0,318) rotate(-90)" font-size="15" font-weight="bold" fill="#0e9488">DAT3</text>
+<line x1="510.0" y1="1150" x2="510.0" y2="1184" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(507.0,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">73</text>
+<text transform="translate(515.0,1142) rotate(-90)" font-size="14" fill="#111827">GND</text>
+<text transform="translate(515.0,1192) rotate(-90)" font-size="15" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="538.8888888888889" y1="1150" x2="538.8888888888889" y2="1184" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(535.8888888888889,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">74</text>
+<text transform="translate(543.8888888888889,1142) rotate(-90)" font-size="14" fill="#111827">GND</text>
+<text transform="translate(543.8888888888889,1192) rotate(-90)" font-size="15" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="567.7777777777778" y1="1150" x2="567.7777777777778" y2="1184" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(564.7777777777778,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">75</text>
+<text transform="translate(572.7777777777778,1142) rotate(-90)" font-size="14" fill="#111827">GND</text>
+<text transform="translate(572.7777777777778,1192) rotate(-90)" font-size="15" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="596.6666666666666" y1="1150" x2="596.6666666666666" y2="1184" stroke="#dc2626" stroke-width="2.5"/>
+<text transform="translate(593.6666666666666,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">76</text>
+<text transform="translate(601.6666666666666,1142) rotate(-90)" font-size="14" fill="#111827">GND</text>
+<text transform="translate(601.6666666666666,1192) rotate(-90)" font-size="15" font-weight="bold" text-anchor="end" fill="#dc2626">GND</text>
+<line x1="625.5555555555555" y1="1150" x2="625.5555555555555" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(622.5555555555555,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">77</text>
+<text transform="translate(630.5555555555555,1142) rotate(-90)" font-size="14" fill="#111827">USB0_DM</text>
+<text transform="translate(630.5555555555555,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="654.4444444444445" y1="1150" x2="654.4444444444445" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(651.4444444444445,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">78</text>
+<text transform="translate(659.4444444444445,1142) rotate(-90)" font-size="14" fill="#111827">USB0_DP</text>
+<text transform="translate(659.4444444444445,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="683.3333333333334" y1="1150" x2="683.3333333333334" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(680.3333333333334,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">79</text>
+<text transform="translate(688.3333333333334,1142) rotate(-90)" font-size="14" fill="#111827">USB1_DM</text>
+<text transform="translate(688.3333333333334,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="712.2222222222222" y1="1150" x2="712.2222222222222" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(709.2222222222222,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">80</text>
+<text transform="translate(717.2222222222222,1142) rotate(-90)" font-size="14" fill="#111827">USB1_DP</text>
+<text transform="translate(717.2222222222222,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="741.1111111111111" y1="1150" x2="741.1111111111111" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(738.1111111111111,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">81</text>
+<text transform="translate(746.1111111111111,1142) rotate(-90)" font-size="14" fill="#111827">USB2_DM</text>
+<text transform="translate(746.1111111111111,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="770.0" y1="1150" x2="770.0" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(767.0,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">82</text>
+<text transform="translate(775.0,1142) rotate(-90)" font-size="14" fill="#111827">USB2_DP</text>
+<text transform="translate(775.0,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="798.8888888888889" y1="1150" x2="798.8888888888889" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(795.8888888888889,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">83</text>
+<text transform="translate(803.8888888888889,1142) rotate(-90)" font-size="14" fill="#111827">USB3_DM</text>
+<text transform="translate(803.8888888888889,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="827.7777777777778" y1="1150" x2="827.7777777777778" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(824.7777777777778,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">84</text>
+<text transform="translate(832.7777777777778,1142) rotate(-90)" font-size="14" fill="#111827">USB3_DP</text>
+<text transform="translate(832.7777777777778,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="856.6666666666667" y1="1150" x2="856.6666666666667" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(853.6666666666667,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">85</text>
+<text transform="translate(861.6666666666667,1142) rotate(-90)" font-size="14" fill="#111827">AGND</text>
+<text transform="translate(861.6666666666667,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="885.5555555555555" y1="1150" x2="885.5555555555555" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(882.5555555555555,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">86</text>
+<text transform="translate(890.5555555555555,1142) rotate(-90)" font-size="14" fill="#111827">LINEOUTL</text>
+<text transform="translate(890.5555555555555,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="914.4444444444445" y1="1150" x2="914.4444444444445" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(911.4444444444445,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">87</text>
+<text transform="translate(919.4444444444445,1142) rotate(-90)" font-size="14" fill="#111827">LINEOUTR</text>
+<text transform="translate(919.4444444444445,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="943.3333333333333" y1="1150" x2="943.3333333333333" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(940.3333333333333,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">88</text>
+<text transform="translate(948.3333333333333,1142) rotate(-90)" font-size="14" fill="#111827">LRADC</text>
+<text transform="translate(948.3333333333333,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="972.2222222222222" y1="1150" x2="972.2222222222222" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(969.2222222222222,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">89</text>
+<text transform="translate(977.2222222222222,1142) rotate(-90)" font-size="14" fill="#111827">TV_OUT</text>
+<text transform="translate(977.2222222222222,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1001.1111111111111" y1="1150" x2="1001.1111111111111" y2="1184" stroke="#374151" stroke-width="2.5"/>
+<text transform="translate(998.1111111111111,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">90</text>
+<text transform="translate(1006.1111111111111,1142) rotate(-90)" font-size="14" fill="#111827">RESET</text>
+<text transform="translate(1006.1111111111111,1192) rotate(-90)" font-size="15" font-weight="bold" text-anchor="end" fill="#374151">RESET</text>
+<line x1="1030.0" y1="1150" x2="1030.0" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1027.0,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">91</text>
+<text transform="translate(1035.0,1142) rotate(-90)" font-size="14" fill="#111827">HHPD</text>
+<text transform="translate(1035.0,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1058.888888888889" y1="1150" x2="1058.888888888889" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1055.888888888889,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">92</text>
+<text transform="translate(1063.888888888889,1142) rotate(-90)" font-size="14" fill="#111827">HSDA</text>
+<text transform="translate(1063.888888888889,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1087.7777777777778" y1="1150" x2="1087.7777777777778" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1084.7777777777778,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">93</text>
+<text transform="translate(1092.7777777777778,1142) rotate(-90)" font-size="14" fill="#111827">HSCL</text>
+<text transform="translate(1092.7777777777778,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1116.6666666666665" y1="1150" x2="1116.6666666666665" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1113.6666666666665,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">94</text>
+<text transform="translate(1121.6666666666665,1142) rotate(-90)" font-size="14" fill="#111827">HCEC</text>
+<text transform="translate(1121.6666666666665,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1145.5555555555557" y1="1150" x2="1145.5555555555557" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1142.5555555555557,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">95</text>
+<text transform="translate(1150.5555555555557,1142) rotate(-90)" font-size="14" fill="#111827">HTXCN</text>
+<text transform="translate(1150.5555555555557,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1174.4444444444443" y1="1150" x2="1174.4444444444443" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1171.4444444444443,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">96</text>
+<text transform="translate(1179.4444444444443,1142) rotate(-90)" font-size="14" fill="#111827">HTXCP</text>
+<text transform="translate(1179.4444444444443,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1203.3333333333335" y1="1150" x2="1203.3333333333335" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1200.3333333333335,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">97</text>
+<text transform="translate(1208.3333333333335,1142) rotate(-90)" font-size="14" fill="#111827">HTX0N</text>
+<text transform="translate(1208.3333333333335,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1232.2222222222222" y1="1150" x2="1232.2222222222222" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1229.2222222222222,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">98</text>
+<text transform="translate(1237.2222222222222,1142) rotate(-90)" font-size="14" fill="#111827">HTX0P</text>
+<text transform="translate(1237.2222222222222,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1261.111111111111" y1="1150" x2="1261.111111111111" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1258.111111111111,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">99</text>
+<text transform="translate(1266.111111111111,1142) rotate(-90)" font-size="14" fill="#111827">HTX1N</text>
+<text transform="translate(1266.111111111111,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<line x1="1290.0" y1="1150" x2="1290.0" y2="1184" stroke="#9ca3af" stroke-width="2.5"/>
+<text transform="translate(1287.0,1167.0) rotate(-90)" font-size="10" text-anchor="middle" fill="#6b7280">100</text>
+<text transform="translate(1295.0,1142) rotate(-90)" font-size="14" fill="#111827">HTX1P</text>
+<text transform="translate(1295.0,1192) rotate(-90)" font-size="15" font-weight="normal" text-anchor="end" fill="#9ca3af">nc</text>
+<text x="600" y="580" font-size="22" font-weight="bold" fill="#111827" font-family="Segoe UI, Arial">DS_H618_Core  (Allwinner H616/H618)</text>
+<text x="600" y="616" font-size="10" font-weight="normal" fill="#111827" font-family="Segoe UI, Arial"></text>
+<text x="600" y="640" font-size="15" font-weight="bold" fill="#7b3fc4" font-family="Segoe UI, Arial">ID_B0..B3  — rotary binary encoder U32 (ES07MP-16RBZ)</text>
+<text x="600" y="669" font-size="14" font-weight="normal" fill="#7b3fc4" font-family="Segoe UI, Arial">   device ID 0–7 = B2..B0; common → 3V3, 10k pull-down</text>
+<text x="600" y="697" font-size="15" font-weight="bold" fill="#1f6fd1" font-family="Segoe UI, Arial">SYS_*  (SDC0, PF0–PF6) — eMMC #1 in SD mode</text>
+<text x="600" y="726" font-size="15" font-weight="bold" fill="#0e9488" font-family="Segoe UI, Arial">DAT*/CMD/CLK  (SDC1, PG0–PG5) — eMMC #2 in SD mode</text>
+<text x="600" y="755" font-size="15" font-weight="bold" fill="#d6157a" font-family="Segoe UI, Arial">PWM_1 = PI11 (PWM1),  PWM_2 = PI12 (PWM2)</text>
+<text x="600" y="784" font-size="14" font-weight="normal" fill="#d6157a" font-family="Segoe UI, Arial">   spare PWM: PI13 (PWM3), PI14 (PWM4)</text>
+<text x="600" y="812" font-size="15" font-weight="bold" fill="#92400e" font-family="Segoe UI, Arial">DEB_RX/TX = UART0 debug console</text>
+<text x="600" y="841" font-size="15" font-weight="bold" fill="#15803d" font-family="Segoe UI, Arial">Ethernet = internal EPHY (RGMII pins unused)</text>
+<rect x="40" y="1307" width="16" height="16" rx="3" fill="#7b3fc4"/>
+<text x="62" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">ID encoder</text>
+<rect x="212" y="1307" width="16" height="16" rx="3" fill="#d6157a"/>
+<text x="234" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">PWM (selected)</text>
+<rect x="384" y="1307" width="16" height="16" rx="3" fill="#1f6fd1"/>
+<text x="406" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">eMMC #1 / SDC0</text>
+<rect x="556" y="1307" width="16" height="16" rx="3" fill="#0e9488"/>
+<text x="578" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">eMMC #2 / SDC1</text>
+<rect x="728" y="1307" width="16" height="16" rx="3" fill="#374151"/>
+<text x="750" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">control / detect</text>
+<rect x="900" y="1307" width="16" height="16" rx="3" fill="#d97706"/>
+<text x="922" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">LED</text>
+<rect x="1072" y="1307" width="16" height="16" rx="3" fill="#15803d"/>
+<text x="1094" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">Ethernet</text>
+<rect x="1244" y="1307" width="16" height="16" rx="3" fill="#92400e"/>
+<text x="1266" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">debug UART</text>
+<rect x="1416" y="1307" width="16" height="16" rx="3" fill="#dc2626"/>
+<text x="1438" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">power</text>
+<rect x="1588" y="1307" width="16" height="16" rx="3" fill="#9ca3af"/>
+<text x="1610" y="1320" font-size="15" fill="#111827" font-family="Segoe UI, Arial">not connected</text>
+</svg>

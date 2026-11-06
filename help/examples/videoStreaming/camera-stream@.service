@@ -1,0 +1,12 @@
+[Unit]
+Description=Camera stream for %i
+BindsTo=dev-%i.device
+After=dev-%i.device
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/stream_camera.sh /dev/%i
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

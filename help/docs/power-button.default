@@ -1,0 +1,7 @@
+# Settings for power-button.service (restart the service after editing)
+PB_CHIP=gpiochip4
+PB_LINE=0
+# Seconds the button must be held (protects against accidental taps / noise)
+PB_HOLD=1.0
+# systemctl verb: poweroff | reboot | halt
+PB_ACTION=poweroff

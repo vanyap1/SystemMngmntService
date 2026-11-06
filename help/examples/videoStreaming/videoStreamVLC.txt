@@ -1,0 +1,90 @@
+sudo apt update
+sudo apt install v4l-utils ffmpeg vlc
+
+Стрім:
+cvlc v4l2:///dev/video1 --sout '#rtp{sdp=rtsp://:8554/}' :input-slave=alsa://
+
+
+У VLC відкрий мережевий потік (Media → Open Network Stream) і введи:
+rtsp://192.168.1.11:8554/
+
+
+Ще варіант
+
+Узнаємо підтримувані формати -  v4l2-ctl --device=/dev/video1 --list-formats-ext
+
+копіюємо та даємо права скриптові - sudo chmod +x /usr/local/bin/stream_camera.sh
+лщпіюємо юніт файл - /etc/systemd/system/camera-stream@.service
+
+Створюємо юдев правило: 
+	udevadm info -a -n /dev/video1
+	/etc/udev/rules.d/99-camera.rules
+	KERNEL=="video[0-9]*", SUBSYSTEM=="video4linux", ATTRS{idVendor}=="0ac8", ATTRS{idProduct}=="3420", TAG+="systemd", ENV{SYSTEMD_WANTS}="camera-stream@%k.service"
+
+Перезапускаємо удевсервіс:
+	sudo udevadm control --reload
+	sudo udevadm trigger
+
+Перевірка статуса:
+	systemctl status camera-stream@video1.service
+	journalctl -u camera-stream@video1.service -f
+
+
+
+
+Відрити стрім - udp://@239.0.0.1:1234
+
+
+*************************-\_GPT_/-*************************
+# 1️⃣ Перевіряємо підтримувані формати камери
+v4l2-ctl --device=/dev/video1 --list-formats-ext
+
+# 2️⃣ Створюємо скрипт стрімінгу
+sudo nano /usr/local/bin/stream_camera.sh
+# Вставити:
+#!/bin/bash
+CAM=$1
+ffmpeg -f v4l2 -input_format h264 -video_size 1920x1080 -framerate 30 -i "$CAM" \
+-c copy -f mpegts udp://239.0.0.1:1234
+sudo chmod +x /usr/local/bin/stream_camera.sh
+
+# 3️⃣ Створюємо systemd unit (один файл для всіх камер)
+sudo nano /etc/systemd/system/camera-stream@.service
+# Вставити:
+[Unit]
+Description=Camera stream for %i
+After=network.target
+
+[Service]
+ExecStart= /dev/%i
+Restart=on-failure
+User=vanya
+
+[Install]
+WantedBy=multi-user.target
+
+# 4️⃣ Створюємо udev правило для автозапуску при підключенні камери
+sudo nano /etc/udev/rules.d/99-camera.rules
+# Вставити (замінити idVendor/idProduct на вашу камеру):
+KERNEL=="video[0-9]*", SUBSYSTEM=="video4linux", ATTRS{idVendor}=="0ac8", ATTRS{idProduct}=="3420", TAG+="systemd", ENV{SYSTEMD_WANTS}="camera-stream@%k.service"
+
+# 5️⃣ Перезапускаємо udev
+sudo udevadm control --reload
+sudo udevadm trigger
+
+# 6️⃣ Перевірка статусу сервісу
+systemctl status camera-stream@video1.service
+journalctl -u camera-stream@video1.service -f
+
+# 7️⃣ Відкриваємо стрім на клієнті (VLC / ffplay / mpv)
+udp://@239.0.0.1:1234
+
+⚡ Поради
+
+Для H.264 CSI камери або апаратного кодування використовувати -c:v h264_rkmpp замість -c copy.
+
+Можна додати Restart=always у systemd, щоб автоматично перезапускати при падінні.
+
+VLC: зменшити кеш мережі до 50–100 мс для низької затримки.
+
+Якщо кілька камер, udev + systemd юніт працює для будь-якої /dev/videoX завдяки шаблону %i.

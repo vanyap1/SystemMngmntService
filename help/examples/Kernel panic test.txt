@@ -1,0 +1,34 @@
+sudo nano /etc/sysctl.conf 
+	kernel.panic = 10 (ребут через 10с)
+	kernel.panic_on_oops = 1 (смерть при помилках драйверів)
+	kernel.softlockup_panic = 1 (смерть при зацикленні)
+	vm.panic_on_oom = 1 (смерть при нестачі пам'яті)
+	
+	
+	sudo sh -c 'cmd'
+	
+test: 
+		
+	echo c | sudo tee /proc/sysrq-trigger		# kernel stop
+	echo b | sudo tee /proc/sysrq-trigger		# system crash
+	echo f | sudo tee /proc/sysrq-trigger		# OOM Call (виклик дефіциту пам'яті).
+	
+	
+Watchdog config:
+	sudo apt install watchdog
+	sudo nano /etc/watchdog.conf
+	
+		watchdog-device = /dev/watchdog
+		watchdog-timeout = 15
+		realtime = yes
+		priority = 1
+	
+	sudo systemctl enable --now watchdog
+	sudo journalctl -k -b -1
+
+Dependency:
+	ls /dev/watchdog*
+		/dev/watchdog  /dev/watchdog0
+	
+
+	

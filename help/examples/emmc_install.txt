@@ -1,0 +1,16 @@
+
+
+Creating dist pack:
+	sudo tar -czvf full_python_dist_packages.tar.gz /usr/lib/python3/dist-packages/
+
+# 1. Про всяк випадок робимо бекап старої папки (перейменовуємо її)
+	sudo mv /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages.old
+
+# 2. Розпаковуємо наш чистий референсний архів прямо в корінь системи
+	sudo tar -xzvf full_python_dist_packages.tar.gz -C /
+
+
+
+tar -xzf SystemMngmntService_offline.tar.gz -C /home/pi/
+cd /home/pi/SystemMngmntService
+sudo bash setup_offline.sh
