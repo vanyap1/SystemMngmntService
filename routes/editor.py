@@ -16,22 +16,35 @@ def _clean_name(name):
     return re.sub(r'[^\w.\- ]', '_', (name or '').strip())
 
 
-def build_file_tree(path):
+TREE_LIMIT = 3000     # entries per folder sent to the browser
+
+
+def list_dir(path):
+    """One level of the file tree (folders are loaded when opened, so a huge mounted disk is never walked).
+    Returns (entries, truncated)."""
     result = []
     try:
-        entries = sorted(os.scandir(path), key=lambda e: (not e.is_dir(), e.name.lower()))
-        for entry in entries:
-            if entry.name.startswith('.'):
-                continue
-            if entry.is_dir():
-                result.append({'name': entry.name, 'path': entry.path, 'type': 'dir',
-                               'children': build_file_tree(entry.path)})
-            else:
-                result.append({'name': entry.name, 'path': entry.path, 'type': 'file',
-                               'size': entry.stat().st_size})
-    except PermissionError:
-        pass
-    return result
+        with os.scandir(path) as it:
+            entries = [e for e in it if not e.name.startswith('.')]
+    except OSError:
+        return result, False
+
+    def is_dir(e):
+        try:
+            return e.is_dir()
+        except OSError:
+            return False
+    entries.sort(key=lambda e: (not is_dir(e), e.name.lower()))
+    for entry in entries[:TREE_LIMIT]:
+        if is_dir(entry):
+            result.append({'name': entry.name, 'path': entry.path, 'type': 'dir', 'link': entry.is_symlink()})
+        else:
+            try:
+                size = entry.stat().st_size
+            except OSError:
+                size = None
+            result.append({'name': entry.name, 'path': entry.path, 'type': 'file', 'size': size})
+    return result, len(entries) > TREE_LIMIT
 
 
 @bp.route('/editor')
@@ -43,7 +56,15 @@ def editor():
 @bp.route('/api/tree')
 @login_required
 def api_tree():
-    return jsonify(build_file_tree(config.target_dir()))
+    """Entries of one folder of target_dir (?path=, default: target_dir itself)."""
+    root = config.target_dir()
+    path = os.path.normpath(request.args.get('path') or root)
+    if os.path.realpath(path) != os.path.realpath(root) and not resolve_inside(path, root):
+        return jsonify({'error': 'Folder is outside target_dir'}), 403
+    if not os.path.isdir(path):
+        return jsonify({'error': 'Not a folder'}), 404
+    entries, truncated = list_dir(path)
+    return jsonify({'path': path, 'entries': entries, 'truncated': truncated, 'limit': TREE_LIMIT})
 
 
 @bp.route('/api/file', methods=['GET'])

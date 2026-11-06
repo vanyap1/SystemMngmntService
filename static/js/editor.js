@@ -123,8 +123,76 @@ const IMG_EXTS = new Set(['png','jpg','jpeg','gif','webp','svg','bmp','ico','avi
 function isImage(name) { return IMG_EXTS.has(name.split('.').pop().toLowerCase()); }
 
 // ── File tree ───────────────────────────────────────────────────────────────
-function buildTree(items, depth) {
-    const ul = document.createElement('ul');
+// Folders are loaded one level at a time when opened (/api/tree?path=), so a big disk mounted somewhere under
+// target_dir is never walked. Open folders are remembered and re-opened after reloadTree().
+const TREE_OPEN_KEY = 'editor-open-dirs';
+const openDirs = new Set((() => { try { return JSON.parse(localStorage.getItem(TREE_OPEN_KEY) || '[]'); } catch (e) { return []; } })());
+function saveOpenDirs() { try { localStorage.setItem(TREE_OPEN_KEY, JSON.stringify([...openDirs].slice(-200))); } catch (e) {} }
+
+function loadDir(path) {
+    return App.api('/api/tree' + (path ? '?path=' + encodeURIComponent(path) : ''));
+}
+
+function treeNote(text, depth, cls) {
+    const li = document.createElement('li');
+    li.innerHTML = `<div class="tree-note ${cls || ''}" style="padding-left:${8 + depth * 16 + 14}px">${text}</div>`;
+    return li;
+}
+
+function setDirOpen(row, open) {
+    const arr = row.querySelector('.arrow'), ico = row.querySelector('.ico');
+    if (arr) arr.innerHTML = open ? '<i class="fa-solid fa-chevron-down" style="font-size:9px"></i>' : '<i class="fa-solid fa-chevron-right" style="font-size:9px"></i>';
+    if (ico) ico.innerHTML = open ? '<i class="fa-solid fa-folder-open" style="color:#e5c07b"></i>' : '<i class="fa-solid fa-folder" style="color:#dcb67a"></i>';
+}
+
+/** Open a folder row: load its entries the first time. Resolves when the children are in the DOM. */
+function expandDir(row, sub, item, depth) {
+    sub.classList.add('open');
+    setDirOpen(row, true);
+    openDirs.add(item.path); saveOpenDirs();
+    if (sub.dataset.loaded) return Promise.resolve();
+    sub.dataset.loaded = '1';
+    sub.innerHTML = '';
+    sub.appendChild(treeNote('<i class="fa-solid fa-spinner fa-spin"></i> Loading…', depth + 1, 'muted'));
+    return loadDir(item.path).then(d => {
+        sub.innerHTML = '';
+        sub.dataset.path = item.path;
+        sub.dataset.depth = depth + 1;
+        sub._sig = treeSig(d);
+        fillTree(sub, d, depth + 1);
+        if (typeof EditorGit !== 'undefined') EditorGit.decorate();
+        return reopenDirs(sub);
+    }).catch(e => {
+        delete sub.dataset.loaded;
+        sub.innerHTML = '';
+        sub.appendChild(treeNote(esc(e.message || 'Failed to load'), depth + 1, 'text-error'));
+    });
+}
+
+function collapseDir(row, sub, item) {
+    sub.classList.remove('open');
+    setDirOpen(row, false);
+    openDirs.delete(item.path); saveOpenDirs();
+}
+
+/** Re-open remembered folders among the direct children of `ul` (and, recursively, theirs). */
+function reopenDirs(ul) {
+    const jobs = [];
+    ul.querySelectorAll(':scope > li > .tree-row[data-type="dir"]').forEach(row => {
+        if (openDirs.has(row.dataset.path)) jobs.push(row._expand());
+    });
+    return Promise.all(jobs);
+}
+
+function fillTree(ul, data, depth) {
+    const items = data.entries || [];
+    if (!items.length) ul.appendChild(treeNote('empty', depth, 'muted'));
+    buildTree(items, depth, ul);
+    if (data.truncated) ul.appendChild(treeNote(`<i class="fa-solid fa-triangle-exclamation"></i> only the first ${data.limit} entries are shown`, depth, 'text-warn'));
+}
+
+function buildTree(items, depth, ul) {
+    ul = ul || document.createElement('ul');
     ul.style.cssText = 'list-style:none;padding:0;margin:0';
     for (const item of items) {
         const li = document.createElement('li');
@@ -136,15 +204,16 @@ function buildTree(items, depth) {
         row.style.paddingLeft = (8 + depth * 16) + 'px';
 
         if (item.type === 'dir') {
-            row.innerHTML = `<span class="arrow"><i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span><span class="ico"><i class="fa-solid fa-folder" style="color:#dcb67a"></i></span><span class="lbl">${esc(item.name)}</span>`;
-            const sub = buildTree(item.children || [], depth + 1);
+            row.innerHTML = `<span class="arrow"></span><span class="ico"></span><span class="lbl">${esc(item.name)}</span>` +
+                (item.link ? '<i class="fa-solid fa-link tree-link" title="symbolic link"></i>' : '');
+            setDirOpen(row, false);
+            const sub = document.createElement('ul');
             sub.className = 'tree-children';
+            sub.style.cssText = 'list-style:none;padding:0;margin:0';
+            row._expand = () => expandDir(row, sub, item, depth);
             row.addEventListener('click', () => {
-                const open = sub.classList.toggle('open');
-                const arr = row.querySelector('.arrow');
-                if (arr) arr.innerHTML = open ? '<i class="fa-solid fa-chevron-down" style="font-size:9px"></i>' : '<i class="fa-solid fa-chevron-right" style="font-size:9px"></i>';
-                const ico = row.querySelector('.ico');
-                if (ico) ico.innerHTML = open ? '<i class="fa-solid fa-folder-open" style="color:#e5c07b"></i>' : '<i class="fa-solid fa-folder" style="color:#dcb67a"></i>';
+                if (sub.classList.contains('open')) collapseDir(row, sub, item);
+                else row._expand();
             });
             li.appendChild(row);
             li.appendChild(sub);
@@ -181,20 +250,93 @@ function buildTree(items, depth) {
 }
 
 function reloadTree() {
-    fetch('/api/tree')
-        .then(r => r.json())
-        .then(tree => {
-            const el = document.getElementById('file-tree');
-            el.innerHTML = '';
-            el.appendChild(buildTree(tree, 0));
-            if (typeof EditorGit !== 'undefined') EditorGit.refresh();
-        })
-        .catch(() => {
-            document.getElementById('file-tree').innerHTML =
-                '<div style="padding:12px;color:#f44">Failed to load tree</div>';
-        });
+    const el = document.getElementById('file-tree');
+    const scroll = el.scrollTop;
+    loadDir('').then(d => {
+        const ul = document.createElement('ul');
+        ul.id = 'tree-root';
+        ul.dataset.path = '';
+        ul.dataset.depth = 0;
+        ul._sig = treeSig(d);
+        fillTree(ul, d, 0);
+        el.innerHTML = '';
+        el.appendChild(ul);
+        if (typeof EditorGit !== 'undefined') EditorGit.refresh();
+        return reopenDirs(ul);
+    }).then(() => {
+        el.scrollTop = scroll;
+        if (typeof currentPath !== 'undefined' && currentPath) {
+            const row = [...el.querySelectorAll('.tree-row[data-path]')].find(r => r.dataset.path === currentPath);
+            if (row) { row.classList.add('selected'); activeRow = row; const t = tabs.get(currentPath); if (t) t.row = row; }
+        }
+    }).catch(e => {
+        el.innerHTML = `<div style="padding:12px;color:#f44">Failed to load tree: ${esc(e.message || '')}</div>`;
+    });
 }
 reloadTree();
+
+/** Names and types of a folder listing: a change means files were added, deleted or renamed. */
+function treeSig(d) {
+    return (d.entries || []).map(e => e.type[0] + e.name).join('/') + (d.truncated ? '+' : '');
+}
+
+/**
+ * Re-read the folders shown in the tree (the root and every open folder) and rebuild only those whose
+ * content changed — open folders, the selection and the scroll position stay. Sizes are updated in place.
+ */
+let _treeRefreshing = false;
+function refreshTree(manual) {
+    const el = document.getElementById('file-tree');
+    const root = document.getElementById('tree-root');
+    if (!root) return reloadTree();
+    if (_treeRefreshing) return;
+    _treeRefreshing = true;
+    const btn = document.getElementById('tree-refresh');
+    if (btn) btn.classList.add('spin');
+    const scroll = el.scrollTop;
+    const lists = [root, ...el.querySelectorAll('ul.tree-children.open[data-loaded]')];
+    let changed = 0;
+    // parents first: a rebuilt parent replaces its children's lists, those are skipped (no longer in the DOM)
+    const step = i => {
+        if (i >= lists.length) return Promise.resolve();
+        const ul = lists[i];
+        if (!ul.isConnected) return step(i + 1);
+        const depth = +ul.dataset.depth || 0;
+        return loadDir(ul.dataset.path).then(d => {
+            const sig = treeSig(d);
+            if (sig !== ul._sig) {
+                changed++;
+                ul._sig = sig;
+                ul.innerHTML = '';
+                fillTree(ul, d, depth);
+                return reopenDirs(ul);
+            }
+            const sizes = new Map((d.entries || []).filter(e => e.type === 'file').map(e => [e.path, e.size]));
+            ul.querySelectorAll(':scope > li > .tree-row[data-type="file"]').forEach(row => {
+                const fs = row.querySelector('.fsize');
+                if (fs && sizes.has(row.dataset.path)) fs.textContent = sizes.get(row.dataset.path) != null ? App.fmtBytes(sizes.get(row.dataset.path)) : '';
+            });
+        }).catch(() => {
+            // the folder disappeared: its parent shows that on its own refresh
+        }).then(() => step(i + 1));
+    };
+    step(0).then(() => {
+        el.scrollTop = scroll;
+        if (changed && currentPath) {
+            const row = [...el.querySelectorAll('.tree-row[data-path]')].find(r => r.dataset.path === currentPath);
+            if (row) { row.classList.add('selected'); activeRow = row; const t = tabs.get(currentPath); if (t) t.row = row; }
+        }
+        if (typeof EditorGit !== 'undefined') EditorGit.refresh();
+        if (manual) toast(changed ? `File tree updated (${changed} folder${changed > 1 ? 's' : ''})` : 'File tree is up to date');
+    }).finally(() => {
+        _treeRefreshing = false;
+        if (btn) btn.classList.remove('spin');
+    });
+}
+
+// Coming back to the page (another tab, a terminal, SSH): pick up files created meanwhile.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshTree(false); });
+window.addEventListener('focus', () => refreshTree(false));
 
 function newFile() {
     const name = prompt('New file name:');
@@ -288,19 +430,17 @@ App.onEscape(() => { closeImage(); closeMacrosModal(); closeFaCatalog(); });
 
 // ── Open file ───────────────────────────────────────────────────────────────
 function openFile(path, name, row) {
-    if (tabs.has(path)) {
-        if (activeRow) activeRow.classList.remove('selected');
-        activeRow = row;
-        row.classList.add('selected');
-        tabs.get(path).row = row;
-        activateTab(path);
-        return;
-    }
+    // row: the file tree row (null when opened from elsewhere, e.g. the debugger). Returns a Promise.
     if (activeRow) activeRow.classList.remove('selected');
-    activeRow = row;
-    row.classList.add('selected');
+    activeRow = row || null;
+    if (row) row.classList.add('selected');
+    if (tabs.has(path)) {
+        if (row) tabs.get(path).row = row;
+        activateTab(path);
+        return Promise.resolve();
+    }
 
-    fetch('/api/file?path=' + encodeURIComponent(path))
+    return fetch('/api/file?path=' + encodeURIComponent(path))
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
         .then(content => {
             if (!editor) return;
@@ -309,8 +449,9 @@ function openFile(path, name, row) {
                 const t = tabs.get(path);
                 if (t) { t.dirty = true; renderTabs(); }
             });
-            tabs.set(path, { path, name, model, viewState: null, row, dirty: false });
+            tabs.set(path, { path, name, model, viewState: null, row: row || null, dirty: false });
             activateTab(path);
+            if (typeof PyDebug !== 'undefined') PyDebug.modelOpened(path, model);
         })
         .catch(err => toast('Error opening file: ' + err.message, true));
 }
@@ -381,8 +522,8 @@ function renderTabs() {
 
 // ── Save ────────────────────────────────────────────────────────────────────
 function saveFile() {
-    if (!currentPath || !editor) return;
-    fetch('/api/file', {
+    if (!currentPath || !editor) return Promise.resolve(false);
+    return fetch('/api/file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: currentPath, content: editor.getValue() })
@@ -396,11 +537,12 @@ function saveFile() {
             const ok = document.getElementById('save-ok');
             ok.style.display = 'inline';
             setTimeout(() => ok.style.display = 'none', 2500);
-        } else {
-            toast('Save error: ' + (d.error || 'unknown'), true);
+            return true;
         }
+        toast('Save error: ' + (d.error || 'unknown'), true);
+        return false;
     })
-    .catch(err => toast('Save failed: ' + err.message, true));
+    .catch(err => { toast('Save failed: ' + err.message, true); return false; });
 }
 
 // ── Service log / status bar ───────────────────────────────────────────────
@@ -699,6 +841,12 @@ function initXterm() {
 function termKeyDown(e) {
     const inp = document.getElementById('term-input');
     const promptTxt = document.getElementById('term-prompt').textContent;
+    // A program started with Run / Debug owns the terminal: lines go to its stdin (the pty echoes them).
+    if (typeof PyDebug !== 'undefined' && PyDebug.wantsInput()) {
+        if (e.key === 'Enter') { e.preventDefault(); PyDebug.input(inp.value + '\n'); inp.value = ''; return; }
+        if (e.key === 'c' && e.ctrlKey && !inp.selectionEnd) { e.preventDefault(); PyDebug.input('\x03'); return; }
+        if (e.key === 'd' && e.ctrlKey) { e.preventDefault(); PyDebug.input('\x04'); return; }
+    }
     if (e.key === 'Enter') {
         const cmd = inp.value.trim();
         inp.value = ''; histIdx = -1;

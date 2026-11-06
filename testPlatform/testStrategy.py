@@ -44,6 +44,16 @@ class StopOnFail(Exception):
         self.step = step
 
 
+class AbortTest(Exception):
+    """Abort the sequence at once (emergency stop, fixture fault). Inside TestStrategy.run() it is logged as an
+    ERROR step `name` with `message`, the remaining steps are skipped and finalize() runs. Raised by
+    testWatch.TestWatch when a watched check fails; a script may raise it itself as well."""
+    def __init__(self, name: str, message: str = ""):
+        super().__init__(f"{name}: {message}" if message else name)
+        self.name = name
+        self.message = message
+
+
 _sequence_active = False   # True while the steps of TestStrategy.run() execute
 
 
@@ -142,27 +152,42 @@ class TestStrategy:
 
     # ------------------------------------------------------------------ #
     #  Sequence with finalization:
-    #      ts.run(steps, finalize)
+    #      ts.run(steps, finalize)              ts.run(steps, finalize, watch=watch)
     #  `steps` runs the test steps; with stop-on-fail the first FAIL/ERROR
     #  skips the remaining steps. `finalize` (cleanup: power off, relays...)
-    #  always runs afterwards - also after an exception or Stop (Ctrl+C) -
-    #  and is never interrupted by stop-on-fail. Returns True if all steps ran.
+    #  always runs afterwards - also after an exception, an AbortTest or
+    #  Stop (Ctrl+C) - and is never interrupted by stop-on-fail.
+    #  `watch` (testWatch.TestWatch) runs its checks in the background while
+    #  the steps run; a failing check aborts the steps (AbortTest).
+    #  Returns True if all steps ran.
     # ------------------------------------------------------------------ #
-    def run(self, steps, finalize=None) -> bool:
+    def run(self, steps, finalize=None, watch=None) -> bool:
         global _sequence_active
         completed = False
         _sequence_active = True
         try:
+            if watch is not None:
+                watch.start()
             steps()
             completed = True
         except StopOnFail as e:
             _sequence_active = False
             _print_section(f"Stop on fail: '{e.step}' failed, remaining steps skipped")
+        except AbortTest as e:
+            _sequence_active = False
+            _print_result(e.name, e.message, "", "ERROR")
+            _print_section(f"Aborted: {e.name}, remaining steps skipped")
         finally:
             _sequence_active = False
-            if finalize:
-                _print_section("Finalization")
-                finalize()
+            if watch is not None:
+                watch.stop()            # no abort can interrupt the finalization
+            try:
+                if finalize:
+                    _print_section("Finalization")
+                    finalize()
+            finally:
+                if watch is not None:
+                    watch.close()
         return completed
 
     def section(self, title: str) -> None:

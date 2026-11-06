@@ -242,3 +242,8 @@ Thumbs.db
 *.orig
 # Claude Code local settings
 .claude/settings.local.json
+# Offline installation bundles (built with ./install.sh bundle)
+setup_data/
+setup_data.7z
+# Simulated emergency stop button of the demo tests (touch to press)
+testPlatform/ESTOP

@@ -1,5 +1,6 @@
+{# Power + session menu (logged in only): reboot, shutdown, sign out. #}
 <div class="power-wrap">
-    <button class="btn btn-power" onclick="togglePowerMenu(event)" title="Power Management"><i class="fa-solid fa-power-off"></i> Power</button>
+    <button class="btn btn-power" onclick="togglePowerMenu(event)" title="Power and session"><i class="fa-solid fa-power-off"></i><span class="tb-label">Power</span> <i class="fa-solid fa-caret-down tb-caret"></i></button>
     <div id="power-dropdown" class="power-dropdown">
         <button type="button" class="power-item power-reboot" onclick="confirmPower('reboot')">
             <i class="fa-solid fa-rotate-right"></i>
@@ -15,5 +16,15 @@
                 <div class="power-item-desc">Power off the system</div>
             </div>
         </button>
+        {% if auth_enabled %}
+        <div class="power-sep"></div>
+        <a class="power-item power-logout" href="{{ url_for('auth.logout') }}">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <div>
+                <div class="power-item-title">Logout</div>
+                <div class="power-item-desc">Sign out of the panel</div>
+            </div>
+        </a>
+        {% endif %}
     </div>
 </div>

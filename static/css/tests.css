@@ -52,6 +52,19 @@ body.page-tests { height: 100vh; overflow: hidden; }
 .results-wrap { overflow-y: auto; }
 .results-tbl th { position: sticky; top: 0; background: var(--bg-panel); z-index: 1; }
 .results-tbl td { font-size: 12.5px; }
+/* Fixed column widths: the table does not jump while results arrive. Name and condition share the free width
+   (the condition gets more), long texts are cut with … (full text in the tooltip); units, time and status are
+   narrow and right-aligned. */
+.results-tbl { table-layout: fixed; width: 100%; }
+.results-tbl col.c-idx    { width: 44px; }
+.results-tbl col.c-name   { width: 30%; }
+.results-tbl col.c-unit   { width: 72px; }
+.results-tbl col.c-time   { width: 76px; }
+.results-tbl col.c-status { width: 88px; }
+.results-tbl td.r-name, .results-tbl td.r-cond, .results-tbl td.r-unit { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results-tbl td.r-cond { padding-left: 24px; }
+.results-tbl th:nth-child(3) { padding-left: 24px; }
+.results-tbl .num { text-align: right; }
 .results-tbl .r-idx  { color: var(--text-faint); width: 40px; }
 .results-tbl .r-name { color: #ddd; }
 .results-tbl .r-cond { font-family: var(--mono); font-size: 12px; color: var(--code); }

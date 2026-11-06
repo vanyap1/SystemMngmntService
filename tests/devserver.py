@@ -10,6 +10,7 @@ import argparse
 import os
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,6 +24,9 @@ parser.add_argument('--port', type=int, default=5099)
 parser.add_argument('--auth', action='store_true', help='keep login enabled (anonymous view)')
 parser.add_argument('--logs', help='test logs directory to show (default: an empty temp dir)')
 parser.add_argument('--target', help='target_dir to use instead of the configured one (code editor, Git)')
+parser.add_argument('--fake-update', action='store_true',
+                    help='pretend the panel upstream has new commits (shows the update button; nothing is fetched)')
+parser.add_argument('--fake-i2c', action='store_true', help='simulated I²C bus (tests/fake_i2c.py) instead of the real ones')
 args = parser.parse_args()
 
 tmp = tempfile.mkdtemp(prefix='smms-devserver-')
@@ -32,6 +36,20 @@ if args.target:
     config.CFG['target_dir'] = os.path.abspath(args.target)
 if not args.auth:
     config.CFG['auth']['enabled'] = False
+if args.fake_i2c:
+    from tests import fake_i2c
+    fake_i2c.install()
+    config.CFG['i2c_labels'] = {str(fake_i2c.BUS): {'0x41': 'INA228 power monitor (EXT1)'}}
+config.CFG['update_check_minutes'] = 0                  # never fetch the real upstream from a dev server
+if args.fake_update:
+    from core import updates
+    updates._state.update(checked=time.time(), online=True, branch='main', upstream='origin/main', behind=3, dirty=1,
+                          commits=[{'hash': 'f' * 40, 'short': 'f00ba12', 'author': 'dev', 'when': '2 hours ago',
+                                    'subject': 'Navigation: sections with sub-pages'},
+                                   {'hash': 'e' * 40, 'short': 'e1d2c3b', 'author': 'dev', 'when': '1 day ago',
+                                    'subject': 'Editor: lazy file tree'},
+                                   {'hash': 'd' * 40, 'short': 'd4e5f6a', 'author': 'dev', 'when': '3 days ago',
+                                    'subject': 'Installer with offline bundles'}])
 
 
 @app.after_request

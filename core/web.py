@@ -25,7 +25,8 @@ def _context():
         'service_name': config.service_name(),
         'logged_in':    logged_in,
         'auth_enabled': auth.auth_enabled(),
-        'nav_items':    nav.visible_items(logged_in, request.endpoint),
+        'nav_sections': nav.sections(logged_in, request.endpoint),
+        'settings_nav': nav.SETTINGS,
         'can_service':  auth.can_service_action,
         'asset':        asset,
         # Exposed to JS as window.APP_CONFIG (see static/js/core.js).

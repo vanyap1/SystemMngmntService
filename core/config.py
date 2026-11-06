@@ -45,16 +45,22 @@ BUILTIN_DEFAULTS = {
     'test_logs_dir':   'testLogs',
     # Documentation (Markdown pages, img/ and docs/ subfolders); relative to the project directory.
     'help_dir':        'help',
+    # Check the panel's own git upstream for updates every N minutes while the UI is open (0 = off).
+    'update_check_minutes': 60,
+    # Names of I²C devices per bus, set in HW Utils → I²C: {"<bus>": {"0x41": "INA228 power monitor"}}.
+    'i2c_labels': {},
 }
 
 # Keys that may be changed through the settings page (auth and
 # public_service_actions are handled separately).
 EDITABLE_KEYS = ('app_title', 'page_title', 'device_name', 'target_dir', 'backup_dir',
                  'archive_name', 'upload_tmp_name', 'service_name', 'host', 'port',
-                 'tests_dir', 'test_logs_dir', 'help_dir')
+                 'tests_dir', 'test_logs_dir', 'help_dir', 'update_check_minutes')
+
+INT_KEYS = ('port', 'update_check_minutes')
 
 # Keys written to the host section on save.
-HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions')
+HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels')
 
 CFG = {}        # effective config of this host
 _FILE = {}      # raw config.json content
@@ -112,7 +118,7 @@ def update(data):
     """Apply a settings payload (only whitelisted keys) and save it for this host."""
     for key in EDITABLE_KEYS:
         if key in data:
-            CFG[key] = int(data[key]) if key == 'port' else data[key]
+            CFG[key] = int(data[key]) if key in INT_KEYS else data[key]
     if isinstance(data.get('auth'), dict):
         auth_cfg = CFG.setdefault('auth', {})
         for k in ('enabled', 'username', 'password'):
@@ -121,6 +127,15 @@ def update(data):
     if isinstance(data.get('public_service_actions'), list):
         CFG['public_service_actions'] = [a for a in data['public_service_actions']
                                          if a in SERVICE_ACTIONS]
+    _FILE['hosts'][HOSTNAME] = {k: copy.deepcopy(CFG[k]) for k in HOST_KEYS if k in CFG}
+    _write()
+
+
+def save_key(key, value):
+    """Set one HOST_KEYS value that is edited outside the settings form (e.g. i2c_labels) and save this host."""
+    if key not in HOST_KEYS:
+        raise KeyError(key)
+    CFG[key] = copy.deepcopy(value)
     _FILE['hosts'][HOSTNAME] = {k: copy.deepcopy(CFG[k]) for k in HOST_KEYS if k in CFG}
     _write()
 
@@ -138,6 +153,14 @@ def get(key, default=None):
 
 def target_dir():
     return CFG['target_dir']
+
+
+def update_check_minutes():
+    """Interval of the panel's update check in minutes; 0 = disabled."""
+    try:
+        return max(0, int(CFG.get('update_check_minutes', 60)))
+    except (TypeError, ValueError):
+        return 60
 
 
 def backup_dir():

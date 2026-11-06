@@ -1,4 +1,5 @@
 """core.test_runner: answer validation and real runs of the demo scripts (logs go to a temp dir)."""
+import os
 import time
 import unittest
 
@@ -58,13 +59,55 @@ class Runs(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 self.r.start(name)
 
+    # Only demo scripts without hardware run here: demo_pass_test.py talks to the bench PSU (relays, outputs).
     def test_pass_run_writes_log(self):
-        self.r.start('demo_pass_test.py', serial='SN-1')
+        self.r.start('demo_serial_test.py', serial='test')
         self.assertTrue(wait(lambda: not self.r.is_running()))
         self.assertEqual(self.r.run.state, 'PASS')
-        self.assertIn('__SN-1_PASS.log', self.r.run.log_name)
+        self.assertIn('__test_PASS.log', self.r.run.log_name)
         self.assertTrue(self.r.run.log_name.startswith(config.test_logs_dir()) or
                         any(l['name'] == self.r.run.log_name for l in test_runner.list_logs()))
+
+    def test_serial_reaches_the_script(self):
+        """The Serial number field is passed as --sn: the script sees it (ts.serial), log name and header carry it."""
+        self.r.start('demo_serial_test.py', serial='VTP-123456')
+        self.assertTrue(wait(lambda: not self.r.is_running()))
+        run = self.r.run
+        self.assertEqual(run.state, 'PASS')
+        rows = {x['name']: x for x in run.results}
+        self.assertEqual(rows['Serial number provided']['condition'], 'VTP-123456')
+        self.assertIn('Unit under test: VTP-123456', run.output)
+        self.assertIn('__VTP-123456_PASS.log', run.log_name)
+        with open(os.path.join(config.test_logs_dir(), run.log_name)) as fh:
+            self.assertIn('Serial:   VTP-123456', fh.read())
+
+    def test_no_serial(self):
+        self.r.start('demo_serial_test.py')
+        self.assertTrue(wait(lambda: not self.r.is_running()))
+        self.assertEqual(self.r.run.state, 'FAIL')
+        self.assertEqual(self.r.run.results[0]['status'], 'FAIL')
+
+    def test_emergency_stop_watch_aborts(self):
+        started = time.time()
+        self.r.start('demo_estop_test.py')
+        self.assertTrue(wait(lambda: not self.r.is_running(), 15))
+        run = self.r.run
+        self.assertLess(time.time() - started, 7)                     # the 10 s burn-in was interrupted
+        self.assertEqual(run.state, 'ERROR')
+        names = [(x['name'], x['status']) for x in run.results]
+        self.assertIn(('Emergency stop', 'ERROR'), names)
+        self.assertNotIn('Burn-in', [n for n, _ in names])
+        self.assertEqual(names[-1], ('Fixture power off', 'PASS'))     # finalize ran
+        self.assertTrue(any(n.startswith('Aborted: Emergency stop') for n, st in names if st == 'SECTION'))
+
+    def test_stop_button_with_a_watch(self):
+        """Stop of the Tests page (SIGINT) still works while a watch owns the Ctrl+C handler."""
+        self.r.start('demo_estop_test.py')                          # its watch would abort only after 2 s
+        self.assertTrue(wait(lambda: len(self.r.run.results) >= 2))
+        self.r.stop()
+        self.assertTrue(wait(lambda: not self.r.is_running()))
+        self.assertEqual(self.r.run.state, 'STOPPED')
+        self.assertEqual(self.r.run.results[-1]['name'], 'Fixture power off')
 
     def test_operator_prompts(self):
         self.r.start('demo_operator_test.py')

@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% block title %}Settings — {% endblock %}
-{% block page_name %}<span class="brand-sub"> — Settings</span>{% endblock %}
 {% block body_class %}page-settings{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('css/settings.css') }}">{% endblock %}
 
@@ -57,6 +56,12 @@
                 </div>
                 {{ field('device_name', 'Device name', 'Prefix of the tab title and the top bar — tells machines apart', placeholder='e.g. NAS or Fixture-3') }}
             </div></div>
+            <div class="card">
+                <div class="card-head">Panel updates</div>
+                <div class="card-body">
+                    {{ field('update_check_minutes', 'Check for updates every (minutes)', 'Fetches the panel repository\'s upstream while the panel is open; when it is ahead, a <i class="fa-solid fa-triangle-exclamation text-warn"></i> button offers to update. Needs internet; <code>0</code> = off', type='number') }}
+                </div>
+            </div>
             <div class="card">
                 <div class="card-head">This host <span class="meta mono">{{ hostname }}</span></div>
                 <div class="card-body">

@@ -8,7 +8,7 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/tree', '/api/macros', '/a
                  '/api/net/interfaces', '/api/tests/scripts', '/api/logs', '/api/logs/export.csv',
                  '/api/help/tree', '/api/help/search?q=x', '/api/help/assets?kind=img',
                  '/api/help/diagrams', '/api/git/repos', '/api/git/status', '/api/git/summary', '/api/git/credentials',
-                 '/api/git/tree_status']
+                 '/api/git/tree_status', '/api/update/status', '/api/i2c/buses', '/api/pyrun/poll']
 PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/backups/create', '/api/settings',
                   '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
@@ -16,7 +16,10 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/help/diagram/rename', '/api/help/diagram/delete', '/api/git/commit', '/api/git/push',
                   '/api/git/pull', '/api/git/fetch', '/api/git/branch', '/api/git/checkout', '/api/git/discard',
                   '/api/git/reset', '/api/git/fix', '/api/git/identity', '/api/git/credentials', '/api/git/clone',
-                  '/api/git/init']
+                  '/api/git/init', '/api/update/apply', '/api/update/restart',
+                  '/api/i2c/scan', '/api/i2c/read', '/api/i2c/write', '/api/i2c/label',
+                  '/api/pyrun/start', '/api/pyrun/cmd', '/api/pyrun/input', '/api/pyrun/stop', '/api/pyrun/eval',
+                  '/api/pyrun/vars', '/api/pyrun/breaks']
 PROTECTED_PAGES = ['/editor', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
                    '/help/file/img/x.png', '/help?diagram=x']
 
@@ -35,7 +38,8 @@ class Anonymous(unittest.TestCase):
                              ('svc-select', False), ('Services.openModal', False), ('Archives', False),
                              ('Code Editor', False), ('href="/help"', False), ('power-dropdown', False), ('video-dev-select', False),
                              ('sysinfo.js', False), ('id="mon-float"', False), ('MonitorFloat.toggle', False),
-                             ('devices.js', False)]:
+                             ('devices.js', False), ('href="/editor"', False), ('href="/tests"', False),
+                             ('upd-wrap', False), ('updates.js', False), ('href="/settings"', False)]:
             with self.subTest(needle=needle):
                 self.assertEqual(needle in html, want)
 
@@ -86,8 +90,8 @@ class LoggedIn(unittest.TestCase):
 
     def test_index_has_everything(self):
         html = self.c.get('/').get_data(as_text=True)
-        for needle in ['Archives', 'System Monitor', 'svc-select', 'Code Editor', 'Settings', 'href="/help"', 'Logout',
-                       "svcAction('stop')", 'power-dropdown', 'Devices.open']:
+        for needle in ['Archives', 'System Monitor', 'svc-select', 'href="/editor"', 'href="/settings"', 'href="/help"',
+                       'href="/tests"', 'Logout', "svcAction('stop')", 'power-dropdown', 'Devices.open', 'id="upd-wrap"']:
             with self.subTest(needle=needle):
                 self.assertIn(needle, html)
         self.assertNotIn('id="mon-float"', html)      # the floating monitor is for other pages

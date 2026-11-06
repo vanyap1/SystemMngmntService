@@ -1,13 +1,14 @@
 <div id="devices-overlay" class="modal-overlay" onclick="if (event.target === this) Devices.close()">
     <div class="modal-box devices-modal-box">
         <div class="modal-head">
-            <span class="modal-title"><i class="fa-solid fa-microchip text-ok"></i> Devices</span>
+            <span class="modal-title"><i class="fa-solid fa-screwdriver-wrench text-ok"></i> HW Utils</span>
             <div class="dev-tabs">
                 <button type="button" class="dev-tab" data-tab="list" onclick="Devices.setTab('list')"><i class="fa-solid fa-layer-group"></i> Devices</button>
                 <button type="button" class="dev-tab" data-tab="dev" onclick="Devices.setTab('dev')"><i class="fa-solid fa-folder-tree"></i> /dev</button>
                 <button type="button" class="dev-tab" data-tab="buses" onclick="Devices.setTab('buses')"><i class="fa-brands fa-usb"></i> Buses</button>
                 <button type="button" class="dev-tab" data-tab="net" onclick="Devices.setTab('net')"><i class="fa-solid fa-network-wired"></i> Network</button>
                 <button type="button" class="dev-tab" data-tab="gpio" onclick="Devices.setTab('gpio')"><i class="fa-solid fa-plug"></i> GPIO</button>
+                <button type="button" class="dev-tab" data-tab="i2c" onclick="Devices.setTab('i2c')"><i class="fa-solid fa-microchip"></i> I²C</button>
                 <button type="button" class="dev-tab" data-tab="udev" onclick="Devices.setTab('udev')"><i class="fa-solid fa-gears"></i> udev</button>
             </div>
             <label class="check-row small" id="dev-auto-wrap" title="Refresh the current view periodically">
@@ -156,6 +157,41 @@
                 </section>
 
                 <!-- udev: events, rules, service & tools -->
+                <!-- I²C tools: scan a bus (on demand only), read / write device registers -->
+                <section class="dev-pane" id="devpane-i2c" hidden>
+                    <div class="dev-toolbar">
+                        <select id="i2c-bus" class="input input-sm" onchange="Devices.tabs.i2c.selectBus(this.value)" title="I²C bus"></select>
+                        <select id="i2c-mode" class="input input-sm" title="How i2cdetect probes each address">
+                            <option value="auto">Probe: auto</option>
+                            <option value="quick">Probe: quick write</option>
+                            <option value="read">Probe: read byte</option>
+                        </select>
+                        <button type="button" class="btn btn-primary btn-sm" id="i2c-scan" onclick="Devices.tabs.i2c.scan()"><i class="fa-solid fa-magnifying-glass"></i> Scan</button>
+                        <span class="hint i2c-warn"><i class="fa-solid fa-triangle-exclamation"></i> Probing can upset some chips — scan only buses you know</span>
+                        <span class="spacer"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.i2c.clearLog()" title="Clear the transaction log"><i class="fa-solid fa-eraser"></i> Log</button>
+                    </div>
+                    <div class="dev-scroll i2c-body">
+                        <div class="i2c-main">
+                            <div class="i2c-grid-wrap" id="i2c-grid-wrap">
+                                <div class="i2c-grid" id="i2c-grid"></div>
+                                <div class="i2c-pop" id="i2c-pop" hidden></div>
+                            </div>
+                            <div class="i2c-legend">
+                                <span><i class="i2c-sw known"></i> known</span>
+                                <span><i class="i2c-sw unknown"></i> unknown</span>
+                                <span><i class="i2c-sw busy"></i> UU — used by a kernel driver</span>
+                                <span><i class="i2c-sw missing"></i> configured, no answer</span>
+                                <span id="i2c-scan-info" class="muted"></span>
+                            </div>
+                        </div>
+                        <aside class="i2c-log-wrap">
+                            <div class="i2c-log-head">Transactions</div>
+                            <div class="i2c-log" id="i2c-log"><div class="tbl-empty">Scan the bus, then click an address.</div></div>
+                        </aside>
+                    </div>
+                </section>
+
                 <section class="dev-pane" id="devpane-udev" hidden>
                     <div class="dev-toolbar">
                         <div class="gpio-seg ud-views">

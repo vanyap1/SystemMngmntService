@@ -65,9 +65,16 @@
 .td-mount { color: #ce9178; font-size: 11px; line-height: 1.5; word-break: break-all; }
 
 /* ── Video ── */
-.video-ctrl-group { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
-.video-ctrl-group > .fa-video { color: var(--accent); font-size: 12px; }
-.video-ctrl-group .select-mono { max-width: 220px; }
+/* Top bar dropdowns (video menu; power and update menus use their own classes) */
+.tb-drop { position: relative; display: inline-flex; }
+.tb-drop-pop { position: absolute; right: 0; top: calc(100% + 6px); background: var(--bg-panel); border: 1px solid #333;
+    border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .8); padding: 10px; display: none; flex-direction: column;
+    gap: 8px; z-index: 2500; }
+.tb-drop-pop.open { display: flex; }
+.video-menu { width: 300px; }
+.video-menu .row { gap: 6px; flex-wrap: nowrap; }
+.video-menu .select-mono { flex: 1; min-width: 0; }
+.video-menu-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; }
 .btn-square { width: 28px; height: 28px; padding: 0; }
 .video-popup-box { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
     background: var(--bg-panel-2); border: 1px solid #333; border-radius: 10px;
@@ -110,6 +117,31 @@
 .power-shutdown:hover i { color: var(--danger); }
 .power-item-title { font-size: 12px; font-weight: 600; line-height: 1.2; }
 .power-item-desc  { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.power-item:hover { text-decoration: none; }
+.power-logout:hover i { color: var(--info); }
+.power-sep { height: 1px; background: var(--border); margin: 2px 4px; }
+
+/* ── Panel update notice (partials/update_button.html, js/updates.js) ── */
+.upd-wrap { position: relative; display: inline-flex; }
+.btn-update { background: #4d3b1a; border-color: var(--warn); color: var(--warn); gap: 4px; animation: upd-pulse 2.4s ease-in-out 3; }
+.btn-update:hover { background: #5e4820; }
+.upd-count { font-size: 11px; font-weight: 700; }
+@keyframes upd-pulse { 50% { box-shadow: 0 0 0 4px rgba(232, 168, 56, .25); } }
+.upd-pop { position: absolute; right: 0; top: calc(100% + 6px); width: 420px; max-width: 92vw; background: var(--bg-panel);
+    border: 1px solid #333; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .8); padding: 12px;
+    display: none; flex-direction: column; gap: 8px; z-index: 2500; }
+.upd-pop.open { display: flex; }
+.upd-head { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.upd-note { font-size: 12px; color: var(--text-2); line-height: 1.45; }
+.upd-commits { list-style: none; max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: 5px; }
+.upd-commits li { padding: 5px 8px; border-bottom: 1px solid var(--border-soft); font-size: 12px; display: grid;
+    grid-template-columns: auto 1fr; column-gap: 8px; }
+.upd-commits li:last-child { border-bottom: none; }
+.upd-subj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upd-when { grid-column: 2; font-size: 10.5px; color: var(--text-dim); }
+.upd-out { font-family: var(--mono); font-size: 11px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 6px 8px; max-height: 160px; overflow: auto; white-space: pre-wrap; }
+.upd-foot { display: flex; align-items: center; gap: 6px; }
 
 /* ── Devices popup (partials/devices_modal.html, js/devices*.js) ── */
 .devices-modal-box { width: 1400px; max-width: 96vw; height: 88vh; max-height: 88vh; }
@@ -416,3 +448,66 @@ button.gpio-val:hover { filter: brightness(1.3); }
 a.git-remote:hover { color: var(--info); }
 .git-norepo { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
 .git-clone { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) auto; gap: 6px; }
+
+/* ── HW Utils → I²C (js/devices_i2c.js) ── */
+.i2c-warn { font-size: 11px; color: var(--text-dim); }
+.i2c-warn i { color: var(--warn); }
+.i2c-body { display: flex; gap: 0; }
+.i2c-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 18px 16px 12px; gap: 14px; }
+.i2c-grid-wrap { position: relative; }
+.i2c-grid { display: grid; grid-template-columns: 30px repeat(16, 40px); gap: 5px; align-items: center; }
+.i2c-colh, .i2c-rowh { font-family: var(--mono); font-size: 11px; color: var(--text-mute); text-align: center; }
+.i2c-cell { height: 30px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-panel-2);
+    font-family: var(--mono); font-size: 11px; color: var(--text-faint); cursor: pointer; padding: 0; }
+.i2c-cell.out { border-color: transparent; background: none; cursor: default; }
+.i2c-cell:hover { border-color: var(--border-strong); color: var(--text-2); }
+.i2c-cell.known   { background: color-mix(in srgb, var(--accent) 22%, var(--bg-panel)); border-color: var(--accent); color: #e8fff8; font-weight: 700; }
+.i2c-cell.unknown { background: color-mix(in srgb, var(--warn) 22%, var(--bg-panel)); border-color: var(--warn); color: #fff3df; font-weight: 700; }
+.i2c-cell.busy    { background: color-mix(in srgb, var(--info) 18%, var(--bg-panel)); border-color: var(--info); color: var(--info); font-weight: 700; }
+.i2c-cell.missing { border: 1px dashed var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.i2c-cell.declared { border: 1px dashed var(--border-strong); color: var(--text-2); }
+.i2c-cell.sel { outline: 2px solid var(--info); outline-offset: 1px; }
+.i2c-legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 11px; color: var(--text-2); }
+.i2c-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.i2c-sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; border: 1px solid transparent; }
+.i2c-sw.known { background: var(--accent); }
+.i2c-sw.unknown { background: var(--warn); }
+.i2c-sw.busy { background: var(--info); }
+.i2c-sw.missing { border: 1px dashed var(--danger); }
+.i2c-pop { position: absolute; z-index: 5; width: 470px; max-width: 90vw; background: var(--bg-panel); border: 1px solid var(--info);
+    border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .7); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.i2c-pop::before { content: ''; position: absolute; top: -7px; left: calc(var(--arrow, 30px) - 6px); width: 12px; height: 12px;
+    background: var(--bg-panel); border-left: 1px solid var(--info); border-top: 1px solid var(--info); transform: rotate(45deg); }
+.i2c-pop-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.i2c-pop-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.i2c-pop-state { font-size: 10.5px; color: var(--text-dim); }
+.i2c-pop-state.known { color: var(--accent); }
+.i2c-pop-state.unknown { color: var(--warn); }
+.i2c-pop-state.busy { color: var(--info); }
+.i2c-pop-state.missing { color: var(--danger); }
+.i2c-hint { font-size: 11px; color: var(--text-dim); }
+.i2c-form { display: flex; align-items: center; gap: 6px; }
+.i2c-form label { font-size: 12px; color: var(--text-2); }
+.i2c-form .input { width: 70px; }
+.i2c-form select.input { width: 100px; }
+.i2c-form .i2c-len { width: 62px; }
+.i2c-form .i2c-data { flex: 1; width: auto; }
+.i2c-force { color: var(--warn); }
+.i2c-result { border-top: 1px solid var(--border); padding-top: 8px; font-size: 12px; }
+.i2c-dump { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; font-family: var(--mono); font-size: 12px; color: var(--code); }
+.i2c-off { color: var(--text-mute); }
+.i2c-ascii { color: var(--text-dim); }
+.i2c-vals { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 11px; color: var(--text-dim); }
+.i2c-vals b { color: var(--text); font-family: var(--mono); }
+.i2c-log-wrap { width: 330px; flex-shrink: 0; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+.i2c-log-head { padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); }
+.i2c-log { overflow: auto; flex: 1; }
+.i2c-log-row { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 8px; padding: 5px 12px; border-bottom: 1px solid var(--border-soft);
+    font-size: 11px; align-items: baseline; }
+.i2c-log-body { grid-column: 1 / -1; word-break: break-all; color: var(--text-2); }
+.i2c-op { font-weight: 700; text-transform: uppercase; font-size: 10px; }
+.i2c-op.read { color: var(--info); }
+.i2c-op.write { color: var(--warn); }
+.i2c-op.scan { color: var(--accent); }
+@media (max-width: 1250px) { .i2c-log-wrap { display: none; } }

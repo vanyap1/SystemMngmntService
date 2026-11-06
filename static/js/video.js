@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Video stream: device selector in the top bar (partials/video_controls.html)
+   Video stream: device menu in the top bar (partials/video_controls.html)
    and draggable/resizable popup (partials/video_modal.html). Logged-in only.
    ========================================================================== */
 
@@ -7,6 +7,19 @@ const Video = {
     streamId: null,
     device: null,
     res: '640x480',
+
+    _loaded: false,
+
+    toggleMenu(e) {
+        if (e) e.stopPropagation();
+        const m = document.getElementById('video-menu');
+        if (m.classList.toggle('open') && !this._loaded) { this._loaded = true; this.loadDevices(); }
+    },
+
+    closeMenu() {
+        const m = document.getElementById('video-menu');
+        if (m) m.classList.remove('open');
+    },
 
     loadDevices() {
         const sel = document.getElementById('video-dev-select');
@@ -149,8 +162,6 @@ const Video = {
     },
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    Video.loadDevices();
-    Video.initDragResize();
-});
-App.onEscape(() => Video.close());
+document.addEventListener('DOMContentLoaded', () => Video.initDragResize());   // devices are listed when the menu opens
+document.addEventListener('click', e => { if (!e.target.closest('.video-ctrl-group')) Video.closeMenu(); });
+App.onEscape(() => { Video.closeMenu(); Video.close(); });

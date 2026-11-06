@@ -14,34 +14,43 @@
 
 {% block topbar %}
 <header id="topbar">
-    <span class="brand">
-        {% if device_name %}{{ device_name }} — {% endif %}{{ app_title }}{% block page_name %}{% endblock %}
-    </span>
+    <a class="brand" href="{{ url_for('dashboard.index') }}" title="{{ app_title }}">
+        {% if device_name %}{{ device_name }}<span class="brand-sub"> · {{ app_title }}</span>{% else %}{{ app_title }}{% endif %}
+    </a>
 
-    {% block topbar_tools %}{% endblock %}
+    {# Work sections (core/nav.py); the open section shows its pages as sub-tabs. #}
+    <nav class="tb-sections" aria-label="Sections">
+    {% for s in nav_sections %}
+        {% if s.active and s.pages|length > 1 %}
+        <span class="tb-sec active tb-sec-group">
+            <span class="tb-sec-name"><i class="{{ s.icon }}"></i><span class="tb-label">{{ s.label }}</span></span>
+            {% for it in s.pages %}
+            <a href="{{ url_for(it.endpoint) }}" class="tb-sub{% if it.active %} active{% endif %}" title="{{ s.label }} · {{ it.label }}"><i class="{{ it.icon }}"></i> {{ it.label }}</a>
+            {% endfor %}
+        </span>
+        {% else %}
+        <a href="{{ url_for(s.endpoint) }}" class="tb-sec{% if s.active %} active{% endif %}" title="{{ s.label }}{% if s.pages|length > 1 %}: {{ s.pages|map(attribute='label')|join(' · ') }}{% endif %}">
+            <i class="{{ s.icon }}"></i><span class="tb-label">{{ s.label }}</span></a>
+        {% endif %}
+    {% endfor %}
+    </nav>
+
+    <div class="tb-page">{% block topbar_tools %}{% endblock %}</div>
 
     {% if logged_in %}
+    <div class="tb-tools">
         {% include 'partials/video_controls.html' %}
         {% if request.endpoint != 'dashboard.index' %}
-        <button class="btn btn-nav" onclick="MonitorFloat.toggle()" title="System monitor window"><i class="fa-solid fa-chart-line"></i> Monitor</button>
+        <button class="btn btn-nav" onclick="MonitorFloat.toggle()" title="System monitor window"><i class="fa-solid fa-chart-line"></i><span class="tb-label">Monitor</span></button>
         {% endif %}
-        <button class="btn btn-nav" onclick="Devices.open()" title="Device nodes and GPIO lines"><i class="fa-solid fa-microchip"></i> Devices</button>
-    {% endif %}
-    {% if logged_in %}
-        <button class="btn btn-nav" onclick="Services.openModal()"><i class="fa-solid fa-list-check"></i> Services</button>
-    {% endif %}
-    {% for item in nav_items %}
-        <a href="{{ url_for(item.endpoint) }}" class="btn btn-nav"><i class="{{ item.icon }}"></i> {{ item.label }}</a>
-    {% endfor %}
-    {% if logged_in %}
-        {% include 'partials/power_menu.html' %}
-    {% endif %}
-    {% if auth_enabled %}
-        {% if logged_in %}
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-logout" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-        {% else %}
-            <a href="{{ url_for('auth.login', next=request.full_path.rstrip('?')) }}" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
-        {% endif %}
+        <button class="btn btn-nav" onclick="Devices.open()" title="HW Utils: devices, buses, network, GPIO, I²C, udev"><i class="fa-solid fa-screwdriver-wrench"></i><span class="tb-label">HW Utils</span></button>
+        <button class="btn btn-nav" onclick="Services.openModal()" title="All services"><i class="fa-solid fa-list-check"></i><span class="tb-label">Services</span></button>
+        <a href="{{ url_for(settings_nav.endpoint) }}" class="btn btn-nav{% if request.endpoint == settings_nav.endpoint %} active{% endif %}" title="Settings"><i class="{{ settings_nav.icon }}"></i></a>
+    </div>
+    {% include 'partials/power_menu.html' %}
+    {% include 'partials/update_button.html' %}
+    {% elif auth_enabled %}
+        <a href="{{ url_for('auth.login', next=request.full_path.rstrip('?')) }}" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
     {% endif %}
 </header>
 {% endblock %}
@@ -64,11 +73,13 @@
     <script src="{{ asset('js/sysinfo.js') }}"></script>
     <script src="{{ asset('js/video.js') }}"></script>
     <script src="{{ asset('js/power.js') }}"></script>
+    <script src="{{ asset('js/updates.js') }}"></script>
     <script src="{{ asset('js/devices.js') }}"></script>
     <script src="{{ asset('js/devices_nodes.js') }}"></script>
     <script src="{{ asset('js/devices_buses.js') }}"></script>
     <script src="{{ asset('js/devices_net.js') }}"></script>
     <script src="{{ asset('js/devices_gpio.js') }}"></script>
+    <script src="{{ asset('js/devices_i2c.js') }}"></script>
     <script src="{{ asset('js/devices_udev.js') }}"></script>
 {% endif %}
 {% block scripts %}{% endblock %}

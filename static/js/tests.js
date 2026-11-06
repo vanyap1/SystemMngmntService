@@ -159,11 +159,11 @@ const Tests = {
         tr.className = 'r-' + r.status;
         tr.innerHTML =
             `<td class="num r-idx">${r.index}</td>` +
-            `<td class="r-name">${esc(r.name)}</td>` +
-            `<td class="r-cond">${esc(r.condition)}</td>` +
-            `<td class="r-unit">${esc(r.units)}</td>` +
+            `<td class="r-name" title="${esc(r.name)}">${esc(r.name)}</td>` +
+            `<td class="r-cond" title="${esc(r.condition)}">${esc(r.condition)}</td>` +
+            `<td class="num r-unit" title="${esc(r.units)}">${esc(r.units)}</td>` +
             `<td class="num r-time">${r.t.toFixed(2)}s</td>` +
-            `<td><span class="status-tag status-${esc(r.status)}">${esc(r.status)}</span></td>`;
+            `<td class="num r-status"><span class="status-tag status-${esc(r.status)}">${esc(r.status)}</span></td>`;
         document.getElementById('results-body').appendChild(tr);
         Tests.resultsCount++;
         Tests.scrollResults();

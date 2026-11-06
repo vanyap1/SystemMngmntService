@@ -17,12 +17,12 @@ Flask 3 + plain JavaScript, no build step; the only server dependency is `python
 | **Service control** | status / start / stop / restart of the target service and any other systemd unit |
 | **System monitor** | CPU, RAM, temperature, active network interface and block devices with live charts; on the main page and as a floating, resizable, semi-transparent window on every other page |
 | **Backups & deploy** | archive the project, upload a `.tar.gz`, deploy it with an automatic backup |
-| **Code editor** | file tree, Monaco editor with outline, service log, web terminal, command macros |
+| **Code editor** | file tree, Monaco editor with outline, **run / debug Python** (breakpoints, step over / into / out, variables, hover values), service log, web terminal, command macros |
 | **Test platform** | run `*_test.py` fixture sequences, live PASS/FAIL table, operator prompts, stop-on-fail, a log per run, yield statistics |
 | **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
 | **Docs** | Markdown knowledge base in `help/`: sidebar tree, full-text search, rendered view with table of contents and code copy buttons, Monaco editor with live preview, toolbar, image paste/drop upload, attachments; **diagram editor** for pinouts and block diagrams (exported to SVG, embedded in pages) |
 | **Git** | Settings → Git and a Git popup in the code editor and docs: changes with diff, commit (selected files, current or new branch, push after), branches, fetch / pull / push, problem detection with one-click fixes, discard / reset to remote with automatic backup; HTTPS token stored outside the repositories |
-| **Devices** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **udev** events / rules editor / tools |
+| **HW Utils** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **I²C** scan + register read/write, **udev** events / rules editor / tools |
 | **Video** | preview of V4L2 cameras |
 | **Per-host config** | one repository deployed to several machines, each with its own section in `config.json` |
 | **Simple access model** | anonymous operators see only the target service (restart) and the read-only monitor; everything else needs a login |
@@ -53,11 +53,20 @@ Flask 3 + plain JavaScript, no build step; the only server dependency is `python
 
 ```bash
 git clone <this repo> && cd SystemMngmntService
-sudo bash setup.sh          # installs python3-flask, registers and starts systemmngmntservice.service
+sudo ./install.sh           # menu: install dependencies (online/offline), register and start the service
 ```
 
 Open `http://<device>/`, log in (default `admin` / `admin` — change it in **Settings**) and set the target
 service, project and backup directories. See [Installation](#installation) and [Configuration](#configuration-configjson).
+
+### Navigation
+
+The top bar has the work **sections** on the left — **Main**, **Code** (editor), **Docs** (viewer, editor,
+diagrams), **Tests** (sub-pages **Run** and **Logs**, shown while the section is open) — and the global tools on the
+right: **Video**, **Monitor**, **HW Utils**, **Services**, **Settings** (gear), the **Power** menu (reboot, shutdown,
+logout). When the panel's git upstream has new commits (checked every `update_check_minutes` while the panel is
+open, only if there is internet), a yellow **⚠** button appears after the power menu: its popup lists the commits,
+updates the panel (`git pull --ff-only`, local changes are kept) and restarts it.
 
 ---
 
@@ -72,7 +81,7 @@ SystemMngmntService/
 ├── routes/           # One Flask blueprint per feature (dashboard, services, backups, editor, ...)
 ├── templates/
 │   ├── base.html     # Common layout: top bar, shared modals and scripts
-│   ├── partials/     # Reusable fragments (services modal, video, power menu, flash)
+│   ├── partials/     # Reusable fragments (services modal, video, power menu, update button, flash)
 │   ├── index.html    # Main dashboard
 │   ├── editor.html   # Code editor
 │   ├── settings.html # Settings page
@@ -88,7 +97,9 @@ SystemMngmntService/
 ├── tests/            # Unit/integration tests (unittest) + dev server and screenshot helpers
 ├── docs/img/         # README screenshots (regenerate with tests/docs_screenshots.sh)
 ├── CLAUDE.md         # Development rules (for humans and AI assistants)
-└── setup.sh          # Installation and systemd registration script
+├── install.sh        # Installer: menu, online/offline install, offline bundles, systemd unit
+├── tools/            # offline_bundle.py — builds offline bundles (used by install.sh bundle)
+└── setup.sh, setup_offline.sh  # Old entry points, call install.sh online / offline
 ```
 
 See `CLAUDE.md` for how to add pages and API endpoints.
@@ -128,6 +139,7 @@ Fields (same in `default` and in a host section):
 | `public_service_actions` | Service actions allowed without login (default `["restart"]`) |
 | `tests_dir` / `test_logs_dir` | Test scripts / run logs (relative to the project) |
 | `help_dir` | Documentation folder (default `help`, relative to the project) |
+| `update_check_minutes` | How often the panel checks its git upstream for updates while open (default 60, `0` = off) |
 
 ---
 
@@ -188,7 +200,27 @@ flowchart LR
     Editor -->|GET /api/file?path=...| ReadFile[File contents]
     Editor -->|POST /api/file| SaveFile[Save file]
     Editor -->|POST /api/exec| Shell[Execute command]
+    Editor -->|/api/pyrun/*| Debug[Run / debug Python]
 ```
+
+**Documentation window.** The **?** button in the editor's top bar opens the documentation in a floating
+window (drag the title, resize from the corner): sections → documents → headings on the left with a search over
+titles, headings and text, the page on the right in a compact layout. Every line of a code example has *Insert*
+(at the editor cursor, indented like the current line) and *Copy* buttons on hover, every block has *Insert* /
+*Copy* in its header; a click on `inline code` copies it. It opens on [Test platform](help/testing/test-platform.md).
+
+**Run / debug Python.** The buttons in the tab bar run the open `.py` file (▶, Ctrl+F5) or debug it
+(🐞 / Continue F5, Pause F6, Step over F10, Step into F11, Step out Shift+F11, ↶ run the previous line again F7,
+Stop Shift+F5). ↶ and *Set next line here* (editor context menu) move the execution point like pdb `jump` —
+variables are not undone. Breakpoints: click
+left of a line number or F9 (kept per browser). The script runs in a pseudo-terminal — exactly as in an SSH
+console — its output appears in the **Terminal** tab and lines typed there go to its stdin (Ctrl+C interrupts).
+While paused the line is highlighted and the side panel's **Debug** tab shows the variables (expandable), the
+call stack (click a frame), an *Evaluate* box, breakpoints, arguments for the script (e.g. `--sn 12345`, remembered
+per file) and *Stop at the first line*; hovering a name in the editor shows its value. Stepping stays in your code
+(files under `target_dir`), an uncaught exception pauses where it was raised. Stop quits at the current line, so
+`finally` blocks — a test's `finalize` — still run. One session at a time; closing the page stops it, and a
+test cannot start on the Tests page while it runs (and vice versa). Starting releases GPIO lines held by the popup.
 
 ---
 
@@ -208,11 +240,15 @@ flowchart LR
 | GET | `/backups/download/<name>` | login | Download archive |
 | POST | `/api/backups/deploy` | login | Deploy archive (with auto-backup) |
 | POST | `/api/backups/delete` | login | Delete archive |
-| GET | `/api/tree` | login | File tree of the target directory |
+| GET | `/api/tree[?path=]` | login | One folder of the target directory (the editor loads folders when they are opened) |
 | GET/POST | `/api/file` | login | Read / write file |
 | POST | `/api/file_create`, `/api/file_rename`, `/api/file_delete` | login | File operations |
 | GET | `/api/file_raw` | login | Raw file (image preview) |
 | POST | `/api/exec` | login | Execute shell command |
+| POST | `/api/pyrun/start` | login | Run / debug a `.py` in target_dir `{path, args, debug, breaks, stop_on_entry}` |
+| GET | `/api/pyrun/poll?id=&since=` | login | Session state, new terminal output, pause info (keeps the session alive) |
+| POST | `/api/pyrun/cmd`, `/input`, `/stop` | login | `{id, action: continue/next/step/return/pause/frame}` / stdin text / stop |
+| POST | `/api/pyrun/eval`, `/vars`, `/breaks` | login | Evaluate while paused (`hover` = names only), variable children, update breakpoints |
 | GET/POST | `/api/macros` | login | Editor command macros |
 | GET | `/api/video_devices`, `/api/video_resolutions`, `/api/video_feed` | login | Video streaming |
 | POST | `/api/video_stop` | login | Stop video stream |
@@ -221,6 +257,9 @@ flowchart LR
 | GET | `/api/devices/dev/info?path=\|devpath=` | login | `udevadm info` properties of a node in `/dev` or a `/devices/...` path |
 | GET | `/api/devices/list` | login | Device nodes from the udev database, grouped by kind |
 | GET | `/api/devices/buses` | login | USB topology, PCI devices, I²C adapters and clients |
+| GET | `/api/i2c/buses` | login | I²C adapters with kernel clients, saved labels, address hints (no bus access) |
+| POST | `/api/i2c/scan`, `/api/i2c/read`, `/api/i2c/write` | login | `{bus, mode}` / `{bus, addr, reg, width, length, force}` / `{bus, addr, reg, width, data, force}` |
+| POST | `/api/i2c/label` | login | Name a device `{bus, addr, label}` (empty removes it) |
 | GET | `/api/devices/usb/verbose[?bus=&dev=]` | login | `lsusb -v -s bus:dev`, or `lsusb` + `lsusb -t` |
 | GET | `/api/devices/gpio` | login | GPIO chips and lines like `gpioinfo` (read-only, libgpiod v1/v2) |
 | GET | `/api/devices/gpio/ctl?client=` | login | Lines held by a popup client with live values (also renews its lease) |
@@ -256,6 +295,8 @@ flowchart LR
 | GET | `/api/git/tree_status` | login | Changed files of target_dir's repositories (editor tree marks) |
 | POST | `/api/git/clone`, `/api/git/init` | login | Clone `{url, name}` into target_dir / initialize target_dir |
 | GET / POST | `/api/git/credentials` | login | HTTPS username + token (write-only: only `token_set` / last 4 chars come back) |
+| GET | `/api/update/status[?force=1]` | login | Panel update check: commits the panel repo is behind its upstream (fetch runs in the background) |
+| POST | `/api/update/apply`, `/api/update/restart` | login | `git pull --ff-only` of the panel / restart the panel's own systemd unit |
 | GET | `/help[?doc=<path>]` | login | Documentation viewer / editor |
 | GET | `/help/file/<path>[?dl=1]` | login | Image, attachment or raw page from `help_dir` (sandboxed) |
 | GET | `/api/help/tree` | login | All pages `{path, title, mtime, size}` |
@@ -290,9 +331,9 @@ runs only while the page polls `/api/monitor` (30 s lease); the browser polls ev
 
 ---
 
-## Devices popup
+## HW Utils popup
 
-The **Devices** button in the top bar (logged in) opens a popup with six tabs. With *Auto* on, the
+The **HW Utils** button in the top bar (logged in) opens a popup with seven tabs. With *Auto* on, the
 current view refreshes every 2–3 s; new devices are highlighted, added/removed ones are listed in the
 footer (plus a toast, except `/dev/pts`, `/dev/shm`). All groups, trees, chips, bus sections and rules
 directories start collapsed (a filter expands what matches; *Expand* / *Collapse* buttons). Clicking a device opens a side panel with its udev
@@ -325,6 +366,14 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   switching the tab, closing the popup or the page releases them, and a client that stops polling loses
   them after 6 s (`core/gpio_ctl.py`, `LEASE_SECONDS`). Claiming is refused while a test script runs, and
   starting a test releases every web-held line.
+- **I²C** — `i2cdetect`-style grid of a bus (pick `i2c-N`): *Scan* probes addresses 0x03–0x77 (auto / quick
+  write / read byte) — only when pressed, never on its own. Cells: green = answers and has a name (kernel client
+  or your label), orange = answers, unknown (with a "maybe: …" hint of typical chips), blue `UU` = bound to a
+  kernel driver, dashed red = declared in the device tree / labelled but no answer. Click an address: *Read*
+  `Len` bytes from a register (8-bit, 16-bit or no register address — `i2ctransfer` with repeated start;
+  hex dump + u16/s16/u32 values), *Write* hex bytes (`C3,83`, `0xc3 0x83`). Driver-bound addresses need *Force*.
+  ✎ names a device (stored per host in `config.json` → `i2c_labels`). All transactions are logged on the right.
+  Locked while a test script runs.
 - **udev**
   - *Events* — live `udevadm monitor --kernel --udev --property` (filter by source, text; pause; click an
     event for its properties). The monitor process runs only while this view is polled and stops 10 s
@@ -339,7 +388,7 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
 ## Test log viewer (`/logs`)
 
 Browses the run logs in `test_logs_dir` (`testLogs/`), written for every run started from the Tests page
-(**Logs** in the top bar, or **Log viewer** on the Tests page).
+(**Tests → Logs** in the top bar, or **Log viewer** on the Tests page).
 
 - Filters: script, verdict (PASS / FAIL / ERROR / STOPPED, several at once), serial number or file name,
   date range, "failed at step". The filter is kept in the URL (`/logs#verdict=FAIL&q=SN-1`), so a view can be linked.
@@ -458,13 +507,48 @@ A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar 
 ## Installation
 
 ```bash
-sudo bash setup.sh
+sudo ./install.sh                 # interactive menu (whiptail; --plain for text prompts)
+./install.sh status               # what is installed, service state, available offline bundles
 ```
 
-The script performs:
-1. `apt install python3-flask` and `apt-get install p7zip-full`
-2. `setcap cap_net_bind_service=+ep` on Python3 (required for ports < 1024)
-3. Creates and starts `/etc/systemd/system/systemmngmntservice.service`
+| Command | What it does |
+|---|---|
+| `sudo ./install.sh online` | `apt-get install` the packages of the selected components + Flask 3 with pip (PyPI) |
+| `sudo ./install.sh offline` | the same from an offline bundle in `setup_data/` (no network) |
+| `./install.sh bundle --arch armhf,arm64 --suite bookworm` | build offline bundles on a machine with internet (no root) |
+| `sudo ./install.sh service` | write `/etc/systemd/system/systemmngmntservice.service` if it changed, enable it, (re)start the panel |
+| `sudo ./install.sh uninstall` | stop and remove the unit (project, `config.json` and packages stay) |
+
+Options: `--components core,git,gpio,devices,video` (default `core,git,gpio,devices`), `--bundle DIR|FILE.tar`,
+`--yes` (no questions — for scripts). Every step is idempotent; a running panel is restarted only after a confirmation.
+
+| Component | Packages |
+|---|---|
+| `core` (always) | python3, python3-markupsafe, python3-pip, sudo, iproute2, whiptail; Flask 3 + werkzeug, jinja2, itsdangerous, click, blinker via pip |
+| `git` | git |
+| `gpio` | python3-libgpiod, gpiod, python3-serial, python3-smbus (GPIO popup, test platform) |
+| `devices` | usbutils, pciutils, i2c-tools, can-utils |
+| `video` | ffmpeg (~100 MB with its libraries) |
+
+### Offline installation (Allwinner H3 / H5 boards without internet)
+
+x86 machines always install online; offline bundles are for the ARM boards: **armhf** = H3 (32-bit),
+**arm64** = H5 (64-bit). Build them on any Debian/Ubuntu machine with internet — apt runs in a private directory
+with the target architecture, the build machine is not changed (needs `debian-archive-keyring` and `pip`):
+
+```bash
+./install.sh bundle --arch armhf,arm64 --suite bookworm     # or: ./install.sh → "bundle"
+# → setup_data/smms-offline-bookworm-armhf.tar (~56 MB), smms-offline-bookworm-arm64.tar (~59 MB)
+```
+
+Copy the project and the matching `.tar` (into `setup_data/`) to the board and run `sudo ./install.sh offline`.
+The bundle is a local apt repository with the selected packages and everything they need beyond the Debian base
+system, plus the Flask wheels: apt skips what is already installed in the same or a newer version. The suite must
+match the board's Debian release (`./install.sh status` shows what it needs, e.g. `bookworm-armhf`).
+`setup_data/` is git-ignored — bundles are not stored in the repository.
+
+The old installer set `cap_net_bind_service` on the system `python3`; it is not needed (the service runs as root) —
+`./install.sh status` shows the command to remove it.
 
 ### Service management
 

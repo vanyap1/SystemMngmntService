@@ -2,7 +2,8 @@
 
 Import this module before anything from the project. It loads config.json read-only, then points
 CONFIG_PATH, test_logs_dir, help_dir and the credentials file to a temporary directory so a test can never overwrite live settings,
-add run logs or docs, and forces known credentials (auth enabled, user/password ``test``).
+add run logs or docs, turns the panel update check off (no network) and forces known credentials (auth enabled,
+user/password ``test``).
 """
 import atexit
 import os
@@ -25,6 +26,7 @@ config.CFG['auth'] = {'enabled': True, 'username': 'test', 'password': 'test'}
 config.CFG['public_service_actions'] = ['restart']
 config.CFG['test_logs_dir'] = os.path.join(TMP, 'testLogs')
 config.CFG['help_dir'] = os.path.join(TMP, 'help')
+config.CFG['update_check_minutes'] = 0                     # never fetch the real panel upstream
 credentials.PATH = os.path.join(TMP, 'credentials.json')   # never touch the real git token
 app.config['TESTING'] = True
 

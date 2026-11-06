@@ -103,20 +103,40 @@ def _toplevel(path):
     return out.strip() if rc == 0 else None
 
 
-def scan_target():
-    """Git worktrees inside target_dir (e.g. projects cloned from GitHub): [abs top], at most SCAN_LIMIT."""
+SCAN_SECONDS, SCAN_CACHE = 1.5, 20      # time budget of one scan; reuse its result for this long
+_scan_cache = {}
+
+
+def scan_target(fresh=False):
+    """Git worktrees inside target_dir (e.g. projects cloned from GitHub): [abs top], at most SCAN_LIMIT.
+    Stays on target_dir's filesystem (a big disk mounted under it is not walked), stops after SCAN_SECONDS,
+    and the result is cached for SCAN_CACHE seconds (clone/init pass ``fresh``)."""
     root = os.path.realpath(config.target_dir())
+    hit = _scan_cache.get(root)
+    if hit and not fresh and time.monotonic() - hit[0] < SCAN_CACHE:
+        return list(hit[1])
     found = []
     if not os.path.isdir(root):
         return found
+    dev = os.stat(root).st_dev
+    deadline = time.monotonic() + SCAN_SECONDS
+
+    def same_fs(path):
+        try:
+            return os.lstat(path).st_dev == dev and not os.path.islink(path)
+        except OSError:
+            return False
     for dirpath, dirs, files in os.walk(root):
         depth = os.path.relpath(dirpath, root).count(os.sep) + (dirpath != root)
         if dirpath != root and ('.git' in dirs or '.git' in files):
             found.append(dirpath)
             if len(found) >= SCAN_LIMIT:
                 break
+        if time.monotonic() > deadline:
+            break
         dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d not in SCAN_SKIP and depth < SCAN_DEPTH
-                         and not os.path.islink(os.path.join(dirpath, d)))
+                         and same_fs(os.path.join(dirpath, d)))
+    _scan_cache[root] = (time.monotonic(), list(found))
     return found
 
 
@@ -221,6 +241,7 @@ def clone(url, name):
     rc, out, err = _run_raw(root, ['clone', '--', url, name], timeout=600, token=token)
     if rc != 0:
         raise GitError((err or out).strip().splitlines()[-1] if (err or out).strip() else 'clone failed', 400, (out + err).strip())
+    _scan_cache.clear()
     return {'repo': _dir_id(os.path.realpath(dest)), 'path': dest}
 
 
@@ -231,6 +252,7 @@ def init_target():
     rc, out, err = _run_raw(root, ['init', '-q'], timeout=30)
     if rc != 0:
         raise GitError(err.strip() or 'git init failed')
+    _scan_cache.clear()
     return {'repo': 'project', 'path': root}
 
 
@@ -337,10 +359,11 @@ class Repo:
             res[name] = scrub(url)
         return [{'name': n, 'url': u} for n, u in res.items()]
 
-    def log(self, n=15):
+    def log(self, n=15, rev=None):
+        """Recent commits of HEAD, or of ``rev`` (an internal revision range such as 'HEAD..@{u}', never client input)."""
         if not self.ok('rev-parse', '--verify', '-q', 'HEAD'):
             return []
-        out = self.run('log', f'-n{n}', '--pretty=format:%H%x1f%h%x1f%an%x1f%ar%x1f%s%x1f%D%x1e')
+        out = self.run('log', f'-n{n}', '--pretty=format:%H%x1f%h%x1f%an%x1f%ar%x1f%s%x1f%D%x1e', *([rev] if rev else []))
         res = []
         for rec in out.split('\x1e'):
             rec = rec.strip('\n')

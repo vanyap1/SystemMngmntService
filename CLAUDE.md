@@ -32,14 +32,19 @@ core/
   config.py            config.json store (defaults + per-host sections); read via accessors
   auth.py              is_logged_in(), login_required, can_service_action(), safe_next()
   shell.py             run_command() (sudo -n), sh() (quiet), quote(), resolve_inside()
-  nav.py               NAV_ITEMS – top bar navigation registry
+  nav.py               SECTIONS – top bar sections and their pages (sub-tabs), SETTINGS
+  updates.py           panel self-update: background fetch of the panel upstream, pull --ff-only, own-unit restart
   web.py               template context for every page, asset() cache-busting helper
   test_runner.py       runs test-platform scripts, verdicts, per-run log files
   test_logs.py         test log viewer: parse testLogs/*.log (cached), filters, yield/FPY, step stats, CSV
-  gpio_ctl.py          manual GPIO control for the Devices popup: per-client claimed lines under a lease
+  gpio_ctl.py          manual GPIO control for the HW Utils popup: per-client claimed lines under a lease
+  i2c.py               I²C tools for HW Utils: scan (i2cdetect), register read/write (i2ctransfer), labels
   net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
   udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
   monitor.py           system monitor sampler (CPU/RAM/temp/active iface/disk I/O, 15 min history, lease)
+  spawn.py             popen() with PDEATHSIG from one long-lived thread (children die with the panel only)
+  pyrun.py             run / debug a .py from the editor: pty session, output buffer, lease, gentle stop
+  pydbg_agent.py       bdb debugger running inside the debugged process (stdlib only), JSON over two pipes
   help_docs.py         documentation store: Markdown pages in help_dir, img/ + docs/ assets, search, .trash
   git_ops.py           git for target_dir / panel / help_dir repos: status, actions, problems + fixes (runs as repo owner)
   credentials.py       host secrets (git token) in ~/.config/systemmngmntservice/credentials.json — outside repos
@@ -47,10 +52,12 @@ core/
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
-  partials/            flash, services modal, video controls/modal, devices modal, power menu, monitor_float
+  partials/            flash, services modal, video controls/modal, devices modal, power menu, update button, monitor_float
   <page>.html          extends base.html
 help/                  documentation (user content): *.md pages, img/, docs/ attachments, examples/ raw notes
 tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
+install.sh             installer: menu, online/offline install, service unit, `bundle` → tools/offline_bundle.py
+tools/offline_bundle.py  builds offline bundles (local apt repo + Flask wheels) for armhf (H3) / arm64 (H5)
 docs/img/              README screenshots
 static/
   vendor/              Font Awesome 6.5.1, Monaco 0.44.0, xterm 5.3.0 (+fit), marked 12, DOMPurify 3, highlight.js 11
@@ -63,9 +70,10 @@ static/
   js/sysinfo.js        SysInfo: polling + render helpers                    (logged in)
   js/monitor.js        MonitorData (shared poller), TimeChart (canvas), Monitor.create(el), MonitorFloat (logged in)
   js/video.js          Video: device list + stream popup                    (logged in)
-  js/power.js          power menu                                           (logged in)
-  js/devices.js        Devices popup shell: tab registry, info panel, text popup (logged in)
-  js/devices_<tab>.js  popup tabs: nodes (Devices + /dev), buses, net, gpio, udev — Devices.register({...})
+  js/power.js          power menu (reboot, shutdown, logout)                (logged in)
+  js/updates.js        panel update button + popup                          (logged in)
+  js/devices.js        HW Utils popup shell: tab registry, info panel, text popup (logged in)
+  js/devices_<tab>.js  popup tabs: nodes (Devices + /dev), buses, net, gpio, i2c, udev — Devices.register({...})
   js/<page>.js         page-only logic
 ```
 
@@ -84,7 +92,7 @@ static/
 - Templates use `logged_in` and `can_service('restart')`; JS uses `App.config.loggedIn` and `Services.canAct()`.
   Scripts/markup for logged-in widgets are not rendered for anonymous users at all.
 
-## GPIO control (Devices popup)
+## GPIO control (HW Utils popup)
 - Lines are requested **only** on explicit Claim and only while the GPIO tab is open; every exit path
   (tab switch, popup close, `pagehide` beacon, lease timeout) must release them. Never hold lines otherwise.
 - Claim requests "as is" (no state change). Claiming is refused while a test runs; `/api/tests/start`
@@ -98,18 +106,22 @@ static/
 - The sampler thread (`core/monitor.py`) lives only while polled (30 s lease); keep it to cheap /proc and /sys
   reads — subprocesses (`lsblk`, `ip`) run per request and are cached.
 
-## Devices popup
+## HW Utils popup (formerly "Devices"; the JS object and ids are still `Devices` / `devices_*`)
 - Routes: `routes/devices.py` (devices, buses, GPIO), `routes/udev.py` (service, events, rules, udevadm tools),
-  `routes/net.py` (interfaces, CAN). Only CAN links may be reconfigured — never touch other interfaces (SSH/web).
+  `routes/net.py` (interfaces, CAN), `routes/i2c.py` (I²C tools, `core/i2c.py`). Only CAN links may be reconfigured — never touch other interfaces (SSH/web).
 - CAN without hardware: test in a user+net namespace with vcan:
   `unshare -rnm sh -c 'mount -t sysfs sysfs /sys; ip link set lo up; ip link add vcan0 type vcan; ip link set vcan0 up; …'`.
 - New tab: a button in `partials/devices_modal.html` (`data-tab`), a `<section class="dev-pane" id="devpane-<id>">`
   (`.dev-toolbar` + `.dev-scroll`), and `static/js/devices_<id>.js` calling `Devices.register({id, autoMs, load,
   render, onShow, onHide, canLeave})`, included in `base.html`. Pass `this.id` to `Devices.summary()`.
 - Background resources (GPIO lines, `udevadm monitor`) live only while their view is open and polled
-  (lease on the server); every exit path must release them. Child processes use `_die_with_parent`.
+  (lease on the server); every exit path must release them. Long-lived child processes are started with
+  `core/spawn.py` `popen()` (PDEATHSIG fires when the *forking thread* exits — never fork them from a request thread).
 - Rules are written only to `/etc/udev/rules.d` (names `^[\w.@+-]+\.rules$`); system dirs are read-only.
-  Never scan I²C buses or open device nodes just to list them.
+  Never scan I²C buses or open device nodes just to list them: the I²C tab touches a bus only on Scan / Read /
+  Write (POST, explicit user action), locked while a test runs. Arguments are validated in `core/i2c.py`
+  before `i2cdetect` / `i2ctransfer` run. Tests and `tests/devserver.py --fake-i2c` use the simulated bus in
+  `tests/fake_i2c.py` — never probe the real buses of this board in tests (i2c-0 holds the PMIC).
 
 ## Test platform
 - `testPlatform/` holds the user's hardware test sequences (GPIO relays via gpiod, stm8flash, UART, DMM) copied
@@ -130,6 +142,12 @@ static/
 - Scripts use `ts.run(steps, finalize)`: `finalize` must bring the fixture to a safe state and always runs (pass,
   stop-on-fail, exception, Stop). Stop-on-fail is implemented in `testStrategy._print_result` (raises
   `StopOnFail` only while `run()` executes the steps), enabled by `TEST_STOP_ON_FAIL=1` from the runner.
+- Background checks (emergency stop, interlocks): `testPlatform/testWatch.py` `TestWatch` passed to
+  `ts.run(steps, finalize, watch=w)`. A failing check is delivered to the main thread as SIGINT → `AbortTest`
+  (ERROR row, steps skipped, finalize runs; the watch is stopped before finalize). A real SIGINT without a pending
+  abort stays a KeyboardInterrupt (Stop button). Tests: `tests/test_watch.py` (subprocesses), `demo_estop_test.py`.
+- Instruments: `psu.py` (SCPI PSU, raw TCP :8080, one connection per command, `ERROR…` → `PsuError`; tests use a
+  fake server, never the real bench), `dmm.py`. Their public methods must be in `help/testing/test-platform.md`.
 - Serial number from the UI reaches the script as `--sn <serial>` (validated by `SERIAL_PATTERN`); scripts read
   it via `ts.serial`. It is part of the log file name (`__<serial>`, see `LOG_PATTERN`) and the log header.
 - Page: `routes/tests.py`, `templates/tests.html`, `static/js/tests.js`, `static/css/tests.css`.
@@ -169,6 +187,42 @@ static/
   the user through `scrub()`; `credentials.public()` is the only thing returned. Destructive actions create a
   backup first (`Repo.backup()`). New problem ⇒ `Repo.problems()` + its fix in `Repo.fix()` + a test.
 
+## Installer
+- `install.sh` is the only installer (`setup.sh`/`setup_offline.sh` just call it). Steps must stay idempotent and
+  never restart the running panel without a confirmation (`--yes` for scripts). Tests: `tests/test_install.py`.
+- New runtime dependency ⇒ add the Debian package to a component in **both** `PKGS` (install.sh) and
+  `COMPONENTS` (tools/offline_bundle.py) — the test checks they match; pure-Python packages go to `WHEELS` (both).
+- The offline path must work without Python (parse `manifest.json` with sed) and without network: apt reads the
+  bundle as `deb [trusted=yes] file:…/debs ./` with private lists/cache. Bundles live in git-ignored `setup_data/`.
+
+## Top bar
+- Layout: brand · `.tb-sections` (core/nav.py) · `.tb-page` (block `topbar_tools`) · `.tb-tools` (Video, Monitor,
+  Devices, Services, Settings) · power menu (+ Logout) · update button. Labels in `.tb-label` hide on narrow screens.
+- The update check (`core/updates.py`) runs only while the UI polls `/api/update/status`, at most every
+  `update_check_minutes`; tests and `tests/devserver.py` set it to 0 (`devserver.py --fake-update` shows the button).
+  Never fetch or pull the real repository in tests — point `config.BASE_DIR` to a temporary clone (`tests/test_updates.py`).
+
+## Run / debug Python (code editor)
+- `static/js/editor_debug.js` (`PyDebug`) ↔ `routes/pyrun.py` ↔ `core/pyrun.py` (session) ↔ `core/pydbg_agent.py`
+  (inside the child, started via `python3 -c` so `__main__` can be replaced; it must import only the stdlib and
+  removes its own folder from `sys.path`). Tests: `tests/test_pyrun.py` (temporary target_dir).
+- The script runs in a pty (console behaviour like SSH); terminal input goes to it while a session is active.
+- One session; lives while polled (`LEASE_SECONDS`), page close sends a stop beacon, child has PDEATHSIG.
+  Stop = debugger quit / SIGINT first (finally/finalize must run), then SIGTERM, SIGKILL.
+- Mutually exclusive with the test runner (`pyrun.blocked`, check in `/api/tests/start`); start releases GPIO.
+- Hover evaluation accepts only names / attributes / constant subscripts (`hover_safe`) — never calls code.
+
+## Documentation window in the editor
+- `static/js/help_float.js` (`HelpFloat`), markup in `templates/editor.html`, styles in `editor.css`; it reads the
+  same docs via `/api/help/tree` + `/api/help/doc` and renders like the Docs page (marked → DOMPurify, hljs per line).
+- `help/testing/test-platform.md` documents `TestStrategy`: a new public method must be described there
+  (`tests/test_docs_content.py` checks it, and that every relative link / image in `help/` exists).
+
+## Code editor file tree
+- `/api/tree?path=` returns **one folder**; the front end loads folders when opened and remembers open ones
+  (`localStorage`). Never walk target_dir recursively on the server — it may hold big mounted disks.
+  `git_ops.scan_target()` stays on target_dir's filesystem, has a time budget and a short cache.
+
 ## Adding a page
 1. `routes/<name>.py`: `bp = Blueprint('<name>', __name__)`, view decorated with `@login_required`
    (or deliberately public), `return render_template('<name>.html', ...)`.
@@ -177,13 +231,14 @@ static/
    ```jinja
    {% extends 'base.html' %}
    {% block title %}My Page — {% endblock %}
-   {% block page_name %}<span class="brand-sub"> — My Page</span>{% endblock %}
    {% block head %}<link rel="stylesheet" href="{{ asset('css/<name>.css') }}">{% endblock %}
    {% block content %}<main class="page"> … cards … </main>{% endblock %}
    {% block scripts %}<script src="{{ asset('js/<name>.js') }}"></script>{% endblock %}
    ```
    Other blocks: `topbar_tools` (page controls in the top bar), `modals`, `body_class`.
-4. Add a `NavItem('<name>.<view>', 'Label', 'fa-solid fa-icon', public=False)` to `core/nav.py`.
+4. Add a `NavItem('<name>.<view>', 'Label', 'fa-solid fa-icon', public=False)` to a section's pages in `core/nav.py`
+   (a section with several pages shows them as sub-tabs, like Tests → Run / Logs), or a new `Section` for a new
+   area of work. Global tools (popups, Settings, power) are not sections — they go into `.tb-tools` in base.html.
 5. Create `static/css/<name>.css` / `static/js/<name>.js` only if the page needs them.
 
 ## Adding an API endpoint

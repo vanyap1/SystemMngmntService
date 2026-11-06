@@ -115,6 +115,7 @@ const Settings = {
             archive_name: val('archive_name'), upload_tmp_name: val('upload_tmp_name'),
             service_name: val('service_name'), tests_dir: val('tests_dir'), test_logs_dir: val('test_logs_dir'),
             help_dir: val('help_dir'), host: val('host'), port: parseInt(val('port'), 10) || 80,
+            update_check_minutes: Math.max(0, parseInt(val('update_check_minutes'), 10) || 0),
             auth: { enabled: document.getElementById('auth_enabled').checked, username: val('auth_username') },
             public_service_actions: [...document.querySelectorAll('.public-action:checked')].map(c => c.value),
         };

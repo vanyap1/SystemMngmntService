@@ -1,10 +1,22 @@
-"""Demo: full board sequence where every step passes (no hardware needed)."""
+"""Demo: full board sequence where every step passes (uses the bench PSU at 192.168.1.91)."""
+import os
 import random
 import time
-
+from psu import PSU
+ 
+psu = PSU("192.168.1.91")
 from testStrategy import TestStrategy
+from testWatch import TestWatch, file_flag
 
 ts = TestStrategy()
+
+# Emergency stop watched in the background during the whole sequence. Without hardware the "button" is the
+# file testPlatform/ESTOP: `touch ESTOP` while the test runs = pressed (the test is aborted, finalize runs),
+# `rm ESTOP` = released. With a real button replace file_flag(...) by a function that reads the input and raises
+# testWatch.EmergencyStop, e.g. via gpiod:  if line.get_value(): raise EmergencyStop("button pressed")
+ESTOP_FLAG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ESTOP")
+watch = TestWatch(interval=0.5)
+watch.add("Emergency stop", file_flag(ESTOP_FLAG, "button pressed"))
 
 
 def step(seconds):
@@ -13,6 +25,7 @@ def step(seconds):
 
 
 def steps():
+    ts.logResult("Serial number", True, ts.serial or "not given")    # the Serial field of the Tests page (--sn)
     ts.logResult("Fixture power on", step(0.3), "OK")
     ts.logResult("StLink VCC on", step(0.2), "OK")
     print("Flashing test firmware DEMO_EOLT_V1.hex ...")
@@ -20,6 +33,14 @@ def steps():
     ts.logResult("Flash chip", step(1.5), "Chip flashed successfully")
     ts.logResult("Verify flash", step(0.8), "Chip verified successfully")
     ts.logResult("StLink VCC off", step(0.2), "OK")
+
+    v = psu.waitVoltage(1, 12.0, tolerance=0.1, timeout=3)
+    psu.ioOut(1, 8, 1)
+    psu.ioOut(1, 8, 0)
+    vRef = psu.getRefVoltage()
+    ts.numericLimitTest("Supply 12V", v, 11.7, 12.3, "V")
+    ts.numericLimitTest("Idle current", psu.getCurrent(1) * 1000, 80, 110, "mA")
+
     ts.numericLimitTestInclusive("UUT response", 4, 4, 4, "")
     time.sleep(0.4)
     ts.numericLimitTest("Flowmeter pulse count", 20, 19, 21, "pulses")
@@ -40,5 +61,5 @@ def finalize():
 
 if __name__ == "__main__":
     print("Demo board test started")
-    ts.run(steps, finalize)
+    ts.run(steps, finalize, watch=watch)
     print("Demo board test finished")

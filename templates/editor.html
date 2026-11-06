@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block title %}Code Editor — {% endblock %}
-{% block page_name %}<span class="brand-sub"> — Code Editor</span>{% endblock %}
 {% block body_class %}page-editor{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ asset('vendor/xterm/xterm.css') }}">
+<link rel="stylesheet" href="{{ asset('vendor/highlight/github-dark.min.css') }}">
 <link rel="stylesheet" href="{{ asset('css/editor.css') }}">
 {% endblock %}
 
@@ -11,6 +11,7 @@
     <div id="macro-bar"></div>
     <button id="btn-macro-edit" class="btn btn-macro-edit" onclick="openMacrosModal()" title="Edit macros"><i class="fa-solid fa-sliders"></i></button>
     <button class="btn btn-macro-edit git-btn" id="eg-btn" onclick="EditorGit.open()" title="Git"><i class="fa-brands fa-git-alt"></i><span class="git-badge" hidden></span></button>
+    <button class="btn btn-macro-edit" id="hf-btn" onclick="HelpFloat.toggle()" title="Documentation — test platform API, examples (insert into the code)"><i class="fa-solid fa-question"></i></button>
     <div class="topbar-sep"></div>
     <select id="svc-select" class="select-mono">
         <option value="{{ service_name }}">{{ service_name }}</option>
@@ -31,6 +32,7 @@
         <div id="sidebar">
             <div id="sidebar-title">
                 Explorer
+                <button class="tree-newfile tree-refresh" id="tree-refresh" onclick="refreshTree(true)" title="Refresh the file tree (new / deleted files)"><i class="fa-solid fa-arrows-rotate"></i></button>
                 <button class="tree-newfile" onclick="newFile()" title="New File"><i class="fa-solid fa-file-circle-plus"></i></button>
             </div>
             <div id="file-tree">
@@ -61,7 +63,16 @@
                             <span id="save-ok">✓ Saved</span>
                             <button class="btn btn-primary btn-sm" onclick="saveFile()" title="Save (Ctrl+S)"><i class="fa-solid fa-floppy-disk"></i></button>
                             <button class="btn btn-sm btn-git-commit" id="eg-commit" onclick="EditorGit.commitCurrent()" title="Commit this file (git)" hidden><i class="fa-brands fa-git-alt"></i> Commit</button>
-                            <button id="btn-outline-tab" class="btn btn-sm btn-outline-toggle active" onclick="toggleOutline()" title="Toggle Outline"><i class="fa-solid fa-bars-staggered"></i> <span>Outline</span></button>
+                            <div class="dbg-bar" id="dbg-bar" title="Run / debug the open Python file">
+                                <button class="dbg-btn dbg-run" id="dbg-run" onclick="PyDebug.run(false)" title="Run (Ctrl+F5)"><i class="fa-solid fa-play"></i></button>
+                                <button class="dbg-btn dbg-debug" id="dbg-debug" onclick="PyDebug.debugOrContinue()" title="Debug / Continue (F5)"><i class="fa-solid fa-bug"></i></button>
+                                <button class="dbg-btn" id="dbg-pause" onclick="PyDebug.cmd('pause')" title="Pause (F6)"><i class="fa-solid fa-pause"></i></button>
+                                <button class="dbg-btn" id="dbg-next" onclick="PyDebug.cmd('next')" title="Step over (F10)"><i class="fa-solid fa-arrow-turn-down fa-rotate-270"></i></button>
+                                <button class="dbg-btn" id="dbg-step" onclick="PyDebug.cmd('step')" title="Step into (F11)"><i class="fa-solid fa-arrow-down"></i></button>
+                                <button class="dbg-btn" id="dbg-return" onclick="PyDebug.cmd('return')" title="Step out (Shift+F11)"><i class="fa-solid fa-arrow-up"></i></button>
+                                <button class="dbg-btn" id="dbg-back" onclick="PyDebug.back()" title="Run the previous line again (F7): moves the execution point back, then Step over runs it once more. Values are not undone."><i class="fa-solid fa-rotate-left"></i></button>
+                                <button class="dbg-btn dbg-stop" id="dbg-stop" onclick="PyDebug.stop()" title="Stop (Shift+F5)"><i class="fa-solid fa-stop"></i></button>
+                            </div>
                         </div>
                     </div>
                     <div id="monaco-container"></div>
@@ -98,11 +109,34 @@
             <!-- Outline panel -->
             <div id="outline-panel">
                 <div id="outline-title">
-                    <span><i class="fa-solid fa-bars-staggered" style="color:#4ec9b0;margin-right:4px"></i> Outline</span>
-                    <button class="outline-head-btn" onclick="toggleOutline(false)" title="Close Outline"><i class="fa-solid fa-xmark"></i></button>
+                    <span class="side-tabs">
+                        <button type="button" class="side-tab active" data-side="outline" onclick="PyDebug.side('outline')"><i class="fa-solid fa-bars-staggered"></i> Outline</button>
+                        <button type="button" class="side-tab" data-side="debug" onclick="PyDebug.side('debug')"><i class="fa-solid fa-bug"></i> Debug <span class="dbg-dot" id="dbg-dot" hidden></span></button>
+                    </span>
+                    <button class="outline-head-btn" onclick="toggleOutline(false)" title="Close panel"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="outline-list">
                     <div id="outline-empty">Open a file to see symbols</div>
+                </div>
+                <div id="debug-side" class="debug-side" hidden>
+                    <div class="dbg-sec">
+                        <div class="dbg-state" id="dbg-state"><i class="fa-regular fa-circle"></i> Not running</div>
+                        <input class="input input-sm mono" id="dbg-args" placeholder="arguments, e.g. --sn 12345" title="Command line arguments of the script (remembered per file)">
+                        <label class="check-row small"><input type="checkbox" id="dbg-entry"> Stop at the first line</label>
+                        <div class="hint">Click left of a line number (or F9) for a breakpoint. Output and input: Terminal tab.</div>
+                    </div>
+                    <div class="dbg-exc" id="dbg-exc" hidden></div>
+                    <div class="dbg-head">Variables</div>
+                    <div class="dbg-vars" id="dbg-vars"><div class="dbg-empty">Shown while paused</div></div>
+                    <div class="dbg-head">Evaluate</div>
+                    <div class="dbg-sec">
+                        <input class="input input-sm mono" id="dbg-eval" placeholder="expression, Enter" onkeydown="if(event.key==='Enter')PyDebug.evaluate()">
+                        <div class="dbg-vars" id="dbg-eval-out"></div>
+                    </div>
+                    <div class="dbg-head">Call stack</div>
+                    <div class="dbg-stack" id="dbg-stack"><div class="dbg-empty">—</div></div>
+                    <div class="dbg-head">Breakpoints <span class="spacer"></span><button type="button" class="btn-icon" onclick="PyDebug.clearBreaks()" title="Remove all breakpoints"><i class="fa-solid fa-trash"></i></button></div>
+                    <div class="dbg-stack" id="dbg-breaks"></div>
                 </div>
             </div>
 
@@ -130,6 +164,24 @@
 
 {% block modals %}
 {% include 'partials/git_modal.html' %}
+<!-- Floating documentation window (static/js/help_float.js) -->
+<div id="help-float" class="mon-float help-float" hidden>
+    <div class="mon-float-head" title="Drag to move">
+        <i class="fa-solid fa-book text-ok"></i>
+        <span class="mon-float-title" id="hf-title">Documentation</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn-icon" onclick="HelpFloat.reload()" title="Reload documents"><i class="fa-solid fa-arrows-rotate"></i></button>
+        <a class="btn-icon" id="hf-open-docs" href="/help" target="_blank" title="Open on the Docs page (edit)"><i class="fa-solid fa-up-right-from-square"></i></a>
+        <button type="button" class="modal-close" onclick="HelpFloat.close()" title="Close">&times;</button>
+    </div>
+    <div class="hf-body">
+        <aside class="hf-side">
+            <input class="input input-sm" id="hf-search" type="search" placeholder="Search docs, headings, text…" autocomplete="off">
+            <nav class="hf-nav" id="hf-nav"><div class="hf-empty">Loading…</div></nav>
+        </aside>
+        <article class="hf-content" id="hf-content"></article>
+    </div>
+</div>
 <!-- Image Preview -->
 <div id="img-overlay" onclick="if(event.target===this)closeImage()">
     <img id="img-preview" src="" alt="">
@@ -193,4 +245,9 @@
 <script src="{{ asset('js/editor.js') }}"></script>
 <script src="{{ asset('js/git.js') }}"></script>
 <script src="{{ asset('js/editor_git.js') }}"></script>
+<script src="{{ asset('js/editor_debug.js') }}"></script>
+<script src="{{ asset('vendor/marked/marked.min.js') }}"></script>
+<script src="{{ asset('vendor/dompurify/purify.min.js') }}"></script>
+<script src="{{ asset('vendor/highlight/highlight.min.js') }}"></script>
+<script src="{{ asset('js/help_float.js') }}"></script>
 {% endblock %}

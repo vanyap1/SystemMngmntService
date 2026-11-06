@@ -6,14 +6,13 @@
 - ``monitor``           ``udevadm monitor`` running only while a client polls it (lease)
 """
 import collections
-import ctypes
 import os
-import signal
 import re
 import subprocess
 import threading
 import time
 
+from core import spawn
 from core.shell import sh
 
 SYS = '/sys'
@@ -420,14 +419,6 @@ def lint_rules(text):
 
 # ── event monitor ────────────────────────────────────────────────────────
 
-def _die_with_parent():
-    """preexec_fn: the child gets SIGTERM when the panel process exits (Linux prctl)."""
-    try:
-        ctypes.CDLL('libc.so.6', use_errno=True).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
-    except OSError:
-        pass
-
-
 class UdevMonitor:
     """``udevadm monitor`` that runs only while somebody polls ``events()``."""
     LEASE_SECONDS = 10
@@ -447,10 +438,10 @@ class UdevMonitor:
             return
         self.error = None
         try:
-            self._proc = subprocess.Popen(
+            self._proc = spawn.popen(    # dies with the panel (forked from the spawner thread, see core/spawn.py)
                 ['stdbuf', '-oL', 'udevadm', 'monitor', '--kernel', '--udev', '--property'],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                text=True, errors='replace', preexec_fn=_die_with_parent)
+                text=True, errors='replace')
         except OSError as e:
             self._proc, self.error = None, str(e)
             return
