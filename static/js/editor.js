@@ -773,14 +773,17 @@ function switchTab(name) {
     document.querySelectorAll('.cpane').forEach(p => p.classList.remove('active'));
     document.getElementById(name + '-pane').classList.add('active');
     if (name === 'log') refreshLog();
-    if (name === 'term') {
+    document.getElementById('term-new').hidden = name !== 'term' || !(typeof WebTerm !== 'undefined' && WebTerm.id);
+    if (name === 'term') WebTerm.show();
+    if (name === 'run') {
         if (!term) setTimeout(initXterm, 50);
         else if (fitAddon) setTimeout(() => fitAddon.fit(), 10);
-        setTimeout(() => document.getElementById('term-input').focus(), 120);
+        setTimeout(() => term && term.focus(), 120);
     }
 }
 function clearConsole() {
     if (activeTab === 'log') document.getElementById('log-pane').innerHTML = '';
+    else if (activeTab === 'term') WebTerm.clear();
     else if (term) term.clear();
 }
 
@@ -805,8 +808,8 @@ function refreshLog() {
         });
 }
 
-// ── Terminal ─────────────────────────────────────────────────────────────────
-let cmdHistory = [], histIdx = -1;
+// ── Run console (output / input of the script started with Run / Debug, see editor_debug.js) ───────────
+// The interactive shell of the "Terminal" tab is js/web_terminal.js (WebTerm).
 let term = null, fitAddon = null;
 
 function initXterm() {
@@ -814,8 +817,8 @@ function initXterm() {
     fitAddon = new FitAddon.FitAddon();
     term = new Terminal({
         theme: {
-            background: '#1a1a1a', foreground: '#d4d4d4',
-            cursor: '#4ec9b0', cursorAccent: '#1a1a1a',
+            background: '#111111', foreground: '#d4d4d4',
+            cursor: '#4ec9b0', cursorAccent: '#111111',
             selectionBackground: 'rgba(78,201,176,.25)',
             black:   '#1e1e1e', red:     '#f44747', green:   '#6dbf85', yellow:  '#d4a95a',
             blue:    '#569cd6', magenta: '#c586c0', cyan:    '#4ec9b0', white:   '#d4d4d4',
@@ -825,72 +828,29 @@ function initXterm() {
         },
         fontSize: 12,
         fontFamily: "'Cascadia Code','Fira Mono',Consolas,monospace",
-        lineHeight: 1.4,
-        convertEol: true,
-        scrollback: 3000,
-        disableStdin: true,
-        cursorBlink: false,
+        lineHeight: 1.3,
+        convertEol: false,
+        scrollback: 5000,
+        cursorBlink: true,
         allowProposedApi: true,
     });
     term.loadAddon(fitAddon);
     term.open(document.getElementById('xterm-container'));
+    // keys go straight to the running script's pty (it echoes them, like a console)
+    term.onData(d => { if (typeof PyDebug !== 'undefined' && PyDebug.active()) PyDebug.input(d); });
     fitAddon.fit();
-    term.write('\x1b[38;5;78m' + document.getElementById('term-prompt').textContent + '\x1b[0m');
 }
 
-function termKeyDown(e) {
-    const inp = document.getElementById('term-input');
-    const promptTxt = document.getElementById('term-prompt').textContent;
-    // A program started with Run / Debug owns the terminal: lines go to its stdin (the pty echoes them).
-    if (typeof PyDebug !== 'undefined' && PyDebug.wantsInput()) {
-        if (e.key === 'Enter') { e.preventDefault(); PyDebug.input(inp.value + '\n'); inp.value = ''; return; }
-        if (e.key === 'c' && e.ctrlKey && !inp.selectionEnd) { e.preventDefault(); PyDebug.input('\x03'); return; }
-        if (e.key === 'd' && e.ctrlKey) { e.preventDefault(); PyDebug.input('\x04'); return; }
-    }
-    if (e.key === 'Enter') {
-        const cmd = inp.value.trim();
-        inp.value = ''; histIdx = -1;
-        if (!term) initXterm();
-        term.write('\x1b[38;5;78m' + promptTxt + '\x1b[0m' + cmd + '\r\n');
-        if (!cmd) {
-            term.write('\x1b[38;5;78m' + promptTxt + '\x1b[0m');
-            return;
-        }
-        cmdHistory.unshift(cmd);
-        if (cmdHistory.length > 200) cmdHistory.pop();
-        execCmd(cmd);
-    } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (histIdx < cmdHistory.length - 1) inp.value = cmdHistory[++histIdx];
-    } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (histIdx > 0) { inp.value = cmdHistory[--histIdx]; }
-        else { histIdx = -1; inp.value = ''; }
-    }
+function toggleConsoleMax() {
+    const panel = document.getElementById('console-panel');
+    const on = panel.classList.toggle('maxed');
+    document.getElementById('console-max-ico').className = on ? 'fa-solid fa-down-left-and-up-right-to-center' : 'fa-solid fa-up-down';
+    setTimeout(fitConsoles, 30);
 }
 
-function execCmd(cmd) {
-    const promptTxt = document.getElementById('term-prompt').textContent;
-    fetch('/api/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cmd })
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (!term) return;
-        if (d.stdout) term.write(d.stdout);
-        if (d.stderr) term.write('\x1b[38;5;203m' + d.stderr + '\x1b[0m');
-        if (!d.stdout && !d.stderr && d.returncode !== 0)
-            term.write('\x1b[38;5;203mExit code: ' + d.returncode + '\x1b[0m\r\n');
-        term.write('\x1b[38;5;78m' + promptTxt + '\x1b[0m');
-    })
-    .catch(err => {
-        if (term) {
-            term.write('\x1b[38;5;203mRequest failed: ' + err.message + '\x1b[0m\r\n');
-            term.write('\x1b[38;5;78m' + promptTxt + '\x1b[0m');
-        }
-    });
+function fitConsoles() {
+    if (fitAddon && document.getElementById('run-pane').classList.contains('active')) { try { fitAddon.fit(); } catch (e) { /* hidden */ } }
+    if (typeof WebTerm !== 'undefined') WebTerm.fitNow();
 }
 
 // ── Resize grip ──────────────────────────────────────────────────────────────
@@ -914,10 +874,10 @@ function execCmd(cmd) {
         grip.classList.remove('dragging');
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        if (fitAddon) setTimeout(() => fitAddon.fit(), 20);
+        setTimeout(fitConsoles, 20);
     });
 })();
-window.addEventListener('resize', () => { if (fitAddon) fitAddon.fit(); });
+window.addEventListener('resize', fitConsoles);
 
 // ── Command Macros ────────────────────────────────────────────────────────────
 let _macrosList = [];
@@ -1097,16 +1057,8 @@ function runMacro(idx) {
         toast('Command is not configured', true);
         return;
     }
-    switchTab('term');
-    if (!term) initXterm();
-    const cmd = m.command.trim();
-    const promptEl = document.getElementById('term-prompt');
-    const promptTxt = promptEl ? promptEl.textContent : '$ ';
-    term.write('\x1b[38;5;78m' + promptTxt + '\x1b[0m' + cmd + '\r\n');
-    cmdHistory.unshift(cmd);
-    if (cmdHistory.length > 200) cmdHistory.pop();
-    toast('▶ ' + (m.name || cmd));
-    execCmd(cmd);
+    toast('▶ ' + (m.name || m.command.trim()));
+    WebTerm.run(m.command.trim());          // typed into the interactive shell of the Terminal tab
 }
 
 function openMacrosModal() {

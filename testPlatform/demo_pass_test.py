@@ -1,8 +1,9 @@
 """Demo: full board sequence where every step passes (uses the bench PSU at 192.168.1.91)."""
+
 import os
 import random
 import time
-from psu import PSU
+from instruments.psu import PSU
  
 psu = PSU("192.168.1.91")
 from testStrategy import TestStrategy
@@ -25,7 +26,10 @@ def step(seconds):
 
 
 def steps():
+    psu.ioOut(1, 9, 1)
+    idn = psu.identify().split("\n")[1]
     ts.logResult("Serial number", True, ts.serial or "not given")    # the Serial field of the Tests page (--sn)
+    ts.logResult("PSU info", True, idn)
     ts.logResult("Fixture power on", step(0.3), "OK")
     ts.logResult("StLink VCC on", step(0.2), "OK")
     print("Flashing test firmware DEMO_EOLT_V1.hex ...")
@@ -52,7 +56,7 @@ def steps():
     ts.numericLimitTest("Minus 8V", round(random.uniform(7.7, 7.9), 2), 7.3, 8.3, "V")
     time.sleep(0.8)
     ts.numericLimitTest("3.3V", round(random.uniform(3.28, 3.32), 2), 3.1, 3.5, "V")
-
+    psu.ioOut(1, 9, 0)
 
 def finalize():
     ts.logResult("StLink VCC off", step(0.1), "OK")

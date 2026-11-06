@@ -81,6 +81,16 @@ class Runs(unittest.TestCase):
         with open(os.path.join(config.test_logs_dir(), run.log_name)) as fh:
             self.assertIn('Serial:   VTP-123456', fh.read())
 
+    def test_step_time_is_the_duration_of_the_step(self):
+        self.r.start('demo_serial_test.py', serial='test')     # steps 0.5 s apart after "Fixture power on"
+        self.assertTrue(wait(lambda: not self.r.is_running()))
+        steps = [x for x in self.r.run.results if x['status'] != 'SECTION']
+        by = {x['name']: x for x in steps}
+        self.assertAlmostEqual(by['Supply 5V']['dt'], 0.5, delta=0.25)
+        self.assertGreater(by['Supply 5V']['t'], 0.4)               # t stays "since the start"
+        for a, b in zip(steps, steps[1:]):
+            self.assertAlmostEqual(b['dt'], b['t'] - a['t'], delta=0.02)
+
     def test_no_serial(self):
         self.r.start('demo_serial_test.py')
         self.assertTrue(wait(lambda: not self.r.is_running()))

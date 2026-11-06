@@ -71,7 +71,9 @@ def parse_text(text):
         m = STEP_RE.match(line)
         if m:
             name, cond, units = _split_step(m.group(3))
-            items.append({'type': 'step', 't': float(m.group(1)), 'status': m.group(2),
+            t = float(m.group(1))
+            prev_t = next((x['t'] for x in reversed(items) if x['type'] == 'step'), 0.0)
+            items.append({'type': 'step', 't': t, 'dt': round(max(0.0, t - prev_t), 2), 'status': m.group(2),
                           'name': name, 'condition': cond, 'units': units})
             continue
         m = SECTION_RE.match(line)

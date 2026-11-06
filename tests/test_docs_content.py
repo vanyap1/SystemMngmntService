@@ -44,9 +44,9 @@ class DocLinks(unittest.TestCase):
         with open(os.path.join(HELP, 'testing', 'test-platform.md'), encoding='utf-8') as fh:
             doc = fh.read()
         with open(os.path.join(HELP, 'testing', 'psu.md'), encoding='utf-8') as fh:
-            docs = {'testWatch.py': doc, 'psu.py': fh.read()}
+            docs = {'testWatch.py': doc, 'instruments/psu.py': fh.read()}
         # skip: lifecycle called by ts.run(), the self-test function in __main__
-        for module, skip in (('testWatch.py', {'start', 'stop', 'close', 'button'}), ('psu.py', {'close'})):
+        for module, skip in (('testWatch.py', {'start', 'stop', 'close', 'button'}), ('instruments/psu.py', {'close'})):
             with open(os.path.join(ROOT, 'testPlatform', module), encoding='utf-8') as fh:
                 public = set(re.findall(r'^    def ([a-z]\w*)\(', fh.read(), re.M)) - skip
             missing = sorted(m for m in public if m + '(' not in docs[module] and '.' + m not in docs[module])

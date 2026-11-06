@@ -19,7 +19,8 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/git/init', '/api/update/apply', '/api/update/restart',
                   '/api/i2c/scan', '/api/i2c/read', '/api/i2c/write', '/api/i2c/label',
                   '/api/pyrun/start', '/api/pyrun/cmd', '/api/pyrun/input', '/api/pyrun/stop', '/api/pyrun/eval',
-                  '/api/pyrun/vars', '/api/pyrun/breaks']
+                  '/api/pyrun/vars', '/api/pyrun/breaks', '/api/term/open', '/api/term/input', '/api/term/resize',
+                  '/api/term/close']
 PROTECTED_PAGES = ['/editor', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
                    '/help/file/img/x.png', '/help?diagram=x']
 

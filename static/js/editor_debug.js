@@ -201,7 +201,7 @@ const PyDebug = {
             App.api('/api/pyrun/start', { json: { path, args, debug, breaks: this._breaksJson(), stop_on_entry: document.getElementById('dbg-entry').checked } })
                 .then(s => {
                     this.sid = s.id; this.seq = 0; this.frame = null; this.expanded.clear(); this._lastPaused = '';
-                    switchTab('term');
+                    switchTab('run');
                     setTimeout(() => {
                         if (!term) initXterm();
                         term.write(`\r\n\x1b[38;5;75m▶ ${debug ? 'debug' : 'run'}: python3 ${path.split('/').pop()}${args.length ? ' ' + args.join(' ') : ''}\x1b[0m\r\n`);
@@ -242,8 +242,19 @@ const PyDebug = {
         App.api('/api/pyrun/stop', { json: { id: this.sid } }).then(() => this._schedule(100)).catch(e => toast(e.message, true));
     },
 
+    /** Keys typed in the Run console go to the program's pty: batched, one POST at a time (order kept). */
     input(text) {
-        App.api('/api/pyrun/input', { json: { id: this.sid, text } }).then(() => this._schedule(60)).catch(e => toast(e.message, true));
+        this._in = (this._in || '') + text;
+        if (this._inBusy) return;
+        const flush = () => {
+            if (!this._in || !this.sid) { this._inBusy = null; return; }
+            const chunk = this._in;
+            this._in = '';
+            this._inBusy = App.api('/api/pyrun/input', { json: { id: this.sid, text: chunk } })
+                .catch(e => toast(e.message, true))
+                .then(() => { this._schedule(40); flush(); });
+        };
+        this._inBusy = Promise.resolve().then(flush);
     },
 
     _schedule(ms) {
@@ -423,12 +434,15 @@ const PyDebug = {
     },
 
     _setPrompt() {
-        const p = document.getElementById('term-prompt'), inp = document.getElementById('term-input');
-        if (!p.dataset.shell) p.dataset.shell = p.textContent;
+        const el = document.getElementById('run-status'), dot = document.getElementById('run-dot');
         const on = this.active();
-        p.textContent = on ? `${this.st.path.split('/').pop()} stdin › ` : p.dataset.shell;
-        p.classList.toggle('dbg-prompt', on);
-        inp.placeholder = on ? 'input for the program (Enter sends a line, Ctrl+C interrupts)' : 'enter command…';
+        if (dot) { dot.hidden = !on; dot.className = 'dbg-dot ' + (this.st ? this.st.state : ''); }
+        if (!el) return;
+        el.classList.toggle('live', on);
+        if (on) el.textContent = `${this.st.debug ? 'Debugging' : 'Running'} ${this.st.path.split('/').pop()} — type here: keys go to the program (Ctrl+C interrupts)`;
+        else if (this.st && this.st.state === 'exited') el.textContent = `${this.st.path.split('/').pop()} exited with code ${this.st.exit_code}`;
+        else el.textContent = 'No program running — use ▶ Run or 🐞 Debug in the tab bar';
+        if (on && term) term.focus();
     },
 
     side(which) {
@@ -440,6 +454,7 @@ const PyDebug = {
 
     _keys(e) {
         if (!document.getElementById('dbg-bar')) return;
+        if (e.target && e.target.closest && e.target.closest('.xterm')) return;   // F-keys belong to mc & co.
         const k = e.key;
         let fn = null;
         if (k === 'F5' && e.shiftKey) fn = () => this.stop();

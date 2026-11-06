@@ -1,6 +1,6 @@
 # Power supply SCPI CTRL 2CH PSU
 
-Driver `testPlatform/psu.py` for the 2-channel power supply controller (MultichannelCerPsu, web page
+Driver `testPlatform/instruments/psu.py` for the 2-channel power supply controller (MultichannelCerPsu, web page
 `http://192.168.1.91/`). Every function below is one line — in the code editor's **?** window hover a line and
 press *Insert* or *Copy*. Values are V, A, W; PSU channels are `1` and `2`.
 
@@ -11,13 +11,13 @@ operators used in the examples.
 ## Connect
 
 ```python
-from psu import PSU, PsuError
+from instruments.psu import PSU, PsuError
 
 psu = PSU("192.168.1.91")                       # host, port=8080, timeout=3.0, retries=5
 psu.ping()                                      # True if the controller answers
 ```
 
-Read-only check from a console (switches nothing): `python3 psu.py 192.168.1.91`.
+Read-only check from a console (switches nothing): `python3 instruments/psu.py 192.168.1.91` (in `testPlatform/`).
 
 ## Output channels
 
@@ -237,7 +237,7 @@ The full command list is on the *SCPI Commands* page of the PSU web interface.
 
 ```python
 """Board: power-up through the PSU, load relay on EXT_IO, current check."""
-from psu import PSU
+from instruments.psu import PSU
 from testStrategy import TestStrategy
 from testWatch import TestWatch
 

@@ -50,8 +50,9 @@ class TestLogs(unittest.TestCase):
         self.assertEqual(log['footer'], {'finished': '2026-01-01 10:00:02', 'duration': 2.0, 'exit_code': '0',
                                          'verdict': 'FAIL'})
         steps = [i for i in log['items'] if i['type'] == 'step']
-        self.assertEqual(steps[1], {'type': 'step', 't': 0.5, 'status': 'FAIL', 'name': 'Supply 5V',
-                                    'condition': '4.85 < 5.61 < 5.15', 'units': 'V'})
+        self.assertEqual(steps[1], {'type': 'step', 't': 0.5, 'dt': round(0.5 - steps[0]['t'], 2), 'status': 'FAIL',
+                                    'name': 'Supply 5V', 'condition': '4.85 < 5.61 < 5.15', 'units': 'V'})
+        self.assertEqual(steps[0]['dt'], steps[0]['t'])          # the first step: since the start
         self.assertEqual([i['name'] for i in log['items'] if i['type'] == 'section'][1], 'Finalization')
         self.assertEqual(log['first_fail']['name'], 'Supply 5V')
         self.assertEqual(log['counts'], {'PASS': 2, 'FAIL': 1, 'ERROR': 0, 'INFO': 0})

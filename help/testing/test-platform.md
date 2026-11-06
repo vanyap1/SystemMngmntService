@@ -243,14 +243,14 @@ In the code editor put the arguments into **Debug → arguments**, e.g. `--sn VT
 
 ## Instruments
 
-### Power supply — psu.py
+### Power supply — instruments/psu.py
 
 The 2-channel SCPI power supply (web page `http://192.168.1.91/`, command reference under *SCPI Commands*).
 The driver sends raw SCPI over TCP port 8080, one connection per command; an `ERROR: …` answer or no answer
 raises `PsuError`. Channels are `1` and `2`, values in V / A / W.
 
 ```python
-from psu import PSU
+from instruments.psu import PSU
 
 psu = PSU("192.168.1.91")
 
@@ -270,12 +270,30 @@ All functions — outputs, measurements, protection, the onboard DMM (AIN0-3), t
 (INA228 / ADS1115), the EXT_IO relay / input cards, the external I²C bus, calibration, versions and the event
 log — with copyable examples: **[Power supply PSU](psu.md)**.
 
-Check from a console (read-only, nothing is switched): `python3 psu.py 192.168.1.91`.
+Check from a console (read-only, nothing is switched): `python3 instruments/psu.py 192.168.1.91`.
 
-### Multimeter — dmm.py
+### Firmware files — instruments/fw/
+
+Firmware images (`.hex`) and other binaries (`.bin` dumps) are kept in `testPlatform/instruments/fw/`. Scripts
+find them through `FW_DIR` / `fw_path()`, whatever their working directory (Tests page, console, code editor):
+
+```python
+from instruments import FW_DIR, fw_path
+from instruments.stm8_flash import STM8Flasher
+
+flasher = STM8Flasher(chip="STM8S003F3")                 # looks in instruments/fw/ by default
+ts.logResult("Flash chip", flasher.flash("VTP1EleReDesignEOLT_V_4.hex"), "Chip flashed successfully")
+ts.logResult("Flash final FW", flasher.flash("VTP1EleReDesign_V_7_4_Program.hex", "VTP1EleReDesign_V_7_4_Data.hex"), "OK")
+with open(fw_path("eTest.bin"), "rb") as f:              # any other file of instruments/fw/
+    image = f.read()
+```
+
+New firmware: copy the file into `testPlatform/instruments/fw/` (e.g. with the code editor or Git).
+
+### Multimeter — instruments/dmm.py
 
 The FS9922 multimeter on a USB serial port: `FS9922DMM(port)`, `getVolt()`, `getAmp()`, `getResistance()`, … —
-see `testPlatform/dmm.py`.
+see `testPlatform/instruments/dmm.py`.
 
 ## Operator dialogs
 

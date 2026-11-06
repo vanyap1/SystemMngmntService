@@ -85,21 +85,22 @@
                 <div id="console-panel">
                     <div id="console-tabs">
                         <div class="ctab active" data-tab="log" onclick="switchTab('log')">Service Log</div>
-                        <div class="ctab" data-tab="term" onclick="switchTab('term')">Terminal</div>
+                        <div class="ctab" data-tab="term" onclick="switchTab('term')" title="Interactive shell (mc, htop, nano… work here)"><i class="fa-solid fa-terminal"></i>&nbsp;Terminal <span class="ctab-user" id="term-user"></span></div>
+                        <div class="ctab" data-tab="run" onclick="switchTab('run')" title="Console of the Python script started with Run / Debug"><i class="fa-solid fa-play"></i>&nbsp;Run <span class="dbg-dot" id="run-dot" hidden></span></div>
                         <div class="c-spacer"></div>
+                        <span class="c-action" id="term-new" onclick="WebTerm.restart()" title="New shell session" hidden><i class="fa-solid fa-plus"></i></span>
+                        <span class="c-action" onclick="toggleConsoleMax()" title="Maximize / restore the panel"><i class="fa-solid fa-up-down" id="console-max-ico"></i></span>
                         <span class="c-action" onclick="clearConsole()" title="Clear">✕</span>
                         <span class="c-action" onclick="refreshLog()" title="Refresh">↺</span>
                     </div>
                     <div id="console-body">
                         <div id="log-pane" class="cpane active"></div>
-                        <div id="term-pane" class="cpane">
-                            <div id="xterm-container"></div>
-                            <div id="term-input-row">
-                                <span id="term-prompt">pi@rpi:~$ </span>
-                                <input id="term-input" type="text" autocomplete="off"
-                                       spellcheck="false" placeholder="enter command…"
-                                       onkeydown="termKeyDown(event)">
-                            </div>
+                        <div id="term-pane" class="cpane xterm-pane">
+                            <div id="shell-container" class="xterm-box"></div>
+                        </div>
+                        <div id="run-pane" class="cpane xterm-pane">
+                            <div id="run-status" class="run-status">No program running — use ▶ Run or 🐞 Debug in the tab bar</div>
+                            <div id="xterm-container" class="xterm-box"></div>
                         </div>
                     </div>
                 </div>
@@ -246,6 +247,7 @@
 <script src="{{ asset('js/git.js') }}"></script>
 <script src="{{ asset('js/editor_git.js') }}"></script>
 <script src="{{ asset('js/editor_debug.js') }}"></script>
+<script src="{{ asset('js/web_terminal.js') }}"></script>
 <script src="{{ asset('vendor/marked/marked.min.js') }}"></script>
 <script src="{{ asset('vendor/dompurify/purify.min.js') }}"></script>
 <script src="{{ asset('vendor/highlight/highlight.min.js') }}"></script>

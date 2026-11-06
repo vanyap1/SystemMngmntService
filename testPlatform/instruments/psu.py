@@ -4,7 +4,7 @@ Raw SCPI over TCP port 8080: one connection per command — connect, send "<cmd>
 until the controller closes the connection. Answers starting with "ERROR" raise PsuError. The controller has
 only 8 sockets, so a refused connection is retried a few times. Command reference: http://<ip>/#scpi.
 
-    from psu import PSU
+    from instruments.psu import PSU
 
     psu = PSU("192.168.1.91")
     psu.setVoltage(1, 12.0)
@@ -551,7 +551,7 @@ class PSU:
 
 
 if __name__ == "__main__":
-    # Read-only check: nothing is switched or changed.
+    # Read-only check: nothing is switched or changed.  python3 instruments/psu.py [host]
     import sys
     psu = PSU(sys.argv[1] if len(sys.argv) > 1 else "192.168.1.91")
     print(psu.identify())

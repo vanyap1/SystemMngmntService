@@ -234,7 +234,7 @@ const Logs = {
             if (it.type === 'step') {
                 rows += `<tr class="lv-step s-${esc(it.status)}">
                     <td class="num faint">${idx}</td>
-                    <td class="num mono small faint">${it.t.toFixed(2)}s</td>
+                    <td class="num mono small faint" title="${it.t.toFixed(2)} s from the start of the run">${(it.dt != null ? it.dt : it.t).toFixed(2)}s</td>
                     <td><a href="#" onclick='event.preventDefault(); Logs.openStep(${esc(JSON.stringify(it.name))})' title="Analyse this step across runs">${hl(it.name)}</a></td>
                     <td class="mono lv-cond">${hl(it.condition)}${this.measureBar(it.condition, it.status)}</td>
                     <td class="small muted">${hl(it.units)}</td>
@@ -249,7 +249,7 @@ const Logs = {
             }
         }
         body.innerHTML = rows
-            ? `<table class="tbl lv-tbl"><thead><tr><th class="num">#</th><th class="num">Time</th><th>Step</th><th>Condition / value</th><th>Units</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`
+            ? `<table class="tbl lv-tbl"><thead><tr><th class="num">#</th><th class="num" title="Duration of the step (hover: time from the start)">Step time</th><th>Step</th><th>Condition / value</th><th>Units</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`
             : '<div class="tbl-empty">Nothing matches</div>';
     },
 

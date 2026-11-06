@@ -162,7 +162,7 @@ const Tests = {
             `<td class="r-name" title="${esc(r.name)}">${esc(r.name)}</td>` +
             `<td class="r-cond" title="${esc(r.condition)}">${esc(r.condition)}</td>` +
             `<td class="num r-unit" title="${esc(r.units)}">${esc(r.units)}</td>` +
-            `<td class="num r-time">${r.t.toFixed(2)}s</td>` +
+            `<td class="num r-time" title="${r.t.toFixed(2)} s from the start of the run">${(r.dt != null ? r.dt : r.t).toFixed(2)}s</td>` +
             `<td class="num r-status"><span class="status-tag status-${esc(r.status)}">${esc(r.status)}</span></td>`;
         document.getElementById('results-body').appendChild(tr);
         Tests.resultsCount++;

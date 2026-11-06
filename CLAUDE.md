@@ -42,6 +42,7 @@ core/
   net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
   udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
   monitor.py           system monitor sampler (CPU/RAM/temp/active iface/disk I/O, 15 min history, lease)
+  terminal.py          interactive shell in a pty for the editor's Terminal tab (SSE output, POST keys, lease)
   spawn.py             popen() with PDEATHSIG from one long-lived thread (children die with the panel only)
   pyrun.py             run / debug a .py from the editor: pty session, output buffer, lease, gentle stop
   pydbg_agent.py       bdb debugger running inside the debugged process (stdlib only), JSON over two pipes
@@ -146,8 +147,13 @@ static/
   `ts.run(steps, finalize, watch=w)`. A failing check is delivered to the main thread as SIGINT → `AbortTest`
   (ERROR row, steps skipped, finalize runs; the watch is stopped before finalize). A real SIGINT without a pending
   abort stays a KeyboardInterrupt (Stop button). Tests: `tests/test_watch.py` (subprocesses), `demo_estop_test.py`.
-- Instruments: `psu.py` (SCPI PSU, raw TCP :8080, one connection per command, `ERROR…` → `PsuError`; tests use a
-  fake server, never the real bench), `dmm.py`. Their public methods must be in `help/testing/test-platform.md`.
+- Instrument drivers live in the package `testPlatform/instruments/` (`psu.py`, `dmm.py`, `dmm2.py`, `adc.py`,
+  `stm8_flash.py`, `uut_serial.py`); scripts import them as `from instruments.psu import PSU`. Firmware images and
+  other binaries are in `testPlatform/instruments/fw/` — reach them via `instruments.FW_DIR` / `fw_path()` (the
+  STM8 flasher defaults to it), never via a path relative to the working directory. The framework
+  (`testStrategy.py`, `testWatch.py`) and the `*_test.py` scripts stay in `testPlatform/`. `psu.py`: SCPI PSU,
+  raw TCP :8080, one connection per command, `ERROR…` → `PsuError`; tests use a fake server, never the real bench;
+  its public methods must be in `help/testing/psu.md`. `demo_pass_test.py` uses the real PSU — tests don't run it.
 - Serial number from the UI reaches the script as `--sn <serial>` (validated by `SERIAL_PATTERN`); scripts read
   it via `ts.serial`. It is part of the log file name (`__<serial>`, see `LOG_PATTERN`) and the log header.
 - Page: `routes/tests.py`, `templates/tests.html`, `static/js/tests.js`, `static/css/tests.css`.
@@ -211,6 +217,16 @@ static/
   Stop = debugger quit / SIGINT first (finally/finalize must run), then SIGTERM, SIGKILL.
 - Mutually exclusive with the test runner (`pyrun.blocked`, check in `/api/tests/start`); start releases GPIO.
 - Hover evaluation accepts only names / attributes / constant subscripts (`hover_safe`) — never calls code.
+
+## Terminal (code editor)
+- `core/terminal.py` + `routes/terminal.py` + `static/js/web_terminal.js` (`WebTerm`): a login shell in a pty,
+  output as Server-Sent Events with byte offsets (reconnect resumes), keys as batched POSTs (order kept), resize via
+  TIOCSWINSZ. No websockets (offline, Flask dev server). Runs as the owner of target_dir via `spawn.popen`
+  (user/group/extra_groups); closed IDLE_SECONDS after the last stream; max MAX_SESSIONS. Tests: `tests/test_terminal.py`.
+- Page shortcuts must not steal keys inside `.xterm` (mc uses F-keys, Ctrl+key). The *Run* tab is the console of
+  `PyDebug` (its keys go to the script's pty via `/api/pyrun/input`). Macros type into the shell (`WebTerm.run`).
+- Headless screenshots: a page with an open EventSource never idles, so `--virtual-time-budget` hangs; drive such
+  pages with real waits (Chrome DevTools protocol) instead.
 
 ## Documentation window in the editor
 - `static/js/help_float.js` (`HelpFloat`), markup in `templates/editor.html`, styles in `editor.css`; it reads the

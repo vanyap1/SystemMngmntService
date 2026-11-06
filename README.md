@@ -17,7 +17,7 @@ Flask 3 + plain JavaScript, no build step; the only server dependency is `python
 | **Service control** | status / start / stop / restart of the target service and any other systemd unit |
 | **System monitor** | CPU, RAM, temperature, active network interface and block devices with live charts; on the main page and as a floating, resizable, semi-transparent window on every other page |
 | **Backups & deploy** | archive the project, upload a `.tar.gz`, deploy it with an automatic backup |
-| **Code editor** | file tree, Monaco editor with outline, **run / debug Python** (breakpoints, step over / into / out, variables, hover values), service log, web terminal, command macros |
+| **Code editor** | file tree, Monaco editor with outline, **run / debug Python** (breakpoints, step over / into / out, variables, hover values), service log, **interactive terminal** (a real shell: mc, htop, nano, vim), command macros |
 | **Test platform** | run `*_test.py` fixture sequences, live PASS/FAIL table, operator prompts, stop-on-fail, a log per run, yield statistics |
 | **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
 | **Docs** | Markdown knowledge base in `help/`: sidebar tree, full-text search, rendered view with table of contents and code copy buttons, Monaco editor with live preview, toolbar, image paste/drop upload, attachments; **diagram editor** for pinouts and block diagrams (exported to SVG, embedded in pages) |
@@ -92,7 +92,8 @@ SystemMngmntService/
 │   ├── js/           # core.js, services.js, sysinfo.js, monitor.js, video.js, power.js, devices*.js (shared), <page>.js
 │   └── img/
 ├── help/            # Documentation (Markdown), help/img images, help/docs attachments, help/examples raw notes
-├── testPlatform/     # Test platform: *_test.py sequences + hardware drivers (run from the Tests page)
+├── testPlatform/     # Test platform: *_test.py sequences, testStrategy.py / testWatch.py (run from the Tests page)
+│   └── instruments/  # Instrument drivers: psu.py, dmm.py, adc.py, stm8_flash.py, uut_serial.py; fw/ = firmware, binaries
 ├── testLogs/         # One log file per test run (git-ignored)
 ├── tests/            # Unit/integration tests (unittest) + dev server and screenshot helpers
 ├── docs/img/         # README screenshots (regenerate with tests/docs_screenshots.sh)
@@ -203,6 +204,14 @@ flowchart LR
     Editor -->|/api/pyrun/*| Debug[Run / debug Python]
 ```
 
+**Terminal.** The *Terminal* tab of the bottom panel is a real shell in a pseudo-terminal, like PuTTY / SSH:
+full-screen programs (mc, htop, nano, vim, less), colours, the mouse and F-keys work, the window size follows the
+panel (⤢ maximizes it). It runs as the owner of `target_dir`, starting in `target_dir`. Copy: select with the
+mouse, then Ctrl+Shift+C (or Ctrl+C while text is selected); paste: Ctrl+V / Ctrl+Shift+V. A page reload
+reattaches to the same shell (it is closed 60 s after the last page left); **+** starts a new one. Command macros
+are typed into this shell. The output of scripts started with ▶ Run / 🐞 Debug goes to the *Run* tab (keys typed
+there go to the script).
+
 **Documentation window.** The **?** button in the editor's top bar opens the documentation in a floating
 window (drag the title, resize from the corner): sections → documents → headings on the left with a search over
 titles, headings and text, the page on the right in a compact layout. Every line of a code example has *Insert*
@@ -245,6 +254,9 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | POST | `/api/file_create`, `/api/file_rename`, `/api/file_delete` | login | File operations |
 | GET | `/api/file_raw` | login | Raw file (image preview) |
 | POST | `/api/exec` | login | Execute shell command |
+| POST | `/api/term/open` | login | Start a shell in a pty `{cols, rows}` or reattach `{id}` → `{id, user, offset}` |
+| GET | `/api/term/stream?id=&from=` | login | Shell output as Server-Sent Events (`out` {d, o}, `exit` {code}) from byte offset `from` |
+| POST | `/api/term/input`, `/api/term/resize`, `/api/term/close` | login | Keys `{id, data}` / window size `{id, cols, rows}` / end the shell |
 | POST | `/api/pyrun/start` | login | Run / debug a `.py` in target_dir `{path, args, debug, breaks, stop_on_entry}` |
 | GET | `/api/pyrun/poll?id=&since=` | login | Session state, new terminal output, pause info (keeps the session alive) |
 | POST | `/api/pyrun/cmd`, `/input`, `/stop` | login | `{id, action: continue/next/step/return/pause/frame}` / stdin text / stop |

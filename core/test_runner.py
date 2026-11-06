@@ -310,7 +310,11 @@ class TestRunner:
         return prompt
 
     def _add_result(self, run, record):
-        record['t'] = round(time.time() - run.started, 2)
+        now = time.time() - run.started
+        record['t'] = round(now, 2)                          # since the start of the run (log file)
+        prev = getattr(run, '_last_t', 0.0)
+        record['dt'] = round(max(0.0, now - prev), 2)        # duration of this step: since the previous result
+        run._last_t = now
         record['index'] = sum(1 for r in run.results if r['status'] != 'SECTION') + 1
         run.results.append(record)
         if record['status'] == 'SECTION':

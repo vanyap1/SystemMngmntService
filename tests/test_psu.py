@@ -1,4 +1,4 @@
-"""testPlatform/psu.py against a fake controller on localhost (one TCP connection per command, like the real
+"""testPlatform/instruments/psu.py against a fake controller on localhost (one TCP connection per command, like the real
 one) — the real power supply is never contacted."""
 import os
 import socket
@@ -9,7 +9,7 @@ import unittest
 from tests.support import ROOT
 
 sys.path.insert(0, os.path.join(ROOT, 'testPlatform'))
-from psu import PSU, PsuError  # noqa: E402
+from instruments.psu import PSU, PsuError  # noqa: E402
 
 DATA = ('12.00,12.01,0.090,28,12.00,1.000,0.40,1,0,1,0.00,0.00,-0.000,27,0.00,1.000,0.00,1,0,1,0,'
         '23.64,25858,139,23.61,24832,119,0,0,15.00,0,1,0,0,15.00,0,1')
