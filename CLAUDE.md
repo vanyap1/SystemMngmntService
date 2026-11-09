@@ -176,6 +176,18 @@ static/
   API `/api/help/diagram*` in `routes/help.py`, store `core/diagrams.py`. The renderer is the single source of the
   SVG look: the editor shows `renderItems(..., {editor: true})`, saving uploads `toSvg()`. Keep `kinds` key order
   (legend order): the diagram GET avoids `jsonify` (it sorts keys).
+- Test equipment library: a diagram whose `unit` item has `master: true` is a library component (categories and port
+  types: `CATEGORIES` / `PORT_TYPES` in diagram_render.js, typical ports: `UNIT_TEMPLATES` in diagrams.js). Other
+  diagrams place it as `unit` with `ref` and a **copy** of category/title/ports (exports stay self-contained); the
+  editor compares the copy on open (`checkUnits`) and offers *Update*. Wire ends on units are `{id, port}` — when
+  ports disappear, wires are detached (`_detachMissing`), never dropped. `rename` relinks `ref`s (`_relink_units`).
+  Catalogs (sidebar groups station / assembly / bus / component / uut / diagram; `bus` = symbol with `detail: "bus"`) are virtual: `doc.catalog` or derived by
+  `DiagramRender.catalogOf` = `core/diagrams.catalog()` (keep both rules equal, tested in tests/test_help.py);
+  files stay flat in help/diagrams — never move them into folders (links and `ref`s use the bare name).
+  Wire colour without `color` = `DiagramRender.wireColor` (start port type → end port type → tapped bus); ports adopt
+  the colour of their wire (`portColors`). Signal wires may end on a bus `{wire, t}`; bus ends never tap (no recursion) —
+  every place that moves/copies/deletes wire ends must treat taps as attached (`Diagrams._attached`).
+  Visual checks without touching help/: `python3 tests/devserver.py --help-dir <scratch>`.
 
 ## Git (Settings → Git, popup in editor / docs)
 - `core/git_ops.py` + `routes/git.py` + `static/js/git.js` (one `Git` panel: `Git.mount(el, repo)` on Settings,

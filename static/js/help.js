@@ -130,21 +130,48 @@ const Help = {
     },
 
     _diagramGroup() {
-        const list = Diagrams.list || [];
-        const closed = this.closedFolders.has('__diagrams');
-        return `<div class="hp-folder hp-dg-group${closed ? ' closed' : ''}">` +
-            `<div class="hp-folder-head" data-folder="__diagrams"><i class="fa-solid fa-chevron-down"></i>` +
-            `<i class="fa-solid fa-diagram-project"></i> Diagrams<span class="hp-count">${list.length}</span>` +
-            `<button class="btn-icon hp-dg-new" data-new-diagram title="New diagram"><i class="fa-solid fa-plus"></i></button></div>` +
-            `<div class="hp-folder-items">` + (list.map(d =>
-                `<div class="hp-doc${Diagrams.name === d.name ? ' active' : ''}" data-diagram="${esc(d.name)}" title="diagrams/${esc(d.name)}.json">` +
-                `<i class="fa-solid fa-diagram-project"></i><span>${esc(d.title)}</span></div>`).join('') ||
-                '<div class="hp-doc hp-dg-empty" data-new-diagram><i class="fa-solid fa-plus"></i><span>New pinout / block diagram</span></div>') +
-            '</div></div>';
+        const list = Diagrams.list || [], R = DiagramRender;
+        const folder = (key, icon, label, inner, count, newTpl, title) =>
+            `<div class="hp-folder${key === '__diagrams' ? ' hp-dg-group' : ''}${this.closedFolders.has(key) ? ' closed' : ''}">` +
+            `<div class="hp-folder-head" data-folder="${esc(key)}"${title ? ` title="${esc(title)}"` : ''}><i class="fa-solid fa-chevron-down"></i>` +
+            `<i class="fa-solid ${icon}"></i> ${esc(label)}<span class="hp-count">${count}</span>` +
+            (newTpl ? `<button class="btn-icon hp-dg-new" data-new-diagram="${esc(newTpl)}" title="New in ${esc(label)}"><i class="fa-solid fa-plus"></i></button>` : '') +
+            `</div><div class="hp-folder-items">${inner}</div></div>`;
+        const item = d => {
+            const cat = d.component ? R.category(d.component.category) : null;
+            const icon = cat ? Diagrams._catIcon(d.component.category, 16)
+                : `<i class="fa-solid ${R.CATALOGS[d.catalog] ? R.CATALOGS[d.catalog].icon : 'fa-diagram-project'}"></i>`;
+            return `<div class="hp-doc${Diagrams.name === d.name ? ' active' : ''}" data-diagram="${esc(d.name)}" title="diagrams/${esc(d.name)}.json` +
+                (cat ? ` · ${esc(cat.label)}, ${d.component.ports} port(s)` : '') + '">' + icon + `<span>${esc(d.title)}</span>` +
+                `<button class="btn-icon hp-dg-clone" data-clone-diagram="${esc(d.name)}" title="Clone into this group under a new name"><i class="fa-regular fa-clone"></i></button></div>`;
+        };
+        const empty = (tpl, text) => `<div class="hp-doc hp-dg-empty" data-new-diagram="${esc(tpl)}"><i class="fa-solid fa-plus"></i><span>${esc(text)}</span></div>`;
+        const NEW = { station: 'station', assembly: 'comp:jig', bus: 'bus:prog', component: 'comp:custom', uut: 'comp:dut', diagram: 'block' };
+        const EMPTY = { station: 'New test station', assembly: 'New jig', bus: 'New bus-level module', component: 'New component',
+                        uut: 'New UUT (DUT symbol)', diagram: 'New pinout / block diagram' };
+        let inner = '';
+        for (const [key, c] of Object.entries(R.CATALOGS)) {
+            const items = list.filter(d => (R.CATALOGS[d.catalog] ? d.catalog : 'diagram') === key);
+            let body = items.length ? items.map(item).join('') : empty(NEW[key], EMPTY[key]);
+            if ((key === 'component' || key === 'bus') && items.length) {
+                const tpl = key === 'bus' ? 'bus:' : 'comp:';
+                body = Object.entries(R.COMPONENT_GROUPS).map(([g, gr]) => {
+                    const l = items.filter(d => R.componentGroup(d.component ? d.component.category : 'custom') === g)
+                        .sort((a, b) => gr.cats.indexOf(a.component.category) - gr.cats.indexOf(b.component.category) || a.title.localeCompare(b.title));
+                    return l.length ? folder(`__dg_${key}_${g}`, gr.icon, gr.label, l.map(item).join(''), l.length, tpl + gr.cats[0],
+                                             gr.cats.map(k => R.category(k).label).join(', ')) : '';
+                }).join('');
+            }
+            inner += folder(`__dg_${key}`, c.icon, c.label, body, items.length, NEW[key], c.hint);
+        }
+        return folder('__diagrams', 'fa-diagram-project', 'Diagrams', inner, list.length, ' ');
     },
 
     _treeClick(e) {
-        if (e.target.closest('[data-new-diagram]')) { e.stopPropagation(); return Diagrams.openNew(); }
+        const cl = e.target.closest('[data-clone-diagram]');
+        if (cl) { e.stopPropagation(); return Diagrams.duplicate(cl.dataset.cloneDiagram); }
+        const nd = e.target.closest('[data-new-diagram]');
+        if (nd) { e.stopPropagation(); return Diagrams.openNew(nd.dataset.newDiagram.trim() || undefined); }
         const dg = e.target.closest('[data-diagram]');
         if (dg) {
             this.openDiagram(dg.dataset.diagram);

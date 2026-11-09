@@ -1,0 +1,759 @@
+{
+ "version": 1,
+ "title": "FilterTest",
+ "width": 2000,
+ "height": 1000,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "id": "tki6ho0",
+   "type": "text",
+   "x": 20,
+   "y": 38,
+   "text": "FilterTest",
+   "size": 32,
+   "weight": "700"
+  },
+  {
+   "id": "t9f9uo2",
+   "type": "text",
+   "x": 20,
+   "y": 68,
+   "text": "Library component · Test jig. Edit the ports of the symbol (double-click it), save, then place it on other diagrams with the Unit tool.",
+   "size": 14,
+   "color": "#6b7280"
+  },
+  {
+   "id": "l1k4wui",
+   "type": "legend",
+   "x": 20,
+   "y": 970,
+   "source": "ports"
+  },
+  {
+   "type": "unit",
+   "ref": "Oscilloscope_LAN",
+   "x": 280,
+   "y": 670,
+   "w": 180,
+   "h": 120,
+   "category": "scope",
+   "title": "Oscilloscope ",
+   "subtitle": "",
+   "des": "OSC1",
+   "ports": [
+    {
+     "name": "LAN",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "CH1",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CH2",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "EXT_TRIG",
+     "type": "in",
+     "side": "right",
+     "note": ""
+    }
+   ],
+   "id": "u8ybye9"
+  },
+  {
+   "type": "unit",
+   "ref": "Function_generator_2CH_LAN",
+   "x": 280,
+   "y": 810,
+   "w": 180,
+   "h": 110,
+   "category": "gen",
+   "title": "DSS",
+   "subtitle": "",
+   "des": "GEN1",
+   "ports": [
+    {
+     "name": "USB",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT1",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "SYNC",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    }
+   ],
+   "id": "ubn83ol"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_psu",
+   "x": 280,
+   "y": 540,
+   "w": 180,
+   "h": 110,
+   "category": "psu",
+   "title": "Power supply",
+   "subtitle": "",
+   "des": "PSU1",
+   "ports": [
+    {
+     "name": "LAN",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "pwr",
+     "side": "right",
+     "note": "OUT1, OUT2"
+    }
+   ],
+   "id": "ui73e9a"
+  },
+  {
+   "type": "unit",
+   "ref": "G_FiletrBoard",
+   "x": 970,
+   "y": 190,
+   "w": 230,
+   "h": 130,
+   "category": "dut",
+   "title": "G_FiletrBoard",
+   "subtitle": "",
+   "des": "DUT1",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "Gnd",
+     "type": "gnd",
+     "side": "bottom",
+     "note": ""
+    }
+   ],
+   "id": "u81phhb"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 670,
+   "y": 320,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K1",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "uc1a2jr"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 670,
+   "y": 470,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K2",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "u4acksk"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 670,
+   "y": 620,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K3",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "uys571a"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 670,
+   "y": 780,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K4",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "uplvvhd"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 1340,
+   "y": 320,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K5",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "uhb4ocs"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 1340,
+   "y": 470,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K6",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "ugjw9lt"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 1340,
+   "y": 620,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K7",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "ukms8sp"
+  },
+  {
+   "type": "unit",
+   "ref": "bus_relay",
+   "x": 1340,
+   "y": 770,
+   "w": 140,
+   "h": 120,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "K8",
+   "ports": [
+    {
+     "name": "IN",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CTRL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    }
+   ],
+   "id": "u9vnz9n"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "ui73e9a",
+    "port": "OUT"
+   },
+   "to": {
+    "id": "uc1a2jr",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wu5irjy"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "x": 560,
+    "y": 600
+   },
+   "to": {
+    "id": "uhb4ocs",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wm3q66z",
+   "color": "#d53030"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "uc1a2jr",
+    "port": "OUT"
+   },
+   "to": {
+    "id": "u81phhb",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wpx0ml8",
+   "color": "#7cb7b0"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "uhb4ocs",
+    "port": "OUT"
+   },
+   "to": {
+    "id": "u81phhb",
+    "port": "OUT"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wy7oh12",
+   "dashed": false
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "u4acksk",
+    "port": "OUT"
+   },
+   "to": {
+    "x": 890,
+    "y": 380
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wlq00dl",
+   "color": "#81b6b0"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "uys571a",
+    "port": "OUT"
+   },
+   "to": {
+    "x": 890,
+    "y": 530
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "ww50igy",
+   "color": "#86b5b0"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "uplvvhd",
+    "port": "OUT"
+   },
+   "to": {
+    "x": 890,
+    "y": 680
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wsoz2eb",
+   "color": "#86b5b0"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "ugjw9lt",
+    "port": "OUT"
+   },
+   "to": {
+    "x": 1510,
+    "y": 380
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "w89rgyd"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "ukms8sp",
+    "port": "OUT"
+   },
+   "to": {
+    "x": 1510,
+    "y": 530
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "w3ituum"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "u9vnz9n",
+    "port": "OUT"
+   },
+   "to": {
+    "x": 1510,
+    "y": 680
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wemnsqn"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "x": 890,
+    "y": 260
+   },
+   "to": {
+    "x": 530,
+    "y": 260
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wygjru1",
+   "color": "#5fada4"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "x": 530,
+    "y": 260
+   },
+   "to": {
+    "id": "u8ybye9",
+    "port": "CH2"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "w175z4m"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "u8ybye9",
+    "port": "CH1"
+   },
+   "to": {
+    "x": 510,
+    "y": 150
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wrldwh3",
+   "color": "#9770ea"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "x": 510,
+    "y": 150
+   },
+   "to": {
+    "id": "u81phhb",
+    "port": "OUT"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wn1sqzw",
+   "color": "#9770ea"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "id": "ubn83ol",
+    "port": "OUT1"
+   },
+   "to": {
+    "x": 580,
+    "y": 530
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "wucuhpw"
+  },
+  {
+   "type": "wire",
+   "from": {
+    "x": 580,
+    "y": 530
+   },
+   "to": {
+    "id": "u4acksk",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "end",
+   "label": "",
+   "id": "w17chvp",
+   "color": "#5caaa2"
+  }
+ ]
+}

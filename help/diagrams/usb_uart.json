@@ -1,0 +1,171 @@
+{
+ "version": 1,
+ "title": "USB-UART",
+ "width": 1000,
+ "height": 560,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "USB-UART",
+   "size": 32,
+   "weight": "700",
+   "id": "tkvx9nr"
+  },
+  {
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "USB to UART bridge with modem lines; I/O level set by VCCIO (3.3 / 5 V).",
+   "size": 14,
+   "color": "#6b7280",
+   "id": "tg0gy9e"
+  },
+  {
+   "type": "unit",
+   "x": 390,
+   "y": 180,
+   "w": 220,
+   "h": 160,
+   "category": "adapter",
+   "title": "USB-UART",
+   "subtitle": "FT232R / CP2102",
+   "des": "",
+   "ports": [
+    {
+     "name": "USB",
+     "type": "bus",
+     "side": "left",
+     "note": "to the test PC (/dev/ttyUSBx)"
+    },
+    {
+     "name": "TXD",
+     "type": "out",
+     "side": "right",
+     "note": "to DUT RX"
+    },
+    {
+     "name": "RXD",
+     "type": "in",
+     "side": "right",
+     "note": "from DUT TX"
+    },
+    {
+     "name": "RTS",
+     "type": "out",
+     "side": "right",
+     "note": "flow control / reset"
+    },
+    {
+     "name": "CTS",
+     "type": "in",
+     "side": "right",
+     "note": "flow control"
+    },
+    {
+     "name": "DTR",
+     "type": "out",
+     "side": "right",
+     "note": "often drives DUT reset / boot"
+    },
+    {
+     "name": "VCCIO",
+     "type": "pwr",
+     "side": "right",
+     "note": "I/O level 3.3 / 5 V"
+    },
+    {
+     "name": "GND",
+     "type": "gnd",
+     "side": "right",
+     "note": ""
+    }
+   ],
+   "id": "uaax6bk",
+   "master": true,
+   "prefix": "ADP"
+  },
+  {
+   "type": "legend",
+   "x": 60,
+   "y": 520,
+   "source": "ports",
+   "id": "lwgintv"
+  }
+ ]
+}

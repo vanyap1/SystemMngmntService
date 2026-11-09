@@ -1,0 +1,1091 @@
+{
+ "version": 1,
+ "title": "Test station — demo",
+ "width": 1900,
+ "height": 1260,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "id": "tfds8ji",
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "Test station — demo",
+   "size": 32,
+   "weight": "700"
+  },
+  {
+   "id": "tykk97u",
+   "type": "text",
+   "x": 60,
+   "y": 100,
+   "text": "Station instruments, the test jig (relay controller, relays, multiplexer) and the DUT with its test points. Blocks are library components (demo_*).",
+   "size": 16,
+   "color": "#6b7280"
+  },
+  {
+   "id": "bqnotu1",
+   "type": "block",
+   "x": 40,
+   "y": 130,
+   "w": 1820,
+   "h": 1040,
+   "title": "ST1 · Test station",
+   "lines": [],
+   "style": "plain",
+   "stroke": "#9ca3af",
+   "dashed": true,
+   "radius": 14
+  },
+  {
+   "id": "bw1q25x",
+   "type": "block",
+   "x": 580,
+   "y": 180,
+   "w": 1250,
+   "h": 960,
+   "title": "JIG1 · Test jig",
+   "lines": [
+    "fixture with pogo pins"
+   ],
+   "style": "note",
+   "dashed": true,
+   "radius": 12
+  },
+  {
+   "id": "u62yy60",
+   "type": "unit",
+   "ref": "demo_pc",
+   "x": 160,
+   "y": 200,
+   "w": 220,
+   "h": 110,
+   "category": "pc",
+   "title": "NanoPi Duo2",
+   "subtitle": "test runner",
+   "des": "PC1",
+   "ports": [
+    {
+     "name": "COM1",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "USB2",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "ETH",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "USB1",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "GPIO",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "u4ib81c",
+   "type": "unit",
+   "ref": "demo_psu",
+   "x": 160,
+   "y": 430,
+   "w": 200,
+   "h": 110,
+   "category": "psu",
+   "title": "Bench PSU",
+   "subtitle": "",
+   "des": "PSU1",
+   "ports": [
+    {
+     "name": "LAN",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT1+",
+     "type": "pwr",
+     "side": "right",
+     "note": "0–30 V / 3 A"
+    },
+    {
+     "name": "OUT1-",
+     "type": "gnd",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2+",
+     "type": "pwr",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2-",
+     "type": "gnd",
+     "side": "right",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "uj9r1dl",
+   "type": "unit",
+   "ref": "demo_gen",
+   "x": 140,
+   "y": 680,
+   "w": 270,
+   "h": 110,
+   "category": "gen",
+   "title": "Function generator",
+   "subtitle": "",
+   "des": "GEN1",
+   "ports": [
+    {
+     "name": "USB",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT1",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "SYNC",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "u9ioras",
+   "type": "unit",
+   "ref": "demo_scope",
+   "x": 160,
+   "y": 900,
+   "w": 250,
+   "h": 120,
+   "category": "scope",
+   "title": "Oscilloscope",
+   "subtitle": "",
+   "des": "OSC1",
+   "ports": [
+    {
+     "name": "USB",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "CH1",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CH2",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CH3",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CH4",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "EXT_TRIG",
+     "type": "in",
+     "side": "right",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "ubg788w",
+   "type": "unit",
+   "ref": "demo_relay_ctrl",
+   "x": 660,
+   "y": 250,
+   "w": 240,
+   "h": 160,
+   "category": "ctrl",
+   "title": "Relay controller",
+   "subtitle": "STM8",
+   "des": "CTRL1",
+   "ports": [
+    {
+     "name": "USB",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "MEN",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "MA2",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "MA1",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "MA0",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "K1",
+     "type": "out",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "K2",
+     "type": "out",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "12V",
+     "type": "pwr",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "GND",
+     "type": "gnd",
+     "side": "top",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "uc7pc6i",
+   "type": "unit",
+   "ref": "demo_mux8",
+   "x": 1080,
+   "y": 400,
+   "w": 180,
+   "h": 160,
+   "category": "mux",
+   "title": "MUX-8",
+   "subtitle": "",
+   "des": "MUX1",
+   "ports": [
+    {
+     "name": "A0",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "A1",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "A2",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "EN",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "CH1",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH2",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH3",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH4",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH5",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH6",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH7",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "CH8",
+     "type": "analog",
+     "side": "bottom",
+     "note": ""
+    },
+    {
+     "name": "COM",
+     "type": "analog",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "VCC",
+     "type": "pwr",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "GND",
+     "type": "gnd",
+     "side": "left",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "un5u8dh",
+   "type": "unit",
+   "ref": "demo_relay",
+   "x": 700,
+   "y": 700,
+   "w": 160,
+   "h": 150,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "DUT power",
+   "des": "K1",
+   "ports": [
+    {
+     "name": "COIL+",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "COIL-",
+     "type": "gnd",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "COM",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "NO",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "NC",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "uwqxybc",
+   "type": "unit",
+   "ref": "demo_relay",
+   "x": 700,
+   "y": 920,
+   "w": 160,
+   "h": 150,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "stimulus",
+   "des": "K2",
+   "ports": [
+    {
+     "name": "COIL+",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "COIL-",
+     "type": "gnd",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "COM",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "NO",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "NC",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "uihleha",
+   "type": "unit",
+   "ref": "demo_dut",
+   "x": 1440,
+   "y": 730,
+   "w": 250,
+   "h": 130,
+   "category": "dut",
+   "title": "Controller board",
+   "subtitle": "",
+   "des": "DUT1",
+   "ports": [
+    {
+     "name": "VIN",
+     "type": "pwr",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "IN1",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "IN2",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "GND",
+     "type": "gnd",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT1",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2",
+     "type": "out",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "UART",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "TP1",
+     "type": "tp",
+     "side": "top",
+     "note": "3V3 rail"
+    },
+    {
+     "name": "TP2",
+     "type": "tp",
+     "side": "top",
+     "note": "5V rail"
+    },
+    {
+     "name": "TP3",
+     "type": "tp",
+     "side": "top",
+     "note": "MCU clock"
+    },
+    {
+     "name": "TP4",
+     "type": "tp",
+     "side": "top",
+     "note": "reset"
+    }
+   ]
+  },
+  {
+   "id": "wuy594e",
+   "type": "wire",
+   "from": {
+    "id": "u62yy60",
+    "port": "COM1"
+   },
+   "to": {
+    "id": "u9ioras",
+    "port": "USB"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "dashed": true,
+   "via": [
+    [
+     80,
+     240
+    ],
+    [
+     80,
+     960
+    ]
+   ]
+  },
+  {
+   "id": "wafv1fa",
+   "type": "wire",
+   "from": {
+    "id": "u62yy60",
+    "port": "USB2"
+   },
+   "to": {
+    "id": "uj9r1dl",
+    "port": "USB"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "dashed": true,
+   "via": [
+    [
+     100,
+     260
+    ],
+    [
+     100,
+     740
+    ]
+   ]
+  },
+  {
+   "id": "ws09t30",
+   "type": "wire",
+   "from": {
+    "id": "u62yy60",
+    "port": "ETH"
+   },
+   "to": {
+    "id": "u4ib81c",
+    "port": "LAN"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "dashed": true,
+   "via": [
+    [
+     120,
+     280
+    ],
+    [
+     120,
+     490
+    ]
+   ]
+  },
+  {
+   "id": "wmlyf7v",
+   "type": "wire",
+   "from": {
+    "id": "u62yy60",
+    "port": "USB1"
+   },
+   "to": {
+    "id": "ubg788w",
+    "port": "USB"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "USB"
+  },
+  {
+   "id": "wa1oei0",
+   "type": "wire",
+   "from": {
+    "id": "ubg788w",
+    "port": "K1"
+   },
+   "to": {
+    "id": "un5u8dh",
+    "port": "COIL+"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": ""
+  },
+  {
+   "id": "wuct3fc",
+   "type": "wire",
+   "from": {
+    "id": "ubg788w",
+    "port": "K2"
+   },
+   "to": {
+    "id": "uwqxybc",
+    "port": "COIL+"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "via": [
+    [
+     790,
+     456
+    ],
+    [
+     920,
+     456
+    ],
+    [
+     920,
+     874
+    ],
+    [
+     770,
+     874
+    ]
+   ]
+  },
+  {
+   "id": "wvg4r4q",
+   "type": "wire",
+   "from": {
+    "id": "ubg788w",
+    "port": "MEN"
+   },
+   "to": {
+    "id": "uc7pc6i",
+    "port": "EN"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": ""
+  },
+  {
+   "id": "wi20y9n",
+   "type": "wire",
+   "from": {
+    "id": "ubg788w",
+    "port": "MA2"
+   },
+   "to": {
+    "id": "uc7pc6i",
+    "port": "A2"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": ""
+  },
+  {
+   "id": "wt25ob8",
+   "type": "wire",
+   "from": {
+    "id": "ubg788w",
+    "port": "MA1"
+   },
+   "to": {
+    "id": "uc7pc6i",
+    "port": "A1"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": ""
+  },
+  {
+   "id": "wclcvax",
+   "type": "wire",
+   "from": {
+    "id": "ubg788w",
+    "port": "MA0"
+   },
+   "to": {
+    "id": "uc7pc6i",
+    "port": "A0"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": ""
+  },
+  {
+   "id": "wf25u39",
+   "type": "wire",
+   "from": {
+    "id": "u4ib81c",
+    "port": "OUT1+"
+   },
+   "to": {
+    "id": "un5u8dh",
+    "port": "COM"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "12 V",
+   "color": "#dc2626"
+  },
+  {
+   "id": "wqsdxdq",
+   "type": "wire",
+   "from": {
+    "id": "un5u8dh",
+    "port": "NO"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "VIN"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "VIN",
+   "color": "#dc2626"
+  },
+  {
+   "id": "wie8yan",
+   "type": "wire",
+   "from": {
+    "id": "u4ib81c",
+    "port": "OUT1-"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "GND"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "GND",
+   "color": "#374151",
+   "via": [
+    [
+     440,
+     480
+    ],
+    [
+     440,
+     1120
+    ],
+    [
+     1400,
+     1120
+    ],
+    [
+     1400,
+     830
+    ]
+   ]
+  },
+  {
+   "id": "w5ob1no",
+   "type": "wire",
+   "from": {
+    "id": "uj9r1dl",
+    "port": "OUT1"
+   },
+   "to": {
+    "id": "uwqxybc",
+    "port": "COM"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "1 kHz"
+  },
+  {
+   "id": "w3tb6g6",
+   "type": "wire",
+   "from": {
+    "id": "uwqxybc",
+    "port": "NO"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "IN1"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": ""
+  },
+  {
+   "id": "w8yr5l7",
+   "type": "wire",
+   "from": {
+    "id": "uc7pc6i",
+    "port": "CH1"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "TP1"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "via": [
+    [
+     1100,
+     665
+    ],
+    [
+     1540,
+     665
+    ]
+   ]
+  },
+  {
+   "id": "wyl1xhr",
+   "type": "wire",
+   "from": {
+    "id": "uc7pc6i",
+    "port": "CH2"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "TP2"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "via": [
+    [
+     1120,
+     655
+    ],
+    [
+     1560,
+     655
+    ]
+   ]
+  },
+  {
+   "id": "wfuizp9",
+   "type": "wire",
+   "from": {
+    "id": "uc7pc6i",
+    "port": "CH3"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "TP3"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "via": [
+    [
+     1140,
+     645
+    ],
+    [
+     1580,
+     645
+    ]
+   ]
+  },
+  {
+   "id": "w5rb28o",
+   "type": "wire",
+   "from": {
+    "id": "uc7pc6i",
+    "port": "CH4"
+   },
+   "to": {
+    "id": "uihleha",
+    "port": "TP4"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "via": [
+    [
+     1160,
+     635
+    ],
+    [
+     1600,
+     635
+    ]
+   ]
+  },
+  {
+   "id": "w2waaa0",
+   "type": "wire",
+   "from": {
+    "id": "uc7pc6i",
+    "port": "COM"
+   },
+   "to": {
+    "id": "u9ioras",
+    "port": "CH1"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "probe",
+   "via": [
+    [
+     1790,
+     480
+    ],
+    [
+     1790,
+     1100
+    ],
+    [
+     460,
+     1100
+    ],
+    [
+     460,
+     920
+    ]
+   ]
+  },
+  {
+   "id": "lyjg1c5",
+   "type": "legend",
+   "x": 70,
+   "y": 1220,
+   "source": "ports"
+  }
+ ]
+}

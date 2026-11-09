@@ -225,15 +225,57 @@ class Diagrams(unittest.TestCase):
         r.close()
 
         r = self.c.post('/api/help/diagram/rename', json={'name': 'board', 'new_name': 'board2'}).get_json()
-        self.assertEqual(r, {'name': 'board2', 'docs': ['hw/page.md']})
+        self.assertEqual(r, {'name': 'board2', 'docs': ['hw/page.md'], 'diagrams': []})
         self.assertIn('../diagrams/board2.svg', help_docs.read_doc('hw/page.md')['content'])
 
         self.assertEqual(self.c.post('/api/help/diagram/delete', json={'name': 'board2'}).status_code, 200)
         self.assertEqual(self.c.get('/api/help/diagram?name=board2').status_code, 404)
         self.assertEqual(len(os.listdir(os.path.join(help_docs.root(), '.trash'))), 2)   # json + svg
 
+    def test_library_components(self):
+        mux = {'title': 'MUX-8', 'items': [{'id': 't1', 'type': 'text', 'text': 'x'},
+               {'id': 'u1', 'type': 'unit', 'master': True, 'category': 'mux', 'title': 'MUX-8', 'prefix': 'MUX',
+                'ports': [{'name': 'COM', 'type': 'analog', 'side': 'right'}, {'name': 'CH1', 'type': 'analog', 'side': 'left'}]}]}
+        jig = {'title': 'Jig', 'items': [{'id': 'u1', 'type': 'unit', 'ref': 'mux8', 'des': 'MUX1', 'ports': []},
+                                         {'id': 'u2', 'type': 'unit', 'ref': 'mux8', 'des': 'MUX2', 'ports': []},
+                                         {'id': 'u3', 'type': 'unit', 'ref': 'other', 'ports': []}]}
+        for name, data in [('mux8', mux), ('jig', jig), ('plain', self.data)]:
+            self.assertEqual(self.c.post('/api/help/diagram/create', json={'name': name, 'data': data}).status_code, 200)
+        items = {i['name']: i for i in self.c.get('/api/help/diagrams').get_json()['items']}
+        self.assertEqual(items['mux8']['component'], {'category': 'mux', 'title': 'MUX-8', 'ports': 2, 'detail': 'pins'})
+        self.assertIsNone(items['jig']['component'])
+        self.assertIsNone(items['plain']['component'])
+        self.assertEqual({n: i['catalog'] for n, i in items.items()}, {'mux8': 'component', 'jig': 'station', 'plain': 'diagram'})
+        self.assertEqual(self.c.get('/api/help/diagram?name=mux8').get_json()['used_in'], ['jig'])
+        self.assertEqual(self.c.get('/api/help/diagram?name=jig').get_json()['used_in'], [])
+
+        r = self.c.post('/api/help/diagram/rename', json={'name': 'mux8', 'new_name': 'mux8_v2'}).get_json()
+        self.assertEqual(r['diagrams'], ['jig'])
+        refs = [i.get('ref') for i in self.c.get('/api/help/diagram?name=jig').get_json()['data']['items']]
+        self.assertEqual(refs, ['mux8_v2', 'mux8_v2', 'other'])
+        self.assertEqual(self.c.get('/api/help/diagram?name=mux8_v2').get_json()['used_in'], ['jig'])
+
+    def test_catalogs(self):
+        from core import diagrams as dg
+        unit = {'type': 'unit', 'ref': 'x'}
+        cases = [({'items': []}, 'diagram'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'scope'}]}, 'component'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'jig'}]}, 'assembly'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'dut'}]}, 'uut'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'prog', 'detail': 'bus'}]}, 'bus'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'dut', 'detail': 'bus'}]}, 'uut'),
+                 ({'catalog': 'component', 'items': [{'type': 'unit', 'master': True, 'category': 'dut'}]}, 'component'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'mux'}, unit]}, 'assembly'),
+                 ({'items': [{'type': 'unit', 'master': True, 'category': 'station'}, unit]}, 'station'),
+                 ({'items': [unit]}, 'station'),
+                 ({'catalog': 'component', 'items': [unit]}, 'component'),
+                 ({'catalog': 'bogus', 'items': []}, 'diagram')]
+        for data, want in cases:
+            with self.subTest(data=data):
+                self.assertEqual(dg.catalog(data), want)
+
     def test_page_has_editor(self):
         html = self.c.get('/help').get_data(as_text=True)
-        for needle in ['id="dg-pane"', 'diagram_render.js', 'diagrams.js', 'dg-pins-overlay']:
+        for needle in ['id="dg-pane"', 'diagram_render.js', 'diagrams.js', 'dg-pins-overlay', 'dg-ports-overlay', 'id="dg-lib"']:
             self.assertIn(needle, html)
         self.assertEqual(self.c.get('/diagrams').status_code, 404)                     # only inside Docs

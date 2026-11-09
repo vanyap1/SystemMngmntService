@@ -3,6 +3,15 @@
 Every diagram is ``<name>.json`` (the editable model, see static/js/diagram_render.js) plus ``<name>.svg``
 exported by the editor on every save, so documentation pages embed ``../diagrams/<name>.svg``.
 Deleted diagrams are moved to help_dir/.trash.
+
+A diagram with a ``unit`` item marked ``master`` is a library component (DUT, instrument, mux, relay, jig…);
+other diagrams place it as ``{"type": "unit", "ref": "<name>", …}`` with a copy of its ports, so ``ref`` links
+are kept in sync on rename and reported by ``used_in()``.
+
+Catalogs (sidebar groups, the files stay flat): ``station`` (a whole test station), ``assembly`` (a jig / board
+built of units), ``bus`` (bus-level module: one port per interface), ``uut`` (products under test: a DUT symbol),
+``component`` (instrument, mux, relay… = a symbol only) and ``diagram`` (pinouts, block diagrams).
+``data["catalog"]`` sets it explicitly, otherwise ``catalog()`` derives it from the content.
 """
 import json
 import os
@@ -43,6 +52,69 @@ def _existing(name):
     return name, js, svg
 
 
+def _master(data):
+    for it in (data.get('items') or []) if isinstance(data, dict) else []:
+        if isinstance(it, dict) and it.get('type') == 'unit' and it.get('master'):
+            return it
+    return None
+
+
+def _component(data):
+    m = _master(data)
+    if m is None:
+        return None
+    return {'category': str(m.get('category') or 'custom'), 'title': str(m.get('title') or ''),
+            'ports': len(m.get('ports') or []), 'detail': 'bus' if m.get('detail') == 'bus' else 'pins'}
+
+
+CATALOGS = ('station', 'assembly', 'bus', 'component', 'uut', 'diagram')
+
+
+def catalog(data):
+    """Catalog of a diagram model (keep in sync with DiagramRender.catalogOf)."""
+    if not isinstance(data, dict):
+        return 'diagram'
+    if data.get('catalog') in CATALOGS:
+        return data['catalog']
+    units = [it for it in data.get('items') or []
+             if isinstance(it, dict) and it.get('type') == 'unit' and not it.get('master')]
+    m = _master(data)
+    if m is not None:
+        if m.get('category') == 'station':
+            return 'station'
+        if m.get('category') == 'dut':
+            return 'uut'
+        if units or m.get('category') == 'jig':
+            return 'assembly'
+        return 'bus' if m.get('detail') == 'bus' else 'component'
+    return 'station' if units else 'diagram'
+
+
+def _load_all():
+    """(name, path, data) of every readable diagram."""
+    if not os.path.isdir(folder()):
+        return
+    for e in os.scandir(folder()):
+        if not e.is_file() or not e.name.endswith('.json') or e.name.startswith('.'):
+            continue
+        try:
+            with open(e.path, encoding='utf-8') as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            yield e.name[:-5], e.path, data
+
+
+def _refs(data):
+    return [it for it in data.get('items') or [] if isinstance(it, dict) and it.get('type') == 'unit' and it.get('ref')]
+
+
+def used_in(name):
+    """Diagrams that place ``name`` as a unit."""
+    return sorted(n for n, _, data in _load_all() if n != name and any(it['ref'] == name for it in _refs(data)))
+
+
 def list_diagrams():
     if not os.path.isdir(folder()):
         return []
@@ -51,15 +123,18 @@ def list_diagrams():
         if not e.is_file() or not e.name.endswith('.json') or e.name.startswith('.'):
             continue
         name = e.name[:-5]
-        title = name
+        title, component, cat = name, None, 'diagram'
         try:
             with open(e.path, encoding='utf-8') as f:
-                title = (json.load(f).get('title') or name).strip()
-        except (OSError, ValueError, AttributeError):
+                data = json.load(f)
+            title = (data.get('title') or name).strip()
+            component = _component(data)
+            cat = catalog(data)
+        except (OSError, ValueError, AttributeError, TypeError):
             pass
         svg = os.path.join(folder(), name + '.svg')
         items.append({'name': name, 'title': title, 'mtime': e.stat().st_mtime, 'size': e.stat().st_size,
-                      'svg': os.path.isfile(svg)})
+                      'svg': os.path.isfile(svg), 'component': component, 'catalog': cat})
     return items
 
 
@@ -128,6 +203,20 @@ def _relink_docs(old, new):
     return changed
 
 
+def _relink_units(old, new):
+    """Point units placed from library component ``old`` to ``new``; returns the changed diagram names."""
+    changed = []
+    for n, path, data in list(_load_all()):
+        units = [it for it in _refs(data) if it['ref'] == old]
+        if not units:
+            continue
+        for it in units:
+            it['ref'] = new
+        help_docs._write_text(path, json.dumps(data, ensure_ascii=False, indent=1))
+        changed.append(n)
+    return sorted(changed)
+
+
 def rename(name, new_name):
     name, js, svg = _existing(name)
     new_name = check_name(new_name)
@@ -139,7 +228,7 @@ def rename(name, new_name):
     os.replace(js, new_js)
     if os.path.isfile(svg):
         os.replace(svg, new_svg)
-    return {'name': new_name, 'docs': _relink_docs(name, new_name)}
+    return {'name': new_name, 'docs': _relink_docs(name, new_name), 'diagrams': _relink_units(name, new_name)}
 
 
 def delete(name):

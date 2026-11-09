@@ -318,8 +318,8 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/help/assets?kind=img\|docs` | login | Images / attachments with the pages that use them |
 | POST | `/api/help/upload` | login | Multipart `kind` + `file`(s); returns the stored names |
 | POST | `/api/help/asset_delete` | login | `{kind, name}` (moved to `.trash/`) |
-| GET | `/api/help/diagrams`, `/api/help/diagram?name=` | login | Diagram list / one diagram model with the pages that embed it |
-| POST | `/api/help/diagram/create`, `/save`, `/rename`, `/delete` | login | `{name, data, svg}` / `{name, data, svg, mtime, force}` (409 on conflict) / `{name, new_name}` (fixes page links) / `{name}` |
+| GET | `/api/help/diagrams`, `/api/help/diagram?name=` | login | Diagram list (with `component` info of library components) / one diagram model with the pages that embed it (`used_by`) and the diagrams that place it as a unit (`used_in`) |
+| POST | `/api/help/diagram/create`, `/save`, `/rename`, `/delete` | login | `{name, data, svg}` / `{name, data, svg, mtime, force}` (409 on conflict) / `{name, new_name}` (fixes page links and unit `ref`s) / `{name}` |
 
 ---
 
@@ -475,6 +475,20 @@ A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar 
   multi-select, align, copy/paste, undo/redo. Pins are edited in a table that accepts rows pasted from Excel/CSV.
   Saving writes `<name>.json` and the exported `<name>.svg`; pages embed `../diagrams/<name>.svg` (toolbar button),
   and a diagram image in a page has an *Edit diagram* button. SVG/PNG download.
+- **Test equipment library** (diagram editor): a diagram with a *symbol* (category + ports) is a library component —
+  DUT, oscilloscope, generator, PSU, multimeter, programmer, interface adapter, hub / switch, isolator, IO block, computer, multiplexer, relay, controller, test jig, station
+  (*New diagram → Library component* templates come with typical ports). The *Unit* tool (U) places components on
+  other diagrams (designators MUX1, K2…); wires attach to ports (input, output, bidirectional, analog, test point,
+  power, ground, bus, n.c.), a legend can show port types. *Bus* lines (tool S, or any wire drawn from a bus port)
+  are thick double lines with an optional slash mark and width / name (`/8`, `SWD`); signal wires dropped onto a
+  bus join it (junction dot) and the bus lists the signals it carries. A wire without its own colour takes the colour
+  of its port type, and the port at the other end adopts it — one colour per net. Units keep a copy of the ports: when the component
+  changes they are marked *outdated* and updated with one click; renaming a component relinks its units.
+  The sidebar groups diagrams into catalogs: **Stations**, **Assemblies** (jigs / boards built of units),
+  **Bus-level modules** (simplified symbols: one port per interface — SWD, UART, I²C…, no power),
+  **UUT** (products under test — DUT symbols), **Components** (pin level, by category: oscilloscopes, generators, …) and plain **Diagrams**. The catalog is derived from the
+  content or set in the diagram properties; *Duplicate* copies a diagram (e.g. a new instrument version) into any
+  catalog / category. Files stay flat in `help/diagrams/`, so links and unit references never break.
 
 ---
 

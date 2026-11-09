@@ -1,0 +1,153 @@
+{
+ "version": 1,
+ "title": "Bench PSU",
+ "width": 1000,
+ "height": 560,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "Bench PSU",
+   "size": 32,
+   "weight": "700",
+   "id": "tb2pvtm"
+  },
+  {
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "SCPI over TCP :8080 · library component (Power supply)",
+   "size": 14,
+   "color": "#6b7280",
+   "id": "t0nefnn"
+  },
+  {
+   "type": "unit",
+   "x": 400,
+   "y": 170,
+   "w": 200,
+   "h": 110,
+   "category": "psu",
+   "title": "Bench PSU",
+   "subtitle": "",
+   "des": "",
+   "ports": [
+    {
+     "name": "LAN",
+     "type": "bus",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "OUT1+",
+     "type": "pwr",
+     "side": "right",
+     "note": "0–30 V / 3 A"
+    },
+    {
+     "name": "OUT1-",
+     "type": "gnd",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2+",
+     "type": "pwr",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "OUT2-",
+     "type": "gnd",
+     "side": "right",
+     "note": ""
+    }
+   ],
+   "id": "u8k0ail",
+   "master": true,
+   "prefix": "PSU"
+  },
+  {
+   "type": "legend",
+   "x": 60,
+   "y": 520,
+   "source": "ports",
+   "id": "ltw1xhe"
+  }
+ ]
+}

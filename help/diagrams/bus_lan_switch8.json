@@ -1,0 +1,172 @@
+{
+ "version": 1,
+ "title": "LAN switch 8-port",
+ "width": 1000,
+ "height": 480,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "LAN switch 8-port",
+   "size": 32,
+   "weight": "700",
+   "id": "txzsijc"
+  },
+  {
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "Bus-level Ethernet switch (all ports equal; LAN1 drawn as the uplink). One port per interface, no power pins.",
+   "size": 14,
+   "color": "#6b7280",
+   "id": "tjqyn4d"
+  },
+  {
+   "type": "unit",
+   "x": 370,
+   "y": 170,
+   "w": 270,
+   "h": 160,
+   "category": "hub",
+   "title": "LAN switch 8-port",
+   "subtitle": "unmanaged, 100/1000",
+   "des": "",
+   "ports": [
+    {
+     "name": "LAN1",
+     "type": "bus",
+     "side": "left",
+     "note": "uplink / test PC"
+    },
+    {
+     "name": "LAN2",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "LAN3",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "LAN4",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "LAN5",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "LAN6",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "LAN7",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "LAN8",
+     "type": "bus",
+     "side": "right",
+     "note": ""
+    }
+   ],
+   "id": "uncdodn",
+   "master": true,
+   "prefix": "HUB",
+   "detail": "bus"
+  },
+  {
+   "type": "legend",
+   "x": 60,
+   "y": 440,
+   "source": "ports",
+   "id": "l3nw88d"
+  }
+ ]
+}

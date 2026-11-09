@@ -24,6 +24,8 @@ def step(seconds):
     time.sleep(seconds)
     return True
 
+def calc_b(a, b):
+    return a+b
 
 def steps():
     psu.ioOut(1, 9, 1)
@@ -32,7 +34,19 @@ def steps():
     ts.logResult("PSU info", True, idn)
     ts.logResult("Fixture power on", step(0.3), "OK")
     ts.logResult("StLink VCC on", step(0.2), "OK")
+    print(calc_b(150,300))
+    
     print("Flashing test firmware DEMO_EOLT_V1.hex ...")
+    a = 100
+    b = 200
+    c = a + b
+
+    psu.setVoltage(1, 12.0)                         # voltage preset, V
+    psu.on(1)                                       # output on
+
+    
+
+
     ts.logResult("Erase chip", step(1.0), "Chip erased successfully")
     ts.logResult("Flash chip", step(1.5), "Chip flashed successfully")
     ts.logResult("Verify flash", step(0.8), "Chip verified successfully")

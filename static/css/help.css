@@ -243,6 +243,31 @@ body.page-help { height: 100vh; overflow: hidden; }
 .dg-pins .dg-pb { width: 76px; }
 .dg-pins select.input { width: 90px; }
 .dg-row-act { white-space: nowrap; }
+.dg-ports-box { width: 860px; height: 80vh; }
+.dg-ports .dg-port-name { width: 140px; }
+.dg-ports select.input { width: 150px; }
+.dg-ports td:nth-child(4) select.input { width: 90px; }
+.dg-ports .dg-dup { border-color: var(--danger); }
+.dg-port-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.dg-toolbar { position: relative; }
+.dg-lib { position: absolute; top: calc(100% + 2px); left: 10px; z-index: 30; width: 340px; max-height: 60vh; display: flex; flex-direction: column;
+          background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.dg-lib[hidden] { display: none; }
+.dg-lib > .input { margin: 8px; }
+.dg-lib-list { overflow-y: auto; padding: 0 6px 6px; }
+.dg-lib-cat { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-mute); padding: 8px 6px 3px; }
+.dg-lib-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 5px 8px; border: 0; border-radius: 6px; background: none;
+               color: var(--text); text-align: left; cursor: pointer; font: inherit; font-size: 12.5px; }
+.dg-lib-item:hover { background: var(--bg-hover); }
+.dg-lib-item > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dg-lib-item small { font-size: 10.5px; }
+.dg-lib-foot { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-top: 1px solid var(--border); }
+.dg-caticon { flex-shrink: 0; background: var(--text); border-radius: 5px; padding: 2px; vertical-align: middle; }
+.dg-unitref { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.dg-unitref-row { display: flex; align-items: center; gap: 8px; line-height: 1.35; }
+.dg-warn { color: var(--warn); }
+#dg-overlay .dg-stale-box { fill: none; stroke: var(--warn); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+#dg-overlay .dg-stale-box.missing { stroke: var(--danger); }
 
 /* Diagram images in pages */
 .md .hp-dgwrap { position: relative; display: inline-block; max-width: 100%; }
@@ -250,5 +275,8 @@ body.page-help { height: 100vh; overflow: hidden; }
     border: 1px solid var(--border-strong); color: var(--text); border-radius: 4px; font-size: 11px; padding: 3px 9px; cursor: pointer; }
 .md .hp-dgwrap:hover .hp-dg-edit { opacity: 1; }
 .hp-dg-group .hp-folder-head .hp-dg-new { margin-left: 6px; font-size: 11px; }
+.hp-doc .dg-caticon { padding: 1px; border-radius: 3px; }
+.hp-doc .hp-dg-clone { margin-left: auto; font-size: 11px; padding: 1px 4px; opacity: 0; }
+.hp-doc:hover .hp-dg-clone, .hp-doc .hp-dg-clone:focus-visible { opacity: 1; }
 .hp-dg-empty { color: var(--text-mute) !important; font-style: italic; }
 @media print { .hp-dg-edit { display: none !important; } }

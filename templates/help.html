@@ -100,7 +100,9 @@
                 <span id="dg-dirty" class="badge badge-info" hidden>modified</span>
                 <span id="dg-name" class="meta small faint mono"></span>
                 <span id="dg-used" class="meta small faint"></span>
+                <button id="dg-stale" class="btn btn-warning btn-sm" hidden onclick="Diagrams.updateUnits()"></button>
                 <span class="spacer"></span>
+                <button class="btn-icon" onclick="Diagrams.duplicate()" title="Duplicate — e.g. a new version of an instrument, also into another category / catalog"><i class="fa-regular fa-clone"></i></button>
                 <button class="btn-icon" onclick="Diagrams.rename()" title="Rename"><i class="fa-solid fa-i-cursor"></i></button>
                 <button class="btn-icon hp-del" onclick="Diagrams.remove()" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
                 <button class="btn btn-ghost btn-sm" onclick="Diagrams.close()">Close</button>
@@ -111,9 +113,19 @@
                     <button type="button" data-tool="select" onclick="Diagrams.setTool('select')" title="Select / move (V)"><i class="fa-solid fa-arrow-pointer"></i></button>
                     <button type="button" data-tool="block" onclick="Diagrams.setTool('block')" title="Block: click or drag (B)"><i class="fa-regular fa-square"></i> Block</button>
                     <button type="button" data-tool="wire" onclick="Diagrams.setTool('wire')" title="Wire / arrow: drag from a block to a block (W)"><i class="fa-solid fa-arrow-right-long"></i> Wire</button>
+                    <button type="button" data-tool="bus" onclick="Diagrams.setTool('bus')" title="Bus line: thick double line between bus ports (S). Wires drawn from a bus port become buses automatically"><i class="fa-solid fa-grip-lines"></i> Bus</button>
                     <button type="button" data-tool="chip" onclick="Diagrams.setTool('chip')" title="Chip / module with pins (C)"><i class="fa-solid fa-microchip"></i> Chip</button>
+                    <button type="button" data-tool="unit" onclick="Diagrams.toggleLib()" title="Unit from the library: DUT, instruments, mux, relay, jig… (U)"><i class="fa-solid fa-cube"></i> Unit <i class="fa-solid fa-caret-down"></i></button>
                     <button type="button" data-tool="text" onclick="Diagrams.setTool('text')" title="Text (T)"><i class="fa-solid fa-font"></i> Text</button>
                     <button type="button" data-tool="legend" onclick="Diagrams.setTool('legend')" title="Legend of pin kinds (L)"><i class="fa-solid fa-list"></i> Legend</button>
+                </div>
+                <div class="dg-lib" id="dg-lib" hidden>
+                    <input class="input input-sm" id="dg-lib-q" placeholder="Search components…" autocomplete="off">
+                    <div class="dg-lib-list" id="dg-lib-list"></div>
+                    <div class="dg-lib-foot">
+                        <button class="btn btn-ghost btn-sm" onclick="Diagrams.newComponent()"><i class="fa-solid fa-plus"></i> New component…</button>
+                        <span class="hint">A component is a diagram with a symbol; save it to see it here.</span>
+                    </div>
                 </div>
                 <i class="hp-tsep"></i>
                 <button class="btn-icon" id="dg-undo" onclick="Diagrams.undo()" title="Undo (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
@@ -233,11 +245,31 @@
     </div>
 </div>
 
+<!-- Diagram: unit ports (library symbol) -->
+<div id="dg-ports-overlay" class="modal-overlay" onclick="if (event.target === this) Diagrams.closePorts()">
+    <div class="modal-box dg-ports-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-cube text-ok"></i> <span id="dg-ports-title"></span></span>
+            <span class="spacer"></span>
+            <button class="btn btn-success btn-sm" onclick="Diagrams.portCmd('add')" title="Add a numbered series (CH1…CH8)"><i class="fa-solid fa-plus"></i> Add</button>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.portCmd('sort')" title="Group rows by side (order inside a side is kept)"><i class="fa-solid fa-arrow-down-wide-short"></i> By side</button>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.portCmd('copy')" title="Copy as TSV for Excel"><i class="fa-regular fa-copy"></i> TSV</button>
+            <button class="btn btn-danger btn-sm" onclick="Diagrams.portCmd('clear')" title="Delete all ports"><i class="fa-regular fa-trash-can"></i></button>
+            <button class="modal-close" onclick="Diagrams.closePorts()">&#215;</button>
+        </div>
+        <div class="modal-body" id="dg-ports-body"></div>
+        <div class="modal-foot">
+            <span class="hint">Rows of one side are drawn in table order (left/right: top → bottom, top/bottom: left → right). Paste rows from Excel / CSV (name, type, side, note).
+                Wires follow a renamed port; units placed elsewhere are updated with “Update” there. Ctrl+Z after closing undoes the changes.</span>
+        </div>
+    </div>
+</div>
+
 <!-- Diagram: new -->
 <div id="dg-new-overlay" class="modal-overlay" onclick="if (event.target === this) Diagrams.closeNew()">
     <div class="modal-box hp-doc-box">
         <div class="modal-head">
-            <span class="modal-title"><i class="fa-solid fa-diagram-project text-ok"></i> New diagram</span>
+            <span class="modal-title"><i class="fa-solid fa-diagram-project text-ok"></i> <span id="dg-new-head">New diagram</span></span>
             <button class="modal-close" onclick="Diagrams.closeNew()">&#215;</button>
         </div>
         <form class="modal-body hp-form" onsubmit="event.preventDefault(); Diagrams.submitNew()" oninput="Diagrams.newInput(event)">
@@ -251,13 +283,51 @@
                     <input class="input mono" id="dg-new-name" autocomplete="off" spellcheck="false">
                     <span class="hint">help/diagrams/&lt;name&gt;.json + .svg</span>
                 </div>
-                <div class="field">
+                <div class="field" id="dg-new-tpl-field">
                     <label for="dg-new-tpl">Start from</label>
                     <select class="input" id="dg-new-tpl">
                         <option value="pinout">Pinout (module with pins + legend)</option>
                         <option value="block">Block diagram</option>
                         <option value="blank">Empty</option>
+                        <option value="station">Test station (place units from the library)</option>
+                        <optgroup label="Library component (symbol with ports)">
+                            <option value="comp:dut">DUT — device under test</option>
+                            <option value="comp:scope">Oscilloscope</option>
+                            <option value="comp:gen">Generator</option>
+                            <option value="comp:psu">Power supply</option>
+                            <option value="comp:dmm">Multimeter</option>
+                            <option value="comp:io">IO block</option>
+                            <option value="comp:pc">Computer</option>
+                            <option value="comp:mux">Multiplexer</option>
+                            <option value="comp:relay">Relay</option>
+                            <option value="comp:ctrl">Controller (relay / IO board)</option>
+                            <option value="comp:prog">Programmer / debugger</option>
+                            <option value="comp:adapter">Interface adapter (USB-UART, I²C, SPI…)</option>
+                            <option value="comp:iso">Isolator (SPI, I²C, UART, IO…)</option>
+                            <option value="comp:hub">Hub / switch (USB, LAN)</option>
+                            <option value="comp:jig">Test jig</option>
+                            <option value="comp:station">Test station</option>
+                            <option value="comp:custom">Other</option>
+                        </optgroup>
+                        <optgroup label="Bus-level module (simplified: one port per interface, no power)">
+                            <option value="bus:prog">Programmer (USB → SWD)</option>
+                            <option value="bus:adapter">Interface adapter (USB → UART)</option>
+                            <option value="bus:iso">Isolator (bus A ↔ bus B)</option>
+                            <option value="bus:hub">Hub / switch (USB, LAN)</option>
+                            <option value="bus:dut">DUT</option>
+                            <option value="bus:custom">Other</option>
+                        </optgroup>
                     </select>
+                </div>
+            </div>
+            <div class="field-row" id="dg-new-copy" style="display: none">
+                <div class="field">
+                    <label for="dg-new-catalog">Catalog</label>
+                    <select class="input" id="dg-new-catalog"></select>
+                </div>
+                <div class="field" id="dg-new-cat-field">
+                    <label for="dg-new-cat">Category of the symbol</label>
+                    <select class="input" id="dg-new-cat"></select>
                 </div>
             </div>
         </form>

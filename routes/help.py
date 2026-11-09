@@ -131,6 +131,7 @@ def api_diagrams():
 def api_diagram():
     d = diagrams.read(request.args.get('name', ''))
     d['used_by'] = diagrams.used_by(d['name'])
+    d['used_in'] = diagrams.used_in(d['name'])
     # not jsonify: it sorts keys, and the order of pin kinds is the legend order
     return Response(json.dumps(d, ensure_ascii=False), mimetype='application/json')
 

@@ -1,0 +1,147 @@
+{
+ "version": 1,
+ "title": "USB-CAN",
+ "width": 1000,
+ "height": 560,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "USB-CAN",
+   "size": 32,
+   "weight": "700",
+   "id": "t3mns02"
+  },
+  {
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "USB to CAN adapter: shows up as can0 (SocketCAN). 120 Ω termination switch on the adapter.",
+   "size": 14,
+   "color": "#6b7280",
+   "id": "ts2pau3"
+  },
+  {
+   "type": "unit",
+   "x": 350,
+   "y": 180,
+   "w": 300,
+   "h": 110,
+   "category": "adapter",
+   "title": "USB-CAN",
+   "subtitle": "SocketCAN (gs_usb / CANable)",
+   "des": "",
+   "ports": [
+    {
+     "name": "USB",
+     "type": "bus",
+     "side": "left",
+     "note": "to the test PC (can0)"
+    },
+    {
+     "name": "CANH",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "CANL",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "GND",
+     "type": "gnd",
+     "side": "right",
+     "note": "CAN ground"
+    }
+   ],
+   "id": "uldupkk",
+   "master": true,
+   "prefix": "ADP"
+  },
+  {
+   "type": "legend",
+   "x": 60,
+   "y": 520,
+   "source": "ports",
+   "id": "lwzxvl6"
+  }
+ ]
+}

@@ -1,0 +1,147 @@
+{
+ "version": 1,
+ "title": "Relay",
+ "width": 1000,
+ "height": 560,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "in": {
+   "label": "input",
+   "fill": "#ffffff",
+   "stroke": "#1f2937",
+   "text": "#1f2937",
+   "dash": "",
+   "badge": "IN",
+   "sample": "IN",
+   "color": "#374151"
+  },
+  "bus": {
+   "label": "bus / peripheral",
+   "fill": "#e7e5e4",
+   "stroke": "#a8a29e",
+   "text": "#292524",
+   "dash": "",
+   "badge": "",
+   "sample": "BUS",
+   "color": "#0e9488"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "pwm": {
+   "label": "PWM",
+   "fill": "#fbf6ee",
+   "stroke": "#a16a2a",
+   "text": "#7c4a12",
+   "dash": "5 3",
+   "badge": "PWM",
+   "sample": "PWM",
+   "color": "#d6157a"
+  },
+  "nc": {
+   "label": "wired, not in code",
+   "fill": "#6b7280",
+   "stroke": "#6b7280",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "—",
+   "sample": "NC",
+   "color": "#6b7280"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  }
+ },
+ "items": [
+  {
+   "id": "tomfnme",
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "Relay",
+   "size": 32,
+   "weight": "700"
+  },
+  {
+   "id": "tberr6y",
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "SPDT, 12 V coil · library component (Relay)",
+   "size": 14,
+   "color": "#6b7280"
+  },
+  {
+   "id": "uavs7md",
+   "type": "unit",
+   "x": 400,
+   "y": 210,
+   "w": 160,
+   "h": 130,
+   "category": "relay",
+   "title": "Relay",
+   "subtitle": "",
+   "des": "",
+   "ports": [
+    {
+     "name": "COIL",
+     "type": "in",
+     "side": "top",
+     "note": ""
+    },
+    {
+     "name": "COM",
+     "type": "io",
+     "side": "left",
+     "note": ""
+    },
+    {
+     "name": "NO",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    },
+    {
+     "name": "NC",
+     "type": "io",
+     "side": "right",
+     "note": ""
+    }
+   ],
+   "master": true,
+   "prefix": "K"
+  },
+  {
+   "id": "lulg4rt",
+   "type": "legend",
+   "x": 60,
+   "y": 520,
+   "source": "ports"
+  }
+ ]
+}
