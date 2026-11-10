@@ -33,6 +33,8 @@ args = parser.parse_args()
 tmp = tempfile.mkdtemp(prefix='smms-devserver-')
 config.CONFIG_PATH = os.path.join(tmp, 'config.json')   # settings saves never reach the live config.json
 config.CFG['test_logs_dir'] = os.path.abspath(args.logs) if args.logs else os.path.join(tmp, 'testLogs')
+config.CFG['modbus_sessions_dir'] = os.path.join(tmp, 'modbusSessions')
+config.CFG['tty_sessions_dir'] = os.path.join(tmp, 'ttySessions')
 if args.target:
     config.CFG['target_dir'] = os.path.abspath(args.target)
 if args.help_dir:

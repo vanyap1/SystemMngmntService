@@ -8,7 +8,8 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/tree', '/api/macros', '/a
                  '/api/net/interfaces', '/api/tests/scripts', '/api/logs', '/api/logs/export.csv',
                  '/api/help/tree', '/api/help/search?q=x', '/api/help/assets?kind=img',
                  '/api/help/diagrams', '/api/git/repos', '/api/git/status', '/api/git/summary', '/api/git/credentials',
-                 '/api/git/tree_status', '/api/update/status', '/api/i2c/buses', '/api/pyrun/poll']
+                 '/api/git/tree_status', '/api/update/status', '/api/i2c/buses', '/api/pyrun/poll',
+                 '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions']
 PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/backups/create', '/api/settings',
                   '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
@@ -20,7 +21,12 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/i2c/scan', '/api/i2c/read', '/api/i2c/write', '/api/i2c/label',
                   '/api/pyrun/start', '/api/pyrun/cmd', '/api/pyrun/input', '/api/pyrun/stop', '/api/pyrun/eval',
                   '/api/pyrun/vars', '/api/pyrun/breaks', '/api/term/open', '/api/term/input', '/api/term/resize',
-                  '/api/term/close']
+                  '/api/term/close', '/api/sysclone/clone', '/api/sysclone/image', '/api/sysclone/stop',
+                  '/api/sysclone/write', '/api/modbus/request', '/api/modbus/scan', '/api/modbus/profiles',
+                  '/api/modbus/session/save', '/api/modbus/session/delete', '/api/tty/open', '/api/tty/send',
+                  '/api/tty/lines', '/api/tty/close', '/api/tty/profiles', '/api/tty/oneshot', '/api/tty/session/save',
+                  '/api/tty/session/delete',
+                  '/api/smb/mount', '/api/smb/umount', '/api/smb/forget', '/api/smb/mkdir']
 PROTECTED_PAGES = ['/editor', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
                    '/help/file/img/x.png', '/help?diagram=x']
 

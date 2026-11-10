@@ -1,4 +1,4 @@
-"""Secrets of this host (git HTTPS token) — kept OUT of every repository.
+"""Secrets of this host (git HTTPS token, SMB share login) — kept OUT of every repository.
 
 Stored in ``~/.config/systemmngmntservice/credentials.json`` of the user running the panel (root for the live
 service), mode 0600. Never in config.json (that file is tracked by git) and never sent back to the browser:
@@ -46,6 +46,28 @@ def set_git(username=None, token=None):
         g['token'] = token.strip()
     data['git'] = g
     _save(data)
+
+
+def smb():
+    """Last SMB share settings: {'share', 'username', 'password', 'vers'} (password only when remembered)."""
+    g = _load().get('smb') or {}
+    return {k: str(g.get(k) or '') for k in ('share', 'username', 'password', 'vers')}
+
+
+def set_smb(share=None, username=None, password=None, vers=None):
+    """Update the SMB settings; ``None`` keeps a value, ``''`` clears it."""
+    data = _load()
+    g = data.get('smb') or {}
+    for k, v in (('share', share), ('username', username), ('password', password), ('vers', vers)):
+        if v is not None:
+            g[k] = v if k == 'password' else v.strip()
+    data['smb'] = g
+    _save(data)
+
+
+def smb_public():
+    g = smb()
+    return {'share': g['share'], 'username': g['username'], 'vers': g['vers'], 'password_set': bool(g['password'])}
 
 
 def public():

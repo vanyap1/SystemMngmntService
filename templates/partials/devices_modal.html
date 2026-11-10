@@ -1,4 +1,4 @@
-<div id="devices-overlay" class="modal-overlay" onclick="if (event.target === this) Devices.close()">
+<div id="devices-overlay" class="modal-overlay">  <!-- closed only by its × button (no background click, no Esc) -->
     <div class="modal-box devices-modal-box">
         <div class="modal-head">
             <span class="modal-title"><i class="fa-solid fa-screwdriver-wrench text-ok"></i> HW Utils</span>
@@ -10,6 +10,9 @@
                 <button type="button" class="dev-tab" data-tab="gpio" onclick="Devices.setTab('gpio')"><i class="fa-solid fa-plug"></i> GPIO</button>
                 <button type="button" class="dev-tab" data-tab="i2c" onclick="Devices.setTab('i2c')"><i class="fa-solid fa-microchip"></i> I²C</button>
                 <button type="button" class="dev-tab" data-tab="udev" onclick="Devices.setTab('udev')"><i class="fa-solid fa-gears"></i> udev</button>
+                <button type="button" class="dev-tab" data-tab="modbus" onclick="Devices.setTab('modbus')"><i class="fa-solid fa-arrow-right-arrow-left"></i> Modbus</button>
+                <button type="button" class="dev-tab" data-tab="tty" onclick="Devices.setTab('tty')"><i class="fa-solid fa-terminal"></i> Terminal</button>
+                <button type="button" class="dev-tab" data-tab="clone" onclick="Devices.setTab('clone')"><i class="fa-solid fa-hard-drive"></i> Clone / Image</button>
             </div>
             <label class="check-row small" id="dev-auto-wrap" title="Refresh the current view periodically">
                 <input type="checkbox" id="dev-auto" checked onchange="Devices.setAuto()"> Auto
@@ -192,6 +195,311 @@
                     </div>
                 </section>
 
+                <section class="dev-pane" id="devpane-modbus" hidden>
+                    <div class="dev-toolbar mb-bar">
+                        <select class="input input-sm mb-prof" id="mb-prof" onchange="Devices.tabs.modbus.pickProfile(this.value)" title="Profile: connection + macro table"></select>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.modbus.profileCmd('new')" title="New profile"><i class="fa-solid fa-plus"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.modbus.profileCmd('rename')" title="Rename profile"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.modbus.profileCmd('dup')" title="Duplicate"><i class="fa-regular fa-clone"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.modbus.profileCmd('export')" title="Export as JSON"><i class="fa-solid fa-file-export"></i></button>
+                        <label class="btn-icon" title="Import a JSON profile"><i class="fa-solid fa-file-import"></i><input type="file" accept=".json,application/json" hidden onchange="Devices.tabs.modbus.importFile(this)"></label>
+                        <button type="button" class="btn-icon hp-del" onclick="Devices.tabs.modbus.profileCmd('delete')" title="Delete profile"><i class="fa-regular fa-trash-can"></i></button>
+                        <i class="hp-tsep"></i>
+                        <select class="input input-sm" id="mb-transport" onchange="Devices.tabs.modbus.connInput()" title="Transport">
+                            <option value="rtu">Serial RTU</option>
+                            <option value="rtu_tcp">RTU over TCP (serial server)</option>
+                            <option value="rtu_udp">RTU over UDP (serial server)</option>
+                            <option value="tcp">Modbus TCP</option>
+                            <option value="udp">Modbus UDP</option>
+                        </select>
+                        <span class="mb-serial">
+                            <select class="input input-sm" id="mb-port" onchange="Devices.tabs.modbus.connInput()" title="Serial port"></select>
+                            <select class="input input-sm" id="mb-baud" onchange="Devices.tabs.modbus.connInput()" title="Baud rate"></select>
+                            <select class="input input-sm" id="mb-frame" onchange="Devices.tabs.modbus.connInput()" title="Data bits, parity, stop bits">
+                                <option>8N1</option><option>8E1</option><option>8O1</option><option>8N2</option><option>7E1</option><option>7O1</option>
+                            </select>
+                        </span>
+                        <span class="mb-net">
+                            <input class="input input-sm mono mb-host" id="mb-host" placeholder="192.168.1.200" oninput="Devices.tabs.modbus.connInput()" title="Host / IP" spellcheck="false">
+                            <input class="input input-sm mono mb-netport" id="mb-netport" type="number" min="1" max="65535" oninput="Devices.tabs.modbus.connInput()" title="TCP / UDP port">
+                        </span>
+                        <label class="mb-lbl" title="Answer timeout">timeout <input class="input input-sm mb-num" id="mb-timeout" type="number" min="20" max="10000" step="10" oninput="Devices.tabs.modbus.connInput()"> ms</label>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.modbus.release()" title="Stop timers and scan: the port is free for other tools (it is opened only for each request)"><i class="fa-solid fa-plug-circle-xmark"></i> Close port</button>
+                        <span class="hint" id="mb-port-state"></span>
+                        <span class="spacer"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.modbus.toggleScan()" title="Find devices (unit ids)"><i class="fa-solid fa-magnifying-glass"></i> Scan</button>
+                    </div>
+                    <div class="dev-toolbar mb-bar">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.modbus.runAll()" title="Run every row of both tables once"><i class="fa-solid fa-play"></i> Run all</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="mb-cycle" onclick="Devices.tabs.modbus.toggleCycle()" title="Start / stop the timers of the timer rows (each row has its own period)"><i class="fa-solid fa-repeat"></i> Start timers</button>
+                        <label class="mb-lbl" title="Period given to new timer rows">default every <input class="input input-sm mb-num" id="mb-period" type="number" min="50" step="50" oninput="Devices.tabs.modbus.periodInput()"> ms</label>
+                        <span class="hint" id="mb-cycle-info"></span>
+                        <span class="spacer"></span>
+                        <span class="hint text-error" id="mb-blocked"></span>
+                        <i class="hp-tsep"></i>
+                        <span class="mb-lbl"><i class="fa-solid fa-box-archive"></i> session</span>
+                        <select class="input input-sm mb-sess" id="mb-sess" onchange="Devices.tabs.modbus.loadSession(this.value)" title="Saved sessions: table, connection, results, frame log, scan, notes"></select>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.modbus.saveSession()" title="Save the current state as a session (file)"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                        <button type="button" class="btn-icon hp-del" onclick="Devices.tabs.modbus.deleteSession()" title="Delete the selected session"><i class="fa-regular fa-trash-can"></i></button>
+                    </div>
+                    <div class="dev-scroll mb-body">
+                        <div class="mb-logpane">
+                            <div class="mb-log-head">Frames <span class="hint">› sent · ‹ received</span><span class="spacer"></span>
+                                <label class="check-row small"><input type="checkbox" id="mb-log-cycle"> log timer rows</label>
+                                <label class="check-row small"><input type="checkbox" id="mb-log-scroll" checked> autoscroll</label>
+                                <button type="button" class="btn-icon" onclick="Devices.tabs.modbus.clearLog()" title="Clear"><i class="fa-solid fa-eraser"></i></button></div>
+                            <div class="tt-out mono mb-log" id="mb-log"></div>
+                        </div>
+                        <div class="tt-send mb-quick">
+                            <span class="mb-lbl">unit</span><input class="input input-sm mono mb-unit" id="mbq-unit" value="1" title="Unit id">
+                            <select class="input input-sm mb-fn" id="mbq-fn" onchange="Devices.tabs.modbus.quickFn()"></select>
+                            <span class="mb-lbl">addr</span><input class="input input-sm mono mb-addr" id="mbq-addr" value="0" title="0-based address">
+                            <input class="input input-sm mono mb-qcnt" id="mbq-cnt" value="1" title="Count to read / values to write">
+                            <select class="input input-sm mb-fmt" id="mbq-fmt"></select>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.modbus.runQuick()" title="Run this request (Enter)"><i class="fa-solid fa-play"></i> Run</button>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.modbus.quickToRow()" title="Add it to the manual table"><i class="fa-solid fa-plus"></i> Row</button>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.modbus.noteInsert()" title="Append it to the notes as a [[tag]]">[[ ]]</button>
+                            <span class="mb-qres" id="mbq-res"></span>
+                        </div>
+                        <div class="mb-fixed">
+                            <div class="mb-scan" id="mb-scan" hidden>
+                                <span class="mb-lbl">units <input class="input input-sm mb-num" id="mbs-first" type="number" min="1" max="247" value="1"> –
+                                    <input class="input input-sm mb-num" id="mbs-last" type="number" min="1" max="247" value="247"></span>
+                                <select class="input input-sm" id="mbs-fn" title="Probe request"><option value="3">03 holding</option><option value="4">04 input</option><option value="1">01 coils</option><option value="2">02 discrete</option></select>
+                                <span class="mb-lbl">address <input class="input input-sm mb-num" id="mbs-addr" value="0"></span>
+                                <span class="mb-lbl">timeout <input class="input input-sm mb-num" id="mbs-timeout" type="number" min="20" value="80"> ms</span>
+                                <button type="button" class="btn btn-primary btn-sm" id="mbs-go" onclick="Devices.tabs.modbus.scan()"><i class="fa-solid fa-magnifying-glass"></i> Start</button>
+                                <span class="hint" id="mbs-info"></span>
+                                <div class="mb-found" id="mbs-found"></div>
+                            </div>
+                        </div>
+                        <div class="mb-part">
+                            <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-hand-pointer"></i> Manual requests</span>
+                                <span class="hint">saved requests, ▶ runs one</span> <i class="fa-regular fa-circle-question faint" title="Addresses are 0-based (PDU): holding register 40001 = address 0. Numbers: decimal, 0x1F, 0b101. Values to write: comma / space separated in the row format (coils: 1 0 on off); ascii writes the text. 32-bit formats use two registers (count = 2 per value); swap = word order CDAB."></i><span class="spacer"></span>
+                                <button type="button" class="btn btn-success btn-sm" onclick="Devices.tabs.modbus.addRow(false)"><i class="fa-solid fa-plus"></i> Row</button></div>
+                            <div class="mb-tbl-wrap"><table class="tbl mb-tbl"><thead><tr>
+                                <th>Name</th><th>Unit</th><th>Function</th><th>Address</th>
+                                <th>Count / values</th><th>Format</th><th></th><th>Result</th></tr></thead>
+                                <tbody id="mb-rows"></tbody></table></div>
+                        </div>
+                        <div class="mb-part">
+                            <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-clock"></i> Timer rows</span><span id="mb-auto-state"></span>
+                                <span class="hint">each row with its own period · ▶ runs a row any time, also while the timers are stopped</span><span class="spacer"></span>
+                                <button type="button" class="btn btn-success btn-sm" onclick="Devices.tabs.modbus.addRow(true)"><i class="fa-solid fa-plus"></i> Timer row</button></div>
+                            <div class="mb-tbl-wrap"><table class="tbl mb-tbl"><thead><tr>
+                                <th title="Timer on"><i class="fa-solid fa-power-off"></i></th><th>Name</th><th>Unit</th><th>Function</th><th>Address</th>
+                                <th>Count / values</th><th>Format</th><th>Every, ms</th><th></th><th>Result</th></tr></thead>
+                                <tbody id="mb-auto-rows"></tbody></table></div>
+                        </div>
+                        <div class="mb-part mb-notes">
+                            <div class="mb-sec tt-note-head"><span class="mb-sec-title"><i class="fa-regular fa-note-sticky"></i> Notes</span>
+                                <span class="hint">registers in <code>[[fn addr count|=values format uN]]</code> become buttons: ⇩ fill the request line, ▶ run it</span><span class="spacer"></span>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.modbus.noteExamples()" title="Tag syntax with examples"><i class="fa-regular fa-circle-question"></i> Examples</button>
+                                <button type="button" class="btn btn-ghost btn-sm" id="mb-note-edit" onclick="Devices.tabs.modbus.noteToggle()"><i class="fa-solid fa-pen"></i> Edit</button></div>
+                            <div class="tt-note-view mono mb-note-view" id="mb-note-view" title="Double-click to edit"></div>
+                            <textarea class="input mono tt-note mb-note-ta" id="mb-note" hidden placeholder="register map, findings, next steps…  e.g.  firmware: [[03 4 3 ascii]]   relay on: [[06 100 =1]]"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="dev-pane" id="devpane-tty" hidden>
+                    <div class="dev-toolbar mb-bar">
+                        <select class="input input-sm mb-prof" id="tt-prof" onchange="Devices.tabs.tty.pickProfile(this.value)" title="Profile: connection, send settings, commands"></select>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.tty.profileCmd('new')" title="New profile"><i class="fa-solid fa-plus"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.tty.profileCmd('rename')" title="Rename profile"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.tty.profileCmd('dup')" title="Duplicate"><i class="fa-regular fa-clone"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.tty.profileCmd('export')" title="Export as JSON"><i class="fa-solid fa-file-export"></i></button>
+                        <label class="btn-icon" title="Import a JSON profile"><i class="fa-solid fa-file-import"></i><input type="file" accept=".json,application/json" hidden onchange="Devices.tabs.tty.importFile(this)"></label>
+                        <button type="button" class="btn-icon hp-del" onclick="Devices.tabs.tty.profileCmd('delete')" title="Delete profile"><i class="fa-regular fa-trash-can"></i></button>
+                        <i class="hp-tsep"></i>
+                        <select class="input input-sm" id="tt-transport" onchange="Devices.tabs.tty.connInput(true)" title="Transport">
+                            <option value="serial">Serial port</option>
+                            <option value="tcp">TCP client</option>
+                            <option value="udp">UDP</option>
+                        </select>
+                        <span class="tt-f tt-serial">
+                            <select class="input input-sm" id="tt-port" onchange="Devices.tabs.tty.connInput()" title="Serial port"></select>
+                            <select class="input input-sm" id="tt-baud" onchange="Devices.tabs.tty.connInput()" title="Baud rate"></select>
+                            <select class="input input-sm" id="tt-frame" onchange="Devices.tabs.tty.connInput()" title="Data bits, parity, stop bits">
+                                <option>8N1</option><option>8E1</option><option>8O1</option><option>8N2</option><option>7E1</option><option>7O1</option>
+                            </select>
+                        </span>
+                        <span class="tt-f tt-net">
+                            <input class="input input-sm mono mb-host" id="tt-host" oninput="Devices.tabs.tty.connInput()" spellcheck="false" placeholder="192.168.1.50" title="Remote host / IP">
+                            <input class="input input-sm mono mb-netport" id="tt-netport" type="number" min="1" max="65535" oninput="Devices.tabs.tty.connInput()" title="Remote port">
+                        </span>
+                        <label class="tt-f tt-udp mb-lbl" title="Local UDP port to receive on — empty = auto (a free port, shown after Connect)">listen <input class="input input-sm mb-num" id="tt-listen" type="number" min="0" max="65535" placeholder="auto" oninput="Devices.tabs.tty.connInput()"></label>
+                        <button type="button" class="btn btn-primary btn-sm" id="tt-connect" onclick="Devices.tabs.tty.toggleConnect()"><i class="fa-solid fa-plug"></i> Connect</button>
+                        <span class="tt-state" id="tt-state"></span>
+                        <span class="tt-lines" id="tt-lines" hidden>
+                            <button type="button" class="btn btn-ghost btn-sm" data-line="dtr" onclick="Devices.tabs.tty.toggleLine('dtr')" title="Data Terminal Ready">DTR</button>
+                            <button type="button" class="btn btn-ghost btn-sm" data-line="rts" onclick="Devices.tabs.tty.toggleLine('rts')" title="Request To Send">RTS</button>
+                        </span>
+                        <span class="spacer"></span>
+                        <span class="hint text-error" id="tt-blocked"></span>
+                    </div>
+                    <div class="dev-toolbar mb-bar">
+                        <div class="gpio-seg" id="tt-mode">
+                            <button type="button" data-mode="text" onclick="Devices.tabs.tty.setMode('text')">Text</button>
+                            <button type="button" data-mode="hex" onclick="Devices.tabs.tty.setMode('hex')">Hex</button>
+                        </div>
+                        <label class="check-row small"><input type="checkbox" id="tt-time" onchange="Devices.tabs.tty.viewInput()"> time</label>
+                        <label class="check-row small"><input type="checkbox" id="tt-tx" onchange="Devices.tabs.tty.viewInput()"> show sent</label>
+                        <label class="check-row small" title="Parse JSON objects in the stream (one per line or spread over lines)"><input type="checkbox" id="tt-json" onchange="Devices.tabs.tty.viewInput()"> JSON</label>
+                        <label class="check-row small"><input type="checkbox" id="tt-scroll" checked> autoscroll</label>
+                        <label class="check-row small" title="Wrap long lines (off = scroll sideways)"><input type="checkbox" id="tt-wrap" onchange="Devices.tabs.tty.viewInput()"> wrap</label>
+                        <button type="button" class="btn btn-ghost btn-sm" id="tt-plot-btn" onclick="Devices.tabs.tty.openPlot()" title="Plot numeric JSON fields"><i class="fa-solid fa-chart-line"></i> Plot</button>
+                        <span class="spacer"></span>
+                        <span class="hint mono" id="tt-stats"></span>
+                        <i class="hp-tsep"></i>
+                        <span class="mb-lbl"><i class="fa-solid fa-box-archive"></i> session</span>
+                        <select class="input input-sm mb-sess" id="tt-sess" onchange="Devices.tabs.tty.loadSession(this.value)" title="Saved sessions: connection, macros, output, notes"></select>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.tty.saveSession()" title="Save the current state as a session (file)"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                        <button type="button" class="btn-icon hp-del" onclick="Devices.tabs.tty.deleteSession()" title="Delete the selected session"><i class="fa-regular fa-trash-can"></i></button>
+                        <i class="hp-tsep"></i>
+                        <button type="button" class="btn-icon" id="tt-pause" onclick="Devices.tabs.tty.togglePause()" title="Pause the display (data is still received)"><i class="fa-solid fa-pause"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.tty.saveLog()" title="Download the output as .txt"><i class="fa-solid fa-download"></i></button>
+                        <button type="button" class="btn-icon" onclick="Devices.tabs.tty.clear()" title="Clear the output"><i class="fa-solid fa-eraser"></i></button>
+                    </div>
+                    <div class="dev-scroll tt-body">
+                        <div class="tt-main">
+                            <div class="tt-out mono" id="tt-out"></div>
+                            <div class="tt-send">
+                                <input class="input input-sm mono" id="tt-input" placeholder="text to send — \n \r \t \xNN escapes; Enter sends (the text stays to edit / resend); ↑ ↓ history" autocomplete="off" spellcheck="false">
+                                <select class="input input-sm" id="tt-eol" onchange="Devices.tabs.tty.eolInput()" title="Line ending added to every send">
+                                    <option value="">no line ending</option><option value="lf">LF \n</option><option value="cr">CR \r</option><option value="crlf">CR LF \r\n</option>
+                                </select>
+                                <label class="check-row small" title="Send hex bytes: 48 65 6C 6C 6F"><input type="checkbox" id="tt-hexsend"> hex</label>
+                                <button type="button" class="btn btn-ghost btn-sm tt-f tt-tcp" onclick="Devices.tabs.tty.httpTemplate()" title="Fill a browser-like HTTP GET request (host, user agent, language of this browser)"><i class="fa-solid fa-globe"></i> HTTP GET</button>
+                                <label class="check-row small" title="Not connected: open, send, wait for the reply, close. Connected (Connect above): the connection stays open, replies appear in the output."><input type="checkbox" id="tt-wait" checked onchange="Devices.tabs.tty.replyInput()"> reply</label>
+                                <label class="mb-lbl" title="How long to wait for the reply of a one-shot send">≤ <input class="input input-sm mb-num" id="tt-reply-ms" type="number" min="50" step="50" oninput="Devices.tabs.tty.replyInput()"> ms</label>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.tty.sendInput()"><i class="fa-solid fa-paper-plane"></i> Send</button>
+                            </div>
+                            <div class="tt-part tt-macros">
+                                <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-list-check"></i> Macros</span>
+                                    <span class="hint">▶ sends a row (not connected: open → send → reply → close); timer rows repeat at their period</span><span class="spacer"></span>
+                                    <button type="button" class="btn btn-ghost btn-sm" id="tt-timers" onclick="Devices.tabs.tty.toggleTimers()">Start timers</button>
+                                    <button type="button" class="btn btn-success btn-sm" onclick="Devices.tabs.tty.addCommand()" title="Add a macro (takes the send field)"><i class="fa-solid fa-plus"></i> Macro</button></div>
+                                <div class="tt-mac-wrap"><table class="tbl mb-tbl tt-mac"><thead><tr>
+                                    <th title="Timer on"><i class="fa-solid fa-power-off"></i></th><th>Name</th><th>Command</th><th>Hex</th><th>Line end</th>
+                                    <th title="Wait for the reply (one-shot sends)">Reply</th><th>Every, ms</th><th></th><th>Last reply</th></tr></thead>
+                                    <tbody id="tt-cmds"></tbody></table></div>
+                            </div>
+                            <div class="tt-part tt-notes">
+                                <div class="mb-sec tt-note-head"><span class="mb-sec-title"><i class="fa-regular fa-note-sticky"></i> Notes</span>
+                                    <span class="hint">commands in <code>[[ … ]]</code> become buttons: ⇩ to the send field, ▶ send with its settings</span><span class="spacer"></span>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.tty.noteInsert()" title="Append the send field to the notes as [[command]]"><i class="fa-solid fa-plus"></i> [[ ]]</button>
+                                    <button type="button" class="btn btn-ghost btn-sm" id="tt-note-edit" onclick="Devices.tabs.tty.noteToggle()"><i class="fa-solid fa-pen"></i> Edit</button></div>
+                                <div class="tt-note-view mono" id="tt-note-view" title="Double-click to edit"></div>
+                                <textarea class="input mono tt-note" id="tt-note" hidden placeholder="notes (kept in the profile and saved with the session)… e.g.  read the voltage: [[ADC:MEAS:EXT1:VOLT?1]]"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="dev-pane" id="devpane-clone" hidden>
+                    <div class="dev-toolbar">
+                        <span class="cl-sys" id="cl-sys"></span>
+                        <span class="spacer"></span>
+                    </div>
+                    <div class="dev-scroll cl-body">
+                        <div class="cl-warn" id="cl-warn" hidden></div>
+                        <div class="cl-grid">
+                            <!-- Image -> SMB -->
+                            <div class="cl-card">
+                                <div class="cl-head"><span class="cl-title">Image → SMB server</span><span class="hint" id="smb-state">not connected</span></div>
+                                <p class="hint">Bootable <code>.img</code> of the running system: a partition of the size of the used data + reserve + extra,
+                                    built on a loop device right on the share. Write it to an SD card / eMMC (balenaEtcher, Win32DiskImager, dd);
+                                    with “grow” the partition takes the whole card at the first boot.</p>
+                                <div class="cl-row">
+                                    <div class="field cl-grow2"><label for="smb-share">Share</label><input class="input mono" id="smb-share" placeholder="//192.168.1.5/NAS_drive" autocomplete="off" spellcheck="false"></div>
+                                    <div class="field"><label for="smb-user">User</label><input class="input" id="smb-user" autocomplete="off" spellcheck="false"></div>
+                                    <div class="field"><label for="smb-pass">Password</label><input class="input" id="smb-pass" type="password" autocomplete="new-password"></div>
+                                    <div class="field cl-narrow"><label for="smb-vers">SMB</label><select class="input" id="smb-vers"></select></div>
+                                </div>
+                                <div class="cl-row cl-act">
+                                    <button type="button" class="btn btn-primary btn-sm" id="smb-connect" onclick="Devices.tabs.clone.connect()"><i class="fa-solid fa-plug"></i> Connect</button>
+                                    <button type="button" class="btn btn-ghost btn-sm" id="smb-disconnect" onclick="Devices.tabs.clone.disconnect()" hidden><i class="fa-solid fa-eject"></i> Disconnect</button>
+                                    <label class="check-row small"><input type="checkbox" id="smb-remember"> remember the password (0600 file on this controller, outside the repository)</label>
+                                    <button type="button" class="btn-icon" id="smb-forget" onclick="Devices.tabs.clone.forget()" title="Forget the saved password" hidden><i class="fa-solid fa-key"></i><i class="fa-solid fa-xmark cl-x"></i></button>
+                                </div>
+                                <div class="cl-browser" id="smb-browser" hidden>
+                                    <div class="cl-crumbs">
+                                        <div id="smb-crumbs" class="cl-crumb-path"></div>
+                                        <span class="spacer"></span>
+                                        <span class="hint" id="smb-free"></span>
+                                        <button type="button" class="btn-icon" onclick="Devices.tabs.clone.mkdir()" title="New folder here"><i class="fa-solid fa-folder-plus"></i></button>
+                                        <button type="button" class="btn-icon" onclick="Devices.tabs.clone.browse()" title="Reload"><i class="fa-solid fa-rotate"></i></button>
+                                    </div>
+                                    <div class="cl-list" id="smb-list"></div>
+                                </div>
+                                <div class="hint cl-target" id="img-target"></div>
+                                <div class="cl-row">
+                                    <div class="field"><label for="img-extra">Extra size, MiB (above the data)</label><input class="input" id="img-extra" type="number" min="0" step="128" value="1024" oninput="Devices.tabs.clone.sizes()"></div>
+                                    <div class="field"><label for="img-tag">Tag in the file name (optional)</label><input class="input mono" id="img-tag" placeholder="e.g. release_1.2" oninput="Devices.tabs.clone.sizes()" autocomplete="off" spellcheck="false"></div>
+                                    <div class="field cl-narrow"><label for="img-compress">Compression</label><select class="input" id="img-compress" onchange="Devices.tabs.clone.sizes()"><option value="">.img</option><option value="gz">.img.gz</option></select></div>
+                                </div>
+                                <div class="hint" id="img-size"></div>
+                                <div class="cl-row cl-act">
+                                    <label class="check-row small"><input type="checkbox" id="img-grow" checked> grow the partition to the whole card at the first boot</label>
+                                    <span class="spacer"></span>
+                                    <button type="button" class="btn btn-warning btn-sm" id="img-start" onclick="Devices.tabs.clone.startImage()"><i class="fa-solid fa-compact-disc"></i> Start image</button>
+                                </div>
+                            </div>
+                            <!-- Clone -> disk -->
+                            <div class="cl-card">
+                                <div class="cl-head"><span class="cl-title">Clone system → disk</span>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.refresh()" title="Read the disks again"><i class="fa-solid fa-rotate"></i> Disks</button></div>
+                                <p class="hint">Copies the running system onto another disk and makes it bootable. <b class="text-error">All data on the chosen disk is destroyed.</b>
+                                    The disk the system runs from cannot be chosen.</p>
+                                <div class="cl-disks" id="cl-disks"></div>
+                                <div class="cl-row">
+                                    <div class="field"><label for="cl-extra">Extra size, MiB (above the data)</label><input class="input" id="cl-extra" type="number" min="0" step="128" value="1024" oninput="Devices.tabs.clone.sizes()">
+                                        <label class="check-row small"><input type="checkbox" id="cl-whole" onchange="Devices.tabs.clone.sizes()"> whole disk</label>
+                                        <label class="check-row small"><input type="checkbox" id="cl-grow" onchange="Devices.tabs.clone.sizes()"> grow to the whole disk at the first boot</label></div>
+                                    <div class="field"><label for="cl-confirm">Type the disk name to confirm</label><input class="input mono" id="cl-confirm" autocomplete="off" spellcheck="false" oninput="Devices.tabs.clone.sizes()"></div>
+                                </div>
+                                <div class="hint" id="cl-size"></div>
+                                <div class="cl-row cl-act"><span class="spacer"></span>
+                                    <button type="button" class="btn btn-danger btn-sm" id="cl-start" onclick="Devices.tabs.clone.startClone()" disabled><i class="fa-solid fa-clone"></i> Start clone</button></div>
+                            </div>
+                        </div>
+                        <!-- Image -> disk -->
+                        <div class="cl-card">
+                            <div class="cl-head"><span class="cl-title">Write image → disk</span>
+                                <select class="input input-sm cl-root" id="wr-root" onchange="Devices.tabs.clone.wrRoot(this.value)" title="Where the images are"></select>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.clone.wrFind()" title="Search .img / .img.gz / .img.xz / .img.zst in this folder and below"><i class="fa-solid fa-magnifying-glass"></i> Find images</button></div>
+                            <p class="hint">Writes an image (<code>.img</code>, <code>.img.gz</code>, <code>.img.xz</code>, <code>.img.zst</code>) from the SMB share, a mounted local disk (NAS)
+                                or a home folder onto a whole disk. <b class="text-error">All data on the chosen disk is destroyed.</b></p>
+                            <div class="cl-wr">
+                                <div class="cl-browser">
+                                    <div class="cl-crumbs"><div id="wr-crumbs" class="cl-crumb-path"></div><span class="spacer"></span>
+                                        <button type="button" class="btn-icon" onclick="Devices.tabs.clone.wrBrowse()" title="Reload"><i class="fa-solid fa-rotate"></i></button></div>
+                                    <div class="cl-list" id="wr-list"></div>
+                                </div>
+                                <div class="cl-wr-side">
+                                    <div class="cl-wr-sel" id="wr-sel"></div>
+                                    <div class="cl-disks" id="wr-disks"></div>
+                                    <div class="cl-row">
+                                        <div class="field"><label for="wr-confirm">Type the disk name to confirm</label><input class="input mono" id="wr-confirm" autocomplete="off" spellcheck="false" oninput="Devices.tabs.clone.sizes()"></div>
+                                    </div>
+                                    <div class="hint" id="wr-size"></div>
+                                    <div class="cl-row cl-act"><span class="spacer"></span>
+                                        <button type="button" class="btn btn-danger btn-sm" id="wr-start" onclick="Devices.tabs.clone.startWrite()" disabled><i class="fa-solid fa-download"></i> Write image</button></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- running / last job -->
+                        <div class="cl-card cl-job" id="cl-job" hidden>
+                            <div class="cl-head"><span class="cl-title" id="cl-job-title"></span><span class="badge" id="cl-job-state"></span>
+                                <span class="hint" id="cl-job-time"></span><span class="spacer"></span>
+                                <button type="button" class="btn btn-danger btn-sm" id="cl-stop" onclick="Devices.tabs.clone.stop()"><i class="fa-solid fa-stop"></i> Stop</button></div>
+                            <div class="cl-progress"><div class="cl-bar" id="cl-bar"></div><span id="cl-prog-text"></span></div>
+                            <pre class="cl-log" id="cl-log"></pre>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="dev-pane" id="devpane-udev" hidden>
                     <div class="dev-toolbar">
                         <div class="gpio-seg ud-views">
@@ -290,5 +598,26 @@
             <button type="button" class="modal-close" onclick="Devices.closeText()">&#215;</button>
         </div>
         <div class="modal-body"><pre id="dev-text-body" class="ut-output"></pre></div>
+    </div>
+</div>
+
+<!-- HW Utils → Terminal: plot of numeric JSON fields (static/js/devices_tty.js) -->
+<div id="tt-plot-overlay" class="modal-overlay" onclick="if (event.target === this) Devices.tabs.tty.closePlot()">
+    <div class="modal-box tt-plot-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-chart-line text-ok"></i> JSON fields</span>
+            <input class="input input-sm tt-plot-q" id="tt-plot-q" placeholder="filter fields…" oninput="Devices.tabs.tty.renderPlotList()" autocomplete="off">
+            <span class="spacer"></span>
+            <label class="mb-lbl">window <select class="input input-sm" id="tt-plot-win" onchange="Devices.tabs.tty.drawCharts()">
+                <option value="30">30 s</option><option value="60" selected>1 min</option><option value="300">5 min</option><option value="1800">30 min</option><option value="0">all</option></select></label>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.tty.clearSeries()" title="Forget the collected values"><i class="fa-solid fa-eraser"></i></button>
+            <button type="button" class="modal-close" onclick="Devices.tabs.tty.closePlot()">&#215;</button>
+        </div>
+        <div class="modal-body tt-plot-body">
+            <div class="tt-plot-list" id="tt-plot-list"></div>
+            <div class="tt-charts" id="tt-charts"></div>
+        </div>
+        <div class="modal-foot"><span class="hint">Numbers and true / false of every JSON object received are collected per field path (e.g. <code>data.temp</code>, <code>ch[2].v</code>).
+            Tick fields to plot them — one chart per field (each with its own scale).</span></div>
     </div>
 </div>

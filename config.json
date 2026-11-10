@@ -26,13 +26,148 @@
             "archive_name": "pythonKivy_template.tar.gz",
             "upload_tmp_name": "uploaded_update.tar.gz",
             "service_name": "guiService.service",
+            "host": "0.0.0.0",
+            "port": 80,
+            "tests_dir": "testPlatform",
+            "test_logs_dir": "testLogs",
+            "help_dir": "help",
+            "update_check_minutes": 60,
             "auth": {
                 "enabled": true,
                 "username": "vanya",
                 "password": "198808"
             },
-            "port": 80,
-            "host": "0.0.0.0"
+            "public_service_actions": [
+                "restart"
+            ],
+            "i2c_labels": {},
+            "modbus": {
+                "profiles": [
+                    {
+                        "name": "Default",
+                        "conn": {
+                            "transport": "rtu",
+                            "port": "/dev/ttyUSB0",
+                            "baud": "115200",
+                            "parity": "N",
+                            "bytesize": "8",
+                            "stopbits": "1",
+                            "host": "",
+                            "netport": "502",
+                            "timeout": "300"
+                        },
+                        "macros": [
+                            {
+                                "name": "unit 1",
+                                "unit": "1",
+                                "fn": "6",
+                                "addr": "1",
+                                "count": "10",
+                                "values": "1",
+                                "fmt": "s16",
+                                "cycle": true,
+                                "note": "",
+                                "auto": true
+                            }
+                        ],
+                        "period": 1000,
+                        "note": ""
+                    },
+                    {
+                        "name": "ChargeController",
+                        "conn": {
+                            "transport": "udp",
+                            "port": "/dev/ttyUSB0",
+                            "baud": "115200",
+                            "parity": "N",
+                            "bytesize": "8",
+                            "stopbits": "1",
+                            "host": "",
+                            "netport": "502",
+                            "timeout": "300"
+                        },
+                        "macros": [
+                            {
+                                "name": "unit 1",
+                                "unit": "1",
+                                "fn": "3",
+                                "addr": "1",
+                                "count": "10",
+                                "values": "",
+                                "fmt": "u16",
+                                "cycle": true,
+                                "note": "",
+                                "auto": true
+                            },
+                            {
+                                "name": "unit 1 copy",
+                                "unit": "1",
+                                "fn": "3",
+                                "addr": "1",
+                                "count": "10",
+                                "values": "",
+                                "fmt": "u16",
+                                "cycle": true,
+                                "note": "",
+                                "auto": true
+                            }
+                        ],
+                        "period": 1000,
+                        "note": ""
+                    }
+                ],
+                "current": "ChargeController"
+            },
+            "tty": {
+                "profiles": [
+                    {
+                        "name": "PSU",
+                        "conn": {
+                            "transport": "tcp",
+                            "port": "/dev/ttyUSB0",
+                            "baud": "115200",
+                            "parity": "N",
+                            "bytesize": "8",
+                            "stopbits": "1",
+                            "host": "192.168.1.91",
+                            "netport": "8080",
+                            "listen": "5006"
+                        },
+                        "eol": "crlf",
+                        "commands": [
+                            {
+                                "name": "GetVoltageCH1",
+                                "data": "ADC:MEAS:EXT1:VOLT?1",
+                                "hex": false,
+                                "eol": "crlf",
+                                "period": 1000,
+                                "timer": true,
+                                "wait": true
+                            },
+                            {
+                                "name": "test",
+                                "data": "ADC:MEAS:EXT1:VOLT?2",
+                                "hex": false,
+                                "eol": "crlf",
+                                "period": 1000,
+                                "timer": false,
+                                "wait": true
+                            }
+                        ],
+                        "wait": true,
+                        "replyMs": 1000,
+                        "note": "Voltage CH1: [[ADC:MEAS:EXT1:VOLT?1]]   Output on: [[OUTP ON]]\n",
+                        "view": {
+                            "hex": false,
+                            "time": true,
+                            "tx": true,
+                            "json": true,
+                            "wrap": false
+                        }
+                    }
+                ],
+                "current": "PSU"
+            }
         }
     }
 }

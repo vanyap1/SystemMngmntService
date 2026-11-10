@@ -50,6 +50,11 @@ core/
   git_ops.py           git for target_dir / panel / help_dir repos: status, actions, problems + fixes (runs as repo owner)
   credentials.py       host secrets (git token) in ~/.config/systemmngmntservice/credentials.json — outside repos
   diagrams.py          diagram store: help_dir/diagrams/<name>.json + exported <name>.svg, rename relinks pages
+  ttyterm.py           HW Utils Terminal: serial / TCP client / UDP sessions with a reader thread, polled chunks, lease
+  modbus.py            HW Utils Modbus master: RTU (serial, over TCP / UDP), Modbus TCP / UDP; run / scan / profiles
+  sysclone.py          HW Utils Clone / Image: disks, minimal partition, image locations, one background job
+                       (tools/clone-system.sh or tools/write-image.sh)
+  smb.py               SMB share for images: mount(2) at /mnt/smms-share, browse, mkdir; login in credentials.py
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
@@ -109,7 +114,8 @@ static/
 
 ## HW Utils popup (formerly "Devices"; the JS object and ids are still `Devices` / `devices_*`)
 - Routes: `routes/devices.py` (devices, buses, GPIO), `routes/udev.py` (service, events, rules, udevadm tools),
-  `routes/net.py` (interfaces, CAN), `routes/i2c.py` (I²C tools, `core/i2c.py`). Only CAN links may be reconfigured — never touch other interfaces (SSH/web).
+  `routes/net.py` (interfaces, CAN), `routes/i2c.py` (I²C tools, `core/i2c.py`), `routes/sysclone.py` (Clone / Image,
+  `core/sysclone.py` + `core/smb.py` + `tools/clone-system.sh`, tab `devices_clone.js`). Only CAN links may be reconfigured — never touch other interfaces (SSH/web).
 - CAN without hardware: test in a user+net namespace with vcan:
   `unshare -rnm sh -c 'mount -t sysfs sysfs /sys; ip link set lo up; ip link add vcan0 type vcan; ip link set vcan0 up; …'`.
 - New tab: a button in `partials/devices_modal.html` (`data-tab`), a `<section class="dev-pane" id="devpane-<id>">`
@@ -123,6 +129,49 @@ static/
   Write (POST, explicit user action), locked while a test runs. Arguments are validated in `core/i2c.py`
   before `i2cdetect` / `i2ctransfer` run. Tests and `tests/devserver.py --fake-i2c` use the simulated bus in
   `tests/fake_i2c.py` — never probe the real buses of this board in tests (i2c-0 holds the PMIC).
+
+## Modbus (HW Utils)
+- `core/modbus.py` (own framing: CRC, MBAP; no pymodbus — it is not on every host) + `routes/modbus.py` +
+  `static/js/devices_modbus.js`. A link is opened per request batch and closed (no port stays claimed); a per-port
+  lock serialises requests; serial is refused while a test script runs (`modbus.blocked`). Registers / bits travel
+  raw — formats (s16, u32, float32, ascii, word swap) are converted in the browser.
+- Two tables: manual rows and timer rows (`auto: true`, own `period`, `cycle` = timer on). One scheduler in the browser
+  (`startCycle`) sends the due rows as one batch, the next batch only after the answer; it stops when the tab closes.
+- Sessions (research snapshots) are files in `config.modbus_sessions_dir()` (git-ignored `modbusSessions/`; tests and
+  devserver point it to a temp dir); names → file slugs via `_slug`.
+- Profiles live in config.json `modbus` (HOST_KEYS), sanitised by `check_profiles`. Tests (`tests/test_modbus.py`)
+  use fake TCP / UDP servers and a pseudo terminal — never the board's real serial ports; never write to a real
+  device while checking things by hand.
+
+## Terminal (HW Utils)
+- `core/ttyterm.py` + `routes/ttyterm.py` + `static/js/devices_tty.js`. A session holds the device open with a reader
+  thread; chunks {i, t, dir rx|tx|sys, data, src} in a bounded buffer, the browser polls `read(id, since)`. Closed by
+  Close, `pagehide` beacon, the peer, or LEASE_SECONDS without a poll — never leave a port claimed otherwise.
+- Flood guard (`Session._guard` / `_drain`): above FLOOD_BYTES / FLOOD_CHUNKS per second nothing is stored; pending
+  data is drained in bounded batches with pauses; the mode ends after two calm seconds. Keep it — a stream on the
+  wrong port must not load the panel or the browser.
+- Serial ports are opened with `exclusive=True` in both the terminal and Modbus (flock), and refused while a test
+  runs. Line splitting, hex view, JSON detection (also multi-line) and the plot live in the browser.
+- Not connected, a send is `oneshot()` (a Session that is not registered: open → send → reply until peer close /
+  idle / timeout → close). A tx chunk is logged *before* the bytes go out (a fast reply / close must follow it).
+- Sessions of both Modbus and the terminal use `core/session_files.SessionStore` (`modbusSessions/`, `ttySessions/`).
+- Tests (`tests/test_ttyterm.py`): pseudo terminal, local TCP / UDP sockets — never the board's real ports.
+
+## Clone / Image (HW Utils)
+- `tools/clone-system.sh` does the work (also usable from SSH); `core/sysclone.py` only validates and runs it
+  (env vars, `ASSUME_YES=yes`), one job at a time, in its own session (Stop = SIGTERM to the group; the script's
+  trap unmounts, detaches the loop device and deletes an unfinished `.partial` image). Never the system disk, never
+  a disk with mounted partitions, a clone needs the typed disk name — checked in the backend, not only in the UI.
+- Partition = used data + `RESERVE_MB` (+5 % ext4) + extra MiB, same formula in the script and `min_partition_mb`.
+  It starts at the sector of the running root partition (rockchip u-boot needs 16 MiB); u-boot via Armbian's
+  `/usr/lib/u-boot/platform_install.sh` (`write_uboot_platform`), a sunxi .bin as fallback.
+- SMB: mount(2) through ctypes with `ip=` (no cifs-utils, the password never on a command line); the password is
+  stored only on *remember* (credentials.py, 0600, outside repos) and never returned (`smb_public()`).
+- Write image → disk: `tools/write-image.sh` (dd, gzip/xz/zstd stream); image locations = `image_roots()` (share,
+  mounted non-system disks, /home/*, /root) — client paths are a root from that list + a relative path checked by
+  `_in_root` (realpath must stay inside). Same target rules as a clone (`_target`).
+- Tests (`tests/test_sysclone.py`) use a fake script, a fake lsblk tree and a temp folder as the share — never run
+  the real script, mount a share or touch a disk in tests.
 
 ## Test platform
 - `testPlatform/` holds the user's hardware test sequences (GPIO relays via gpiod, stm8flash, UART, DMM) copied

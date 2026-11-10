@@ -49,6 +49,14 @@ BUILTIN_DEFAULTS = {
     'update_check_minutes': 60,
     # Names of I²C devices per bus, set in HW Utils → I²C: {"<bus>": {"0x41": "INA228 power monitor"}}.
     'i2c_labels': {},
+    # HW Utils → Modbus: {"profiles": [{name, conn, macros, period}], "current": name} (core/modbus.check_profiles).
+    'modbus': {},
+    # HW Utils → Terminal: {"profiles": [{name, conn, eol, commands, view}], "current": name} (core/ttyterm.check_profiles).
+    'tty': {},
+    # Saved Modbus sessions (profile + results + frame log), one JSON file each; relative to the project directory.
+    'modbus_sessions_dir': 'modbusSessions',
+    # Saved terminal sessions (profile + macros + output + notes); relative to the project directory.
+    'tty_sessions_dir': 'ttySessions',
 }
 
 # Keys that may be changed through the settings page (auth and
@@ -60,7 +68,7 @@ EDITABLE_KEYS = ('app_title', 'page_title', 'device_name', 'target_dir', 'backup
 INT_KEYS = ('port', 'update_check_minutes')
 
 # Keys written to the host section on save.
-HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels')
+HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels', 'modbus', 'tty')
 
 CFG = {}        # effective config of this host
 _FILE = {}      # raw config.json content
@@ -181,6 +189,14 @@ def tests_dir():
 
 def test_logs_dir():
     return _project_path(CFG['test_logs_dir'])
+
+
+def modbus_sessions_dir():
+    return _project_path(CFG.get('modbus_sessions_dir') or 'modbusSessions')
+
+
+def tty_sessions_dir():
+    return _project_path(CFG.get('tty_sessions_dir') or 'ttySessions')
 
 
 def help_dir():

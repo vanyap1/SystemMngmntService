@@ -282,4 +282,4 @@ const Devices = {
     },
 };
 
-App.onEscape(() => { if (!Devices.closeText()) Devices.close(); });
+App.onEscape(() => { Devices.closeText(); });   // Esc closes the text popup only — HW Utils itself only by its × button

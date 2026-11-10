@@ -22,7 +22,7 @@ Flask 3 + plain JavaScript, no build step; the only server dependency is `python
 | **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
 | **Docs** | Markdown knowledge base in `help/`: sidebar tree, full-text search, rendered view with table of contents and code copy buttons, Monaco editor with live preview, toolbar, image paste/drop upload, attachments; **diagram editor** for pinouts and block diagrams (exported to SVG, embedded in pages) |
 | **Git** | Settings → Git and a Git popup in the code editor and docs: changes with diff, commit (selected files, current or new branch, push after), branches, fetch / pull / push, problem detection with one-click fixes, discard / reset to remote with automatic backup; HTTPS token stored outside the repositories |
-| **HW Utils** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **I²C** scan + register read/write, **udev** events / rules editor / tools |
+| **HW Utils** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **I²C** scan + register read/write, **udev** events / rules editor / tools, **Modbus** master (RTU / TCP / UDP, macros, timers, scan, sessions), **Terminal** (serial / TCP / UDP, JSON plot), **Clone / Image** of the system (to a disk or an SMB share) |
 | **Video** | preview of V4L2 cameras |
 | **Per-host config** | one repository deployed to several machines, each with its own section in `config.json` |
 | **Simple access model** | anonymous operators see only the target service (restart) and the read-only monitor; everything else needs a login |
@@ -272,6 +272,21 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/i2c/buses` | login | I²C adapters with kernel clients, saved labels, address hints (no bus access) |
 | POST | `/api/i2c/scan`, `/api/i2c/read`, `/api/i2c/write` | login | `{bus, mode}` / `{bus, addr, reg, width, length, force}` / `{bus, addr, reg, width, data, force}` |
 | POST | `/api/i2c/label` | login | Name a device `{bus, addr, label}` (empty removes it) |
+| GET | `/api/modbus/info` | login | Serial ports, saved profiles, functions, whether serial is locked by a test |
+| GET | `/api/modbus/sessions`, `/api/modbus/session?name=` | login | Saved sessions / one session (profile, results, log, scan hits, notes) |
+| POST | `/api/modbus/session/save`, `/api/modbus/session/delete` | login | `{name, data, overwrite}` (409 if it exists) / `{name}` |
+| POST | `/api/modbus/request`, `/api/modbus/scan`, `/api/modbus/profiles` | login | `{conn, ops: [{unit, fn, addr, count \| values}]}` / `{conn, first, last, fn, addr, timeout}` (≤ 64 ids) / `{profiles, current}` |
+| GET | `/api/tty/info`, `/api/tty/read?id=&since=` | login | Ports, open connections, profiles / chunks received or sent since a number (base64) + state |
+| POST | `/api/tty/oneshot` | login | Open → send → reply → close `{conn, text, hex, wait, timeout}` → `{chunks, ms, end}` |
+| GET | `/api/tty/sessions`, `/api/tty/session?name=` | login | Saved terminal sessions / one session |
+| POST | `/api/tty/session/save`, `/api/tty/session/delete` | login | `{name, data, overwrite}` / `{name}` |
+| POST | `/api/tty/open`, `/api/tty/send`, `/api/tty/lines`, `/api/tty/close`, `/api/tty/profiles` | login | `{conn}` / `{id, text, hex}` or `{id, b64}` / `{id, dtr, rts}` / `{id}` / `{profiles, current}` |
+| GET | `/api/sysclone/info`, `/api/sysclone/job?since=` | login | Disks, used size / minimal partition, u-boot, share state, current job / its log from line `since` |
+| POST | `/api/sysclone/clone`, `/api/sysclone/image`, `/api/sysclone/stop` | login | `{disk, confirm, extra_mb, whole, grow}` / `{folder, extra_mb, tag, compress, grow}` / — |
+| GET | `/api/sysclone/roots`, `/api/sysclone/browse?root=&path=`, `/api/sysclone/find?root=&path=` | login | Image locations (share, mounted non-system disks, homes) / folders + images of a folder / images below it |
+| POST | `/api/sysclone/write` | login | Write an image to a disk `{root, path, disk, confirm}` |
+| GET | `/api/smb/list?path=` | login | Folder of the mounted share (symlinks shown, never followed out of it) |
+| POST | `/api/smb/mount`, `/api/smb/umount`, `/api/smb/forget`, `/api/smb/mkdir` | login | `{share, username, password, vers, remember}` / — / forget the saved password / `{path, name}` |
 | GET | `/api/devices/usb/verbose[?bus=&dev=]` | login | `lsusb -v -s bus:dev`, or `lsusb` + `lsusb -t` |
 | GET | `/api/devices/gpio` | login | GPIO chips and lines like `gpioinfo` (read-only, libgpiod v1/v2) |
 | GET | `/api/devices/gpio/ctl?client=` | login | Lines held by a popup client with live values (also renews its lease) |
@@ -345,7 +360,7 @@ runs only while the page polls `/api/monitor` (30 s lease); the browser polls ev
 
 ## HW Utils popup
 
-The **HW Utils** button in the top bar (logged in) opens a popup with seven tabs. With *Auto* on, the
+The **HW Utils** button in the top bar (logged in) opens a popup with ten tabs. With *Auto* on, the
 current view refreshes every 2–3 s; new devices are highlighted, added/removed ones are listed in the
 footer (plus a toast, except `/dev/pts`, `/dev/shm`). All groups, trees, chips, bus sections and rules
 directories start collapsed (a filter expands what matches; *Expand* / *Collapse* buttons). Clicking a device opens a side panel with its udev
@@ -396,6 +411,59 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
     problems. Changes apply after *Reload rules*.
   - *Service & tools* — `systemd-udevd` status, restart, reload rules, `udevadm trigger` (by subsystem
     and/or device), `udevadm test`, attribute walk.
+- **Modbus** — master for Modbus RTU on a serial port (USB-RS485, UART), RTU frames over TCP / UDP (transparent
+  serial servers such as ebyte / USR) and Modbus TCP / UDP devices (`core/modbus.py`, stdlib + pyserial). A table of
+  request rows ("macros": name, unit, function 01–06 / 15 / 16, 0-based address, count or values, format u16 / s16 /
+  hex / binary / ascii / u32 / s32 / float32 with word swap) in two tables: **manual requests** (set the data, run
+  with ▶) and **timer rows**, each with its own period and on/off switch — *Start timers* runs them (rows that are
+  due go out together, the next request only after the answer), *Stop timers* stops them; ▶ runs any row at any
+  time. *Run all* runs both tables once. Timers run only while the tab is open. The TX / RX frames run full width
+  on top (newest at the bottom); below them a **quick request** line (unit, function, address, count / values,
+  format → *Run*, *+ Row*, *[[ ]]*). **Notes** (kept in the profile) describe registers as tags —
+  `[[03 4 3 ascii]]` (read), `[[06 100 =1]]` (write), optional format and `uN` unit — shown as buttons: ⇩ fills the
+  quick request, ▶ runs it; *Examples* lists the syntax. The port is opened only for each
+  request batch; *Close port* stops timers / scan so it is free for other tools. *Scan* probes unit ids (an exception
+  answer counts as a device; a row can be added from a hit). TX / RX frames in hex on the right. Profiles
+  (connection + rows + period) are saved per host in `config.json` → `modbus`, exported / imported as JSON.
+  *Session* → *Save* stores the whole research state under a name — connection, rows, last results, frame log, scan
+  hits and notes — as a JSON file in `modbusSessions/` (git-ignored, `modbus_sessions_dir`); pick it in the list to
+  continue later. Serial ports are locked while a test script runs.
+- **Terminal** — raw data terminal for a serial port, a TCP client or UDP (send to host:port and / or listen on a
+  port — empty = a free port chosen automatically; datagrams show their sender) in one tool (`core/ttyterm.py`).
+  Received data as text lines (`\r\n`, `\n`, `\r`; long lines scroll sideways, *wrap* optional) or a hex dump, with
+  times; sent data in another colour. *Flood guard*: above 256 KB/s or 1000 packets/s (a video stream, the wrong
+  port) data is only counted, not stored or shown, and read in small batches (cheap on the CPU) until the rate is
+  back to normal; binary garbage and very long lines are folded in the view. JSON objects in the stream (one per line or spread over
+  lines) get a `{}` badge (pretty view) and their numbers / booleans are collected per field path — *Plot* opens a
+  popup to tick fields, one live chart per field. Send field with line ending (default: LF for serial, CR LF for TCP,
+  none for UDP), `\n \r \t \xNN` escapes or hex bytes, history (↑ ↓); *HTTP GET* fills a browser-like request (host,
+  user agent, language). Not connected, a send is **one-shot**: open → send → wait for the reply (until the peer
+  closes, 250 ms after the last byte, or the *≤ ms* timeout; *reply* off = don't wait) → close — e.g. SCPI
+  instruments with one TCP connection per command. Connected (*Connect*), the connection stays open. **Macros**
+  table (name, command, hex, line ending, reply, own period, timer switch, last reply) with *Start / Stop timers*;
+  **Notes** (kept in the profile): commands written as `[[ADC:MEAS:EXT1:VOLT?1]]` show as buttons — ⇩ puts the
+  command into the send field, ▶ sends it with the send field settings (line ending, hex, reply); *[[ ]]* appends
+  the send field as such a tag; double-click or *Edit* to change the text.
+  DTR / RTS for serial, pause, clear, download the log; profiles per host in `config.json` → `tty`; **sessions**
+  (connection, macros, output, notes) saved as files in `ttySessions/` (git-ignored) — reopening parses the JSON
+  in the output again, so the plot is back. The connection is closed by *Close*, by leaving the page, or 30 s
+  after the last poll. Serial ports are opened exclusively (the Modbus tool gets "in use") and locked while a test
+  script runs.
+- **Clone / Image** — move the running system to another disk, or build a bootable `.img` on an SMB share
+  (`tools/clone-system.sh`, `core/sysclone.py`). The new partition gets the size of the **used data** + 300 MiB
+  reserve + *Extra* (default 1024 MiB) — or the whole disk — so the target may be smaller than the source; files
+  are copied with rsync, fstab / `armbianEnv.txt` get the new UUID, u-boot is written with Armbian's
+  `write_uboot_platform` (sunxi and rockchip). The system disk and disks with mounted partitions cannot be chosen;
+  a clone needs the disk name typed. *Image*: connect a share (`//server/share`, user, password, SMB version —
+  mounted at `/mnt/smms-share` with mount(2), no cifs-utils; the password is kept only when *remember* is ticked,
+  in the host credentials file outside the repository), browse it, pick a folder: the image
+  `<host>[_tag]_<date>.img[.gz]` is built there on a loop device; *grow* lets the partition take the whole card
+  at the first boot (`armbian-resize-filesystem`). The job runs on the server with a live log and rsync progress;
+  *Stop* removes an unfinished image. *Write image → disk*: pick a location (the mounted share, a mounted
+  non-system disk such as a local NAS, or a home folder), browse it (only folders and `.img` / `.img.gz` /
+  `.img.xz` / `.img.zst` are shown) or *Find images* below the folder, choose a target disk (same rules as a
+  clone, name typed) — `tools/write-image.sh` writes it with dd (progress of the bytes read). Needs root (the
+  panel service).
 
 ## Test log viewer (`/logs`)
 

@@ -245,5 +245,8 @@ Thumbs.db
 # Offline installation bundles (built with ./install.sh bundle)
 setup_data/
 setup_data.7z
+# Saved Modbus sessions of HW Utils -> Modbus (research data of this station)
+modbusSessions/
+ttySessions/
 # Simulated emergency stop button of the demo tests (touch to press)
 testPlatform/ESTOP
