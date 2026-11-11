@@ -1,6 +1,6 @@
-# Power supply SCPI CTRL 2CH PSU
+# Power supply PSU_CUSTOM6020 (SCPI CTRL 2CH PSU)
 
-Driver `testPlatform/instruments/psu.py` for the 2-channel power supply controller (MultichannelCerPsu, web page
+Driver `testPlatform/instruments/psu_custom6020.py` for the 2-channel power supply controller (MultichannelCerPsu, web page
 `http://192.168.1.91/`). Every function below is one line — in the code editor's **?** window hover a line and
 press *Insert* or *Copy*. Values are V, A, W; PSU channels are `1` and `2`.
 
@@ -11,13 +11,16 @@ operators used in the examples.
 ## Connect
 
 ```python
-from instruments.psu import PSU, PsuError
+from instruments.psu_custom6020 import PSU_CUSTOM6020, PsuError
 
-psu = PSU("192.168.1.91")                       # host, port=8080, timeout=3.0, retries=5
+psu = PSU_CUSTOM6020("192.168.1.91")            # host, port=8080, timeout=3.0, retries=5
 psu.ping()                                      # True if the controller answers
 ```
 
-Read-only check from a console (switches nothing): `python3 instruments/psu.py 192.168.1.91` (in `testPlatform/`).
+The single-channel supply at
+192.168.1.99 has its own driver: [PSU_CUSTOM305](psu-custom305.md).
+
+Read-only check from a console (switches nothing): `python3 instruments/psu_custom6020.py 192.168.1.91` (in `testPlatform/`).
 
 ## Output channels
 
@@ -237,12 +240,12 @@ The full command list is on the *SCPI Commands* page of the PSU web interface.
 
 ```python
 """Board: power-up through the PSU, load relay on EXT_IO, current check."""
-from instruments.psu import PSU
+from instruments.psu_custom6020 import PSU_CUSTOM6020
 from testStrategy import TestStrategy
 from testWatch import TestWatch
 
 ts = TestStrategy()
-psu = PSU("192.168.1.91")
+psu = PSU_CUSTOM6020("192.168.1.91")
 watch = TestWatch().require("PSU CH1 OCP", lambda: not psu.isTripped(1), "output tripped by OCP", interval=0.5)
 
 

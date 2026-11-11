@@ -64,7 +64,8 @@ help/                  documentation (user content): *.md pages, img/, docs/ att
 tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
 install.sh             installer: menu, online/offline install, service unit, `bundle` → tools/offline_bundle.py
 tools/offline_bundle.py  builds offline bundles (local apt repo + Flask wheels) for armhf (H3) / arm64 (H5)
-docs/img/              README screenshots
+docs/MANUAL.md         manual + technical reference (install, config, pages, API tables); README.md = project overview
+docs/img/              README screenshots (tests/docs_screenshots.sh, scenarios in tests/docs_shots/)
 static/
   vendor/              Font Awesome 6.5.1, Monaco 0.44.0, xterm 5.3.0 (+fit), marked 12, DOMPurify 3, highlight.js 11
                        — local copies, see vendor/README.md
@@ -196,13 +197,36 @@ static/
   `ts.run(steps, finalize, watch=w)`. A failing check is delivered to the main thread as SIGINT → `AbortTest`
   (ERROR row, steps skipped, finalize runs; the watch is stopped before finalize). A real SIGINT without a pending
   abort stays a KeyboardInterrupt (Stop button). Tests: `tests/test_watch.py` (subprocesses), `demo_estop_test.py`.
-- Instrument drivers live in the package `testPlatform/instruments/` (`psu.py`, `dmm.py`, `dmm2.py`, `adc.py`,
-  `stm8_flash.py`, `uut_serial.py`); scripts import them as `from instruments.psu import PSU`. Firmware images and
+- Instrument drivers live in the package `testPlatform/instruments/`; scripts import them as
+  `from instruments.psu_custom6020 import PSU_CUSTOM6020`. **Naming: file = maker + model / series in lower case,
+  class = the same in capitals** (`psu_custom6020.py` / `PSU_CUSTOM6020`, `psu_custom305.py`, `rigol_dho924.py` /
+  `RIGOL_DHO924`, `rigol_dho804.py`, `owon_xdm.py` / `OWON_XDM`, `owon_oel.py` / `OWON_OEL`, `fs9922.py`,
+  `fs9922_bridge.py`, `ads1115.py`, `stlink_stm8.py`). A family shares a common module (`rigol_dho.py` `RigolScope`,
+  `psu_tcp.py` `OneShotTcpPsu`) and each model is a small file on top. Protocols / tools keep generic names
+  (`modbus.py`, `scpi.py`, `serial_term.py`, `ssh_term.py`, `param_file.py`, `uut_serial.py`). Every file must be
+  in the catalog tables of `help/testing/instruments.md` (tested). Firmware images and
   other binaries are in `testPlatform/instruments/fw/` — reach them via `instruments.FW_DIR` / `fw_path()` (the
   STM8 flasher defaults to it), never via a path relative to the working directory. The framework
-  (`testStrategy.py`, `testWatch.py`) and the `*_test.py` scripts stay in `testPlatform/`. `psu.py`: SCPI PSU,
-  raw TCP :8080, one connection per command, `ERROR…` → `PsuError`; tests use a fake server, never the real bench;
-  its public methods must be in `help/testing/psu.md`. `demo_pass_test.py` uses the real PSU — tests don't run it.
+  (`testStrategy.py`, `testWatch.py`) and the `*_test.py` scripts stay in `testPlatform/`. `psu_custom6020.py`:
+  PSU_CUSTOM6020 (.91) on the shared `psu_tcp.OneShotTcpPsu` transport (raw TCP :8080, one connection per command, `ERROR…` → `PsuError`);
+  `psu_custom305.py`: PSU_CUSTOM305 (.99, SCPI-99, setpoints only with REM on — `auto_remote`); tests use fake
+  servers (`tests/test_psu.py`), never the real bench; public methods must be in `help/testing/psu-custom6020.md` /
+  `psu-custom305.md`. `demo_pass_test.py` uses the real PSU — tests don't run it.
+- More drivers: `rigol_dho*.py` (Rigol DHO800/900, LXI :5555, `checkModel()`), `owon_xdm.py` / `owon_oel.py` (OWON meter / load,
+  SCPI words in an overridable `COMMANDS` dict), `serial_term.py` (text command / answer on a UART), `ssh_term.py`
+  (system OpenSSH, password via SSH_ASKPASS, ControlMaster), `param_file.py` (key = value / JSON, atomic writes,
+  `data_path()` → git-ignored `testPlatform/data/`). SCPI drivers subclass `scpi.ScpiInstrument` (TCP or serial
+  transport, lock, one reconnect, IEEE blocks; "no valid value" 9.9E37 → None). How-to + every function:
+  `help/testing/instruments.md` and one page per driver — `tests/test_docs_content.py` checks each public function
+  is described. Tests (`tests/test_instruments.py`) use a fake SCPI server, a pty, a fake `ssh`, temp folders.
+  The real scope (192.168.1.146) and PSUs (.91, .99) may be queried by hand, read-only — never change settings or
+  switch outputs without asking. Drivers that import `instruments.*` start with the `__package__` shim so
+  `python3 instruments/<driver>.py` (read-only self-check in `__main__`) works.
+- `modbus.py`: low-level Modbus master for scripts (ModbusRTU / TCP / UDP / RTUoverTCP / RTUoverUDP, functions
+  01–06, 15, 16, raw `request`, `scan`, register format helpers). Self-contained — testPlatform never imports
+  `core/` (its framing duplicates `core/modbus.py` on purpose). The serial port stays open (exclusive) until
+  `close()`. Tests `tests/test_instruments_modbus.py` (pty slave, local TCP / UDP); the real charger on
+  /dev/ttyUSB0 (115200, unit 1, only fn 03) may be read by hand — never written.
 - Serial number from the UI reaches the script as `--sn <serial>` (validated by `SERIAL_PATTERN`); scripts read
   it via `ts.serial`. It is part of the log file name (`__<serial>`, see `LOG_PATTERN`) and the log header.
 - Page: `routes/tests.py`, `templates/tests.html`, `static/js/tests.js`, `static/css/tests.css`.
@@ -353,5 +377,7 @@ Use the test suite instead of ad-hoc scripts — it is fast, quiet and saves tok
 - UI changes: `python3 tests/devserver.py &` (port 5099, login off; `--auth` for the anonymous view), then
   `tests/screenshot.sh '<path>[?js=…]' <scratch>/x.png [WxH] [budget_ms] [port]` — it also prints JS errors.
   Look at screenshots only when layout matters; crop with PIL to the area you changed. Kill the server by PID.
-- README screenshots: `tests/docs_screenshots.sh` (regenerates `docs/img`).
-- Update `README.md` (routes/API tables) when routes change.
+- README screenshots: `tests/docs_screenshots.sh` (regenerates `docs/img`; needs `devserver.py --fake-devices`,
+  scenarios in `tests/docs_shots/*.js`).
+- Update `docs/MANUAL.md` (routes / API tables, tool descriptions) when routes or tools change. `README.md` is the
+  project overview (goal, diagrams, screenshots) — keep API details and instructions out of it.

@@ -1,6 +1,6 @@
 """Second panel instance for manual/visual checks; never touches the live service.
 
-    python3 tests/devserver.py [--port 5099] [--auth] [--target DIR] [--help-dir DIR]
+    python3 tests/devserver.py [--port 5099] [--auth] [--target DIR] [--help-dir DIR] [--fake-devices]
 
 Auth is disabled in memory unless --auth is given. Saved settings and test-run logs go to a temp dir. Any HTML page accepts
 ``?js=<code>``: the code runs after the page loads — handy for headless screenshots of popups,
@@ -27,6 +27,8 @@ parser.add_argument('--target', help='target_dir to use instead of the configure
 parser.add_argument('--help-dir', help='documentation folder to use instead of the configured one (Docs, diagrams)')
 parser.add_argument('--fake-update', action='store_true',
                     help='pretend the panel upstream has new commits (shows the update button; nothing is fetched)')
+parser.add_argument('--fake-devices', action='store_true',
+                    help='simulated Modbus TCP :5502, JSON telemetry :5555 and SCPI PSU :5588 (tests/fake_devices.py)')
 parser.add_argument('--fake-i2c', action='store_true', help='simulated I²C bus (tests/fake_i2c.py) instead of the real ones')
 args = parser.parse_args()
 
@@ -45,6 +47,9 @@ if args.fake_i2c:
     from tests import fake_i2c
     fake_i2c.install()
     config.CFG['i2c_labels'] = {str(fake_i2c.BUS): {'0x41': 'INA228 power monitor (EXT1)'}}
+if args.fake_devices:
+    from tests import fake_devices
+    fake_devices.start()
 config.CFG['update_check_minutes'] = 0                  # never fetch the real upstream from a dev server
 if args.fake_update:
     from core import updates

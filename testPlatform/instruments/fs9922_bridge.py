@@ -40,7 +40,7 @@ calibrate the decoder to your firmware exactly.
 
 Usage — as a library::
 
-    from instruments.dmm import FS9922DMM
+    from instruments.fs9922_bridge import FS9922DMM
 
     with FS9922DMM('/dev/ttyUSB0') as dmm:
         print(dmm.getVolt())
@@ -49,11 +49,11 @@ Usage — as a library::
 
 Usage — standalone (live display)::
 
-    python3 dmm.py /dev/serial/by-id/usb-FTDI_…-port0
+    python3 fs9922_bridge.py /dev/serial/by-id/usb-FTDI_…-port0
 
 Usage — raw hex dump (use this to reverse-engineer the protocol)::
 
-    python3 dmm.py --dump /dev/serial/by-id/usb-FTDI_…-port0
+    python3 fs9922_bridge.py --dump /dev/serial/by-id/usb-FTDI_…-port0
 """
 
 import argparse

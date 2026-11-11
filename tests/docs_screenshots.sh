@@ -1,7 +1,7 @@
 #!/bin/sh
 # Regenerate the README screenshots in docs/img (needs chromium).
 # Start two dev servers first and let the monitor collect a few minutes of history:
-#   python3 tests/devserver.py --port 5099 &          # logged-in view
+#   python3 tests/devserver.py --port 5099 --fake-devices &   # logged-in view + simulated Modbus / JSON / SCPI devices
 #   python3 tests/devserver.py --port 5098 --auth &   # anonymous view
 #   python3 tests/devserver.py --port 5097 --logs testLogs &   # log viewer with real run logs
 #   tests/docs_screenshots.sh
@@ -9,6 +9,8 @@ set -e
 cd "$(dirname "$0")/.."
 S=tests/screenshot.sh
 O=docs/img
+# scenario files of tests/docs_shots/*.js as a ?js= parameter (optional prefix code as 2nd argument)
+J() { python3 -c "import urllib.parse,sys;print(urllib.parse.quote((sys.argv[2] if len(sys.argv)>2 else '')+open(sys.argv[1]).read()))" "$@"; }
 # keep both monitor samplers alive (30 s lease) while the screenshots are taken
 ( while :; do curl -s -o /dev/null http://127.0.0.1:5099/api/monitor; curl -s -o /dev/null http://127.0.0.1:5098/api/monitor; sleep 5; done ) &
 POLLER=$!
@@ -28,3 +30,11 @@ $S "/settings?js=Devices.open();Devices.setTab('gpio');setTimeout(()=>Devices.ta
 $S "/settings?js=Devices.open();Devices.setTab('udev');Devices.tabs.udev.setView('rules');setTimeout(()=>Devices.tabs.udev.openRule('local','99-i2c.rules'),2500)" $O/devices-udev.png 1400x900 9000
 $S /logs                               $O/logs.png            1400x900  9000 5097
 $S "/logs?js=setTimeout(()=>Logs.openStep('Supply 5V'),1500)" $O/logs-step.png 1400x720 9000 5097
+# docs and schematics (the demo diagrams of help/diagrams), HW debugging tools (tests/fake_devices.py)
+$S "/help?diagram=demo_test_station&js=$(J tests/docs_shots/station.js)" $O/diagram-station.png 1400x900 9000
+$S '/help?diagram=prog_atmel_ice'                                   $O/diagram-library.png 1400x900 6000
+$S '/help?doc=testing/test-platform.md'                             $O/docs.png            1400x900 6000
+$S "/?js=$(J tests/docs_shots/modbus.js)"                           $O/modbus.png          1400x1000 9000
+$S "/?js=$(J tests/docs_shots/terminal.js)"                         $O/terminal.png        1400x1000 9000
+$S "/?js=$(J tests/docs_shots/terminal.js 'var SHOT_PLOT=1;')"      $O/terminal-plot.png   1400x900 12000
+$S "/?js=$(J tests/docs_shots/clone.js)"                            $O/clone-image.png     1400x900 6000

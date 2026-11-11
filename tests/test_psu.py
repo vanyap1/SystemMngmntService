@@ -1,4 +1,4 @@
-"""testPlatform/instruments/psu.py against a fake controller on localhost (one TCP connection per command, like the real
+"""testPlatform/instruments/psu_custom6020.py and psu_custom305.py against a fake controller on localhost (one TCP connection per command, like the real
 one) — the real power supply is never contacted."""
 import os
 import socket
@@ -9,7 +9,8 @@ import unittest
 from tests.support import ROOT
 
 sys.path.insert(0, os.path.join(ROOT, 'testPlatform'))
-from instruments.psu import PSU, PsuError  # noqa: E402
+from instruments.psu_custom6020 import PSU_CUSTOM6020, PsuError  # noqa: E402
+from instruments.psu_custom305 import PSU_CUSTOM305  # noqa: E402
 
 DATA = ('12.00,12.01,0.090,28,12.00,1.000,0.40,1,0,1,0.00,0.00,-0.000,27,0.00,1.000,0.00,1,0,1,0,'
         '23.64,25858,139,23.61,24832,119,0,0,15.00,0,1,0,0,15.00,0,1')
@@ -113,7 +114,7 @@ class FakePsu:
 class Psu(unittest.TestCase):
     def setUp(self):
         self.fake = FakePsu()
-        self.psu = PSU('127.0.0.1', self.fake.port, timeout=2)
+        self.psu = PSU_CUSTOM6020('127.0.0.1', self.fake.port, timeout=2)
 
     def tearDown(self):
         self.fake.close()
@@ -139,7 +140,7 @@ class Psu(unittest.TestCase):
             self.psu.query('OUT:1:1\r\nRESET')                      # one command per call
         self.fake.close()
         with self.assertRaises(PsuError):
-            PSU('127.0.0.1', self.fake.port, timeout=0.5, retries=2).getVoltage(1)
+            PSU_CUSTOM6020('127.0.0.1', self.fake.port, timeout=0.5, retries=2).getVoltage(1)
 
     def test_data_and_modules(self):
         d = self.psu.getData()
@@ -226,6 +227,94 @@ class Psu(unittest.TestCase):
     def test_wait_voltage(self):
         self.psu.setVoltage(1, 5)
         self.assertEqual(self.psu.waitVoltage(1, 5.0, 0.1, timeout=1), 5.0)
+
+
+
+class FakePsu305(FakePsu):
+    """PSU Ethernet Controller FW 2.0: setpoints / OUTP ON only with REM on, answers OK."""
+
+    def __init__(self):
+        super().__init__()
+        self.state = {'rem': 0, 'out': 0, 'v': 0.0, 'a': 0.0, 'dout': 0}
+
+    def _answer(self, cmd):
+        st = self.state
+        up = cmd.upper()
+        if up == 'SYST:REM ON':
+            st.update(rem=1, out=0)
+            return 'OK'
+        if up in ('SYST:REM OFF', 'SYST:LOC'):
+            st.update(rem=0, out=0)
+            return 'OK'
+        if up.startswith(('VOLT ', 'CURR ', 'APPL ', 'OUTP ', '*RST')):
+            if not st['rem']:
+                return 'ERROR: -221,Settings conflict; REM off, the supply is under front panel control'
+            if up.startswith('APPL '):
+                v, a = up[5:].split(',')
+                st.update(v=float(v), a=float(a))
+            elif up.startswith('OUTP '):
+                st['out'] = 1 if up.endswith('ON') else 0
+            return 'OK'
+        canned = {
+            '*IDN?': 'PSU-ETH,PSU-ETH,0,FW 2.0 Oct 31 2026', 'SYST:REM?': str(st['rem']), 'OUTP?': str(st['out']),
+            'MEAS:ALL?': f"{st['v'] * st['out']:.4f},0.1000,{st['v'] * st['out'] * 0.1:.3f}",
+            'MEAS:VOLT?': f"{st['v'] * st['out']:.4f}", 'VOLT:LIM?': '60.0000', 'CURR:LIM?': '5.0000',
+            'PSU:DATA?': '0.0026,0.0044,0.000,0.0000,0.0000,0,0,1,1,0,7,60.0000,5.0000,IDLE',
+            'DIG:INP?': '7', 'DIG:INP? 2': '1', 'DIG:OUTP?': str(st['dout']),
+            'EXTIO:LIST?': '1|MIX|25|IO module|K1|K2', 'EXTIO:OUT 1,3,1': '1',
+            'SYST:INFO?': 'fw=2.0\nreset=power-on', 'SYST:ERR?': '0,"No error"', '*TST?': '0',
+        }
+        if up.startswith('DIG:OUTP '):
+            n, v = up[9:].split(',')
+            st['dout'] = st['dout'] | (1 << (int(n) - 1)) if v == '1' else st['dout'] & ~(1 << (int(n) - 1))
+            return 'OK'
+        return canned.get(up, 'ERROR: -113,Undefined header')
+
+
+class Psu305(unittest.TestCase):
+    def setUp(self):
+        self.fake = FakePsu305()
+        self.psu = PSU_CUSTOM305('127.0.0.1', self.fake.port, timeout=2)
+
+    def tearDown(self):
+        self.fake.close()
+
+    def test_auto_remote_setup_and_measure(self):
+        self.psu.setup(12, 0.5)
+        self.assertEqual(self.fake.received, ['APPL 12.0000,0.5000', 'SYST:REM ON', 'APPL 12.0000,0.5000', 'OUTP ON'])
+        self.assertTrue(self.psu.isRemote() and self.psu.isOn())
+        self.assertEqual(self.psu.measureAll(), (12.0, 0.1, 1.2))
+        self.assertEqual(self.psu.waitVoltage(12.0, timeout=0.5), 12.0)
+        self.psu.off()
+        self.psu.local()
+        self.assertFalse(self.psu.isRemote())
+        self.fake.received.clear()
+        self.psu.off()                                   # without REM nothing is sent but the query
+        self.assertEqual(self.fake.received, ['SYST:REM?'])
+
+    def test_without_auto_remote_the_refusal_is_raised(self):
+        psu = PSU_CUSTOM305('127.0.0.1', self.fake.port, timeout=2, auto_remote=False)
+        with self.assertRaisesRegex(PsuError, '-221'):
+            psu.setVoltage(5)
+        with self.assertRaisesRegex(PsuError, '-113'):
+            psu.query('BOGUS?')
+
+    def test_data_io_and_info(self):
+        d = self.psu.getData()
+        self.assertEqual((d['dig_in'], d['v_max'], d['remote'], d['cal']), (7, 60.0, False, 'IDLE'))
+        self.assertEqual(self.psu.getLimits(), (60.0, 5.0))
+        self.assertEqual((self.psu.digIn(), self.psu.digIn(2)), (7, 1))
+        self.psu.digOut(2, 1)
+        self.assertEqual(self.psu.digOutRead(), 2)
+        with self.assertRaises(ValueError):
+            self.psu.digOut(4, 1)
+        self.assertEqual(self.psu.ioList(), [{'n': 1, 'type': 'MIX', 'addr': '25', 'name': 'IO module',
+                                              'labels': ['K1', 'K2']}])
+        self.assertEqual(self.psu.ioOut(1, 3, 1), 1)
+        self.assertEqual(self.psu.info(), {'fw': '2.0', 'reset': 'power-on'})
+        self.assertEqual(self.psu.errors(), [])
+        self.assertTrue(self.psu.selfTest())
+
 
 
 if __name__ == '__main__':

@@ -2,11 +2,11 @@
 import time
 import gpiod
 from instruments import FW_DIR
-from instruments.stm8_flash import STM8Flasher
+from instruments.stlink_stm8 import STM8Flasher
 from instruments.uut_serial import UUTSerial
-from instruments.dmm2 import FS9922DMM
+from instruments.fs9922 import FS9922DMM
 from testStrategy import TestStrategy
-from instruments.adc import ADC
+from instruments.ads1115 import ADC
 
 fwDir = FW_DIR                     # testPlatform/instruments/fw (was /home/vanya/vtp/fw)
 test_FW = "VTP1EleReDesignEOLT_V_4.hex"

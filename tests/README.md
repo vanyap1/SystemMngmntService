@@ -35,6 +35,9 @@ and never touch the live `systemmngmntservice.service`. Keep it that way:
 | `test_udev.py` | rule file names, rules linter |
 | `test_offline.py` | no CDN/external URLs; vendored libraries present and served |
 | `test_shell.py` | `resolve_inside`, `sh`, `run_command` |
+| `test_modbus.py` | Modbus framing, every transport on fake TCP / UDP servers and a pseudo terminal, scan, profiles, sessions |
+| `test_ttyterm.py` | terminal sessions (pty, TCP, UDP), one-shot sends, flood guard, profiles, sessions |
+| `test_sysclone.py` | Clone / Image: disk rules, image locations, jobs with a fake script, SMB share helpers |
 
 ## Visual checks
 
@@ -42,9 +45,11 @@ and never touch the live `systemmngmntservice.service`. Keep it that way:
 python3 tests/devserver.py &                  # port 5099, login disabled in memory (--logs testLogs: real run logs,
                                               #   --target DIR: other target_dir for the editor / Git)
 python3 tests/devserver.py --port 5098 --auth &   # anonymous view
+python3 tests/devserver.py --fake-devices &   # + simulated Modbus TCP :5502, JSON telemetry :5555, SCPI PSU :5588
+                                              #   (tests/fake_devices.py; --help-dir DIR: other docs folder)
 tests/screenshot.sh / /tmp/x.png              # prints JS "Uncaught" errors to stderr
 tests/screenshot.sh '/tests?js=MonitorFloat.open()' /tmp/x.png 1400x900 9000
-tests/docs_screenshots.sh                     # regenerate docs/img (both servers running)
+tests/docs_screenshots.sh                     # regenerate docs/img (servers running, see its header; scenarios in tests/docs_shots/)
 ```
 
 - `?js=<code>` runs after page load; URL-encode `+` as `%2B` (a bare `+` becomes a space and breaks the code).

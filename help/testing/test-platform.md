@@ -243,16 +243,40 @@ In the code editor put the arguments into **Debug → arguments**, e.g. `--sn VT
 
 ## Instruments
 
-### Power supply — instruments/psu.py
+Every instrument is an object created once at the top of the script and closed / switched off in `finalize()`.
+The list of drivers, how to create a device, a complete example and how to write a driver for another SCPI
+instrument: **[Instruments](instruments.md)**. Pages of the drivers:
+[Power supply PSU_CUSTOM6020](psu-custom6020.md) · [Oscilloscope Rigol DHO](rigol-dho.md) · [Bench multimeter OWON](owon-xdm.md) ·
+[Electronic load OWON](owon-oel.md) · [Serial terminal](serial-term.md) · [SSH terminal](ssh-term.md) ·
+[Parameter files](param-file.md).
+
+```python
+from instruments.rigol_dho924 import RIGOL_DHO924
+from instruments.ssh_term import SshTerm
+
+scope = RIGOL_DHO924("192.168.1.146")
+uut = SshTerm("192.168.1.80", "root", "root")
+
+
+def steps():
+    ts.numericLimitTest("Ripple 5V", scope.getVoltPkPk(1) * 1000, 0, 50, "mV")
+    ts.stringMatchTest("Firmware", uut.cmd("cat /etc/fw_version"), "2.4.1")
+
+
+def finalize():
+    uut.close()
+```
+
+### Power supply — instruments/psu_custom6020.py (PSU_CUSTOM6020)
 
 The 2-channel SCPI power supply (web page `http://192.168.1.91/`, command reference under *SCPI Commands*).
 The driver sends raw SCPI over TCP port 8080, one connection per command; an `ERROR: …` answer or no answer
 raises `PsuError`. Channels are `1` and `2`, values in V / A / W.
 
 ```python
-from instruments.psu import PSU
+from instruments.psu_custom6020 import PSU_CUSTOM6020
 
-psu = PSU("192.168.1.91")
+psu = PSU_CUSTOM6020("192.168.1.91")
 
 
 def steps():
@@ -268,9 +292,9 @@ def finalize():
 
 All functions — outputs, measurements, protection, the onboard DMM (AIN0-3), the EXT1 / EXT2 modules
 (INA228 / ADS1115), the EXT_IO relay / input cards, the external I²C bus, calibration, versions and the event
-log — with copyable examples: **[Power supply PSU](psu.md)**.
+log — with copyable examples: **[Power supply PSU_CUSTOM6020](psu-custom6020.md)**.
 
-Check from a console (read-only, nothing is switched): `python3 instruments/psu.py 192.168.1.91`.
+Check from a console (read-only, nothing is switched): `python3 instruments/psu_custom6020.py 192.168.1.91`.
 
 ### Firmware files — instruments/fw/
 
@@ -279,7 +303,7 @@ find them through `FW_DIR` / `fw_path()`, whatever their working directory (Test
 
 ```python
 from instruments import FW_DIR, fw_path
-from instruments.stm8_flash import STM8Flasher
+from instruments.stlink_stm8 import STM8Flasher
 
 flasher = STM8Flasher(chip="STM8S003F3")                 # looks in instruments/fw/ by default
 ts.logResult("Flash chip", flasher.flash("VTP1EleReDesignEOLT_V_4.hex"), "Chip flashed successfully")
@@ -290,10 +314,10 @@ with open(fw_path("eTest.bin"), "rb") as f:              # any other file of ins
 
 New firmware: copy the file into `testPlatform/instruments/fw/` (e.g. with the code editor or Git).
 
-### Multimeter — instruments/dmm.py
+### Multimeter — instruments/fs9922_bridge.py
 
 The FS9922 multimeter on a USB serial port: `FS9922DMM(port)`, `getVolt()`, `getAmp()`, `getResistance()`, … —
-see `testPlatform/instruments/dmm.py`.
+see `testPlatform/instruments/fs9922_bridge.py`.
 
 ## Operator dialogs
 

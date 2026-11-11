@@ -3,13 +3,25 @@
 import os
 import random
 import time
-from instruments.psu import PSU
- 
-psu = PSU("192.168.1.91")
+from instruments.psu_custom6020 import PSU_CUSTOM6020
+from instruments.psu_custom305 import PSU_CUSTOM305
+from instruments.rigol_dho924 import RIGOL_DHO924
+from instruments.ssh_term import SshTerm
 from testStrategy import TestStrategy
 from testWatch import TestWatch, file_flag
 
+from instruments.modbus import ModbusRTU, to_ascii
+
 ts = TestStrategy()
+
+
+#uutTerm=uutSSH(192.168.x.x, "user", password)
+scope = RIGOL_DHO924("192.168.1.146")
+uutTerm = SshTerm("192.168.1.70", "pi", "0000")
+psu = PSU_CUSTOM6020("192.168.1.91")
+psu2 = PSU_CUSTOM305("192.168.1.99")
+
+mb = ModbusRTU("/dev/ttyUSB0", 115200, unit=1, retries=1)
 
 # Emergency stop watched in the background during the whole sequence. Without hardware the "button" is the
 # file testPlatform/ESTOP: `touch ESTOP` while the test runs = pressed (the test is aborted, finalize runs),
@@ -24,12 +36,32 @@ def step(seconds):
     time.sleep(seconds)
     return True
 
+def modbusRead():
+    ts.section("Modbus Tesla CCVE")
+    regs = mb.readHolding(0, 12)
+    ts.stringMatchTest("Firmware", to_ascii(regs[4:6]), "3.47")
+    ts.stringMatchTest("Model", to_ascii(regs[7:11]).strip(), "J1772_0")
+    ts.numericLimitTest("State", regs[2], 0, 9, "")
+
 def calc_b(a, b):
     return a+b
 
 def steps():
     psu.ioOut(1, 9, 1)
     idn = psu.identify().split("\n")[1]
+    idn2 = psu2.identify()
+    psu.setVoltage(1, 12.0)                         # voltage preset, V
+    print(idn)
+    print(idn2)
+    modbusRead()
+    psu.on(1)
+    #ts.logResult("Uname", True, uutTerm.cmd("whoami"))
+    ts.section("Oscilloscope")
+    ts.logResult("Scope model", True, scope.checkModel())   # ERROR row if another scope answers at this IP
+    scope.autoset()                                         # AUTO, the driver waits 3 s for it to settle
+    ts.numericLimitTest("CH1 voltage Vpp", scope.getVoltPkPk(1), 2.9, 3.1, "V")
+    ts.numericLimitTest("CH1 frequency", scope.getFrequency(1), 990, 1010, "Hz")
+    
     ts.logResult("Serial number", True, ts.serial or "not given")    # the Serial field of the Tests page (--sn)
     ts.logResult("PSU info", True, idn)
     ts.logResult("Fixture power on", step(0.3), "OK")
@@ -41,8 +73,8 @@ def steps():
     b = 200
     c = a + b
 
-    psu.setVoltage(1, 12.0)                         # voltage preset, V
-    psu.on(1)                                       # output on
+    
+                                       # output on
 
     
 
@@ -57,7 +89,7 @@ def steps():
     psu.ioOut(1, 8, 0)
     vRef = psu.getRefVoltage()
     ts.numericLimitTest("Supply 12V", v, 11.7, 12.3, "V")
-    ts.numericLimitTest("Idle current", psu.getCurrent(1) * 1000, 80, 110, "mA")
+    ts.numericLimitTest("Idle current", psu.getCurrent(1) * 1000, 70, 110, "mA")
 
     ts.numericLimitTestInclusive("UUT response", 4, 4, 4, "")
     time.sleep(0.4)

@@ -4,9 +4,9 @@ Raw SCPI over TCP port 8080: one connection per command — connect, send "<cmd>
 until the controller closes the connection. Answers starting with "ERROR" raise PsuError. The controller has
 only 8 sockets, so a refused connection is retried a few times. Command reference: http://<ip>/#scpi.
 
-    from instruments.psu import PSU
+    from instruments.psu_custom6020 import PSU_CUSTOM6020
 
-    psu = PSU("192.168.1.91")
+    psu = PSU_CUSTOM6020("192.168.1.91")
     psu.setVoltage(1, 12.0)
     psu.setCurrent(1, 0.5)
     psu.on(1)
@@ -16,15 +16,16 @@ only 8 sockets, so a refused connection is retried a few times. Command referenc
 Channels are 1 and 2. Getters return floats in V / A / W (None never — a bad answer raises PsuError).
 """
 import re
-import socket
-import threading
 import time
 from typing import Dict, List, Optional
 
 
-class PsuError(Exception):
-    """Controller answered "ERROR: ..." or cannot be reached."""
+if __package__ in (None, ""):                            # run as a script: python3 instruments/<driver>.py
+    import os
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from instruments.psu_tcp import OneShotTcpPsu, PsuError  # noqa: E402
 
 _DATA_FIELDS = ("voltage", "voltage_kelvin", "current", "temperature", "set_voltage", "set_current",
                 "power", "cv", "cc", "online")       # online = PSU module connected (output state: isOn())
@@ -39,61 +40,9 @@ LOG_EVENTS = {1: "Boot", 2: "Config defaults", 3: "Config write failed", 4: "PSU
               17: "Firmware update", 18: "Config erased", 19: "Network reset", 20: "Log cleared"}
 
 
-class PSU:
-    DEFAULT_PORT = 8080
-
-    def __init__(self, host: str = "192.168.1.91", port: int = DEFAULT_PORT, timeout: float = 3.0,
-                 retries: int = 5) -> None:
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.retries = retries
-        self._lock = threading.Lock()   # one command at a time (also from a TestWatch check)
-
-    # ------------------------------------------------------------------ #
-    #  Raw access
-    # ------------------------------------------------------------------ #
-    def query(self, cmd: str) -> str:
-        """Send one command, return the answer text (without the trailing CR LF)."""
-        if "\r" in cmd or "\n" in cmd:
-            raise ValueError("one command per call")
-        last = None
-        with self._lock:
-            for attempt in range(self.retries):
-                try:
-                    with socket.create_connection((self.host, self.port), timeout=self.timeout) as s:
-                        s.sendall(cmd.encode("ascii") + b"\r\n")
-                        data = b""
-                        while True:
-                            chunk = s.recv(4096)
-                            if not chunk:
-                                break
-                            data += chunk
-                    answer = data.decode("utf-8", errors="replace").rstrip("\r\n")
-                    if answer.upper().startswith("ERROR"):
-                        raise PsuError(f"{cmd}: {answer}")
-                    return answer
-                except (ConnectionRefusedError, ConnectionResetError) as e:   # all sockets busy: retry
-                    last = e
-                    time.sleep(0.05 * (attempt + 1))
-                except socket.timeout as e:
-                    last = e
-                    break
-                except OSError as e:
-                    last = e
-                    break
-        raise PsuError(f"{cmd}: no answer from {self.host}:{self.port} ({last})")
-
-    def command(self, cmd: str) -> str:
-        """Send a setting command; the answer must not be an error (raises PsuError)."""
-        return self.query(cmd)
-
-    def _float(self, cmd: str) -> float:
-        answer = self.query(cmd)
-        try:
-            return float(answer.split(",")[0])
-        except ValueError:
-            raise PsuError(f"{cmd}: unexpected answer {answer!r}")
+class PSU_CUSTOM6020(OneShotTcpPsu):
+    """2-channel "SCPI CTRL 2CH PSU" (two 60 V / 20 A modules)."""
+    DEFAULT_HOST = "192.168.1.91"
 
     @staticmethod
     def _ch(ch: int) -> int:
@@ -546,14 +495,12 @@ class PSU:
             raise ValueError("1..32 data bytes")
         self.command(f"SOUR:I2C:WRITE {int(addr):02X},{int(reg):02X}," + ",".join(f"{int(b) & 0xFF:02X}" for b in data))
 
-    def close(self) -> None:
-        """Nothing to close (one connection per command); kept for symmetry with the DMM drivers."""
 
 
 if __name__ == "__main__":
-    # Read-only check: nothing is switched or changed.  python3 instruments/psu.py [host]
+    # Read-only check: nothing is switched or changed.  python3 instruments/psu_custom6020.py [host]
     import sys
-    psu = PSU(sys.argv[1] if len(sys.argv) > 1 else "192.168.1.91")
+    psu = PSU_CUSTOM6020(sys.argv[1] if len(sys.argv) > 1 else "192.168.1.91")
     print(psu.identify())
     print("ready:", psu.isReady(), " id:", psu.deviceId())
     for ch in (1, 2):
