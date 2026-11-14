@@ -17,7 +17,7 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/help/diagram/rename', '/api/help/diagram/delete', '/api/git/commit', '/api/git/push',
                   '/api/git/pull', '/api/git/fetch', '/api/git/branch', '/api/git/checkout', '/api/git/discard',
                   '/api/git/reset', '/api/git/fix', '/api/git/identity', '/api/git/credentials', '/api/git/clone',
-                  '/api/git/init', '/api/update/apply', '/api/update/restart',
+                  '/api/git/init', '/api/update/apply', '/api/update/restart', '/api/update/plan', '/api/update/force',
                   '/api/i2c/scan', '/api/i2c/read', '/api/i2c/write', '/api/i2c/label',
                   '/api/pyrun/start', '/api/pyrun/cmd', '/api/pyrun/input', '/api/pyrun/stop', '/api/pyrun/eval',
                   '/api/pyrun/vars', '/api/pyrun/breaks', '/api/term/open', '/api/term/input', '/api/term/resize',

@@ -43,11 +43,16 @@ esac
 [[ ${#dec[@]} -eq 0 ]] || command -v "${dec[0]}" >/dev/null || die "${dec[0]} not installed"
 
 file_bytes=$(stat -c %s "$IMAGE")
+# An image on a network share is read past the page cache: buffered reads past 4 GiB of a CIFS file hang for good
+# on 32-bit kernels (6.6 sunxi armv7). O_DIRECT reads with 4 MiB blocks work.
+IFLAG=()
+case $(stat -f -c %T "$IMAGE" 2>/dev/null) in smb2|cifs|nfs) IFLAG=(iflag=direct) ;; esac
 disk_bytes=$(blockdev --getsize64 "$TARGET_DISK")
 img_bytes=""
 case $IMAGE in
 	*.gz|*.zst) ;;                                     # size inside not reliable (gzip: modulo 4 GiB)
-	*.xz) img_bytes=$(xz --robot --list "$IMAGE" 2>/dev/null | awk '$1 == "totals" {print $5}') || true ;;
+	*.xz) [[ ${#IFLAG[@]} -gt 0 ]] ||                # reads the index at the end of the file: not on a share
+	      img_bytes=$(xz --robot --list "$IMAGE" 2>/dev/null | awk '$1 == "totals" {print $5}') || true ;;
 	*)    img_bytes=$file_bytes ;;
 esac
 info "Image: $IMAGE ($((file_bytes / 1048576)) MiB on disk${img_bytes:+, $((img_bytes / 1048576)) MiB to write})"
@@ -66,14 +71,15 @@ info "Clearing old signatures"
 wipefs -aq "$TARGET_DISK" || true
 info "Writing (takes a few minutes)"
 if [[ ${#dec[@]} -eq 0 ]]; then
-	dd if="$IMAGE" of="$TARGET_DISK" bs="$BS" conv=fsync status=progress
+	dd if="$IMAGE" "${IFLAG[@]}" of="$TARGET_DISK" bs="$BS" conv=fsync status=progress
 else
-	dd if="$IMAGE" bs="$BS" status=progress | "${dec[@]}" | dd of="$TARGET_DISK" bs="$BS" iflag=fullblock conv=fsync status=none
+	dd if="$IMAGE" "${IFLAG[@]}" bs="$BS" status=progress | "${dec[@]}" | dd of="$TARGET_DISK" bs="$BS" iflag=fullblock conv=fsync status=none
 fi
 blockdev --flushbufs "$TARGET_DISK"           # this disk only: a plain `sync` hangs on any stuck device
 # read back the start of the disk past the page cache (partition table, u-boot, first MiBs of the file system)
 info "Checking the first $VERIFY_MB MiB"
-if [[ ${#dec[@]} -eq 0 ]]; then src=(head -c "$((VERIFY_MB * 1048576))" "$IMAGE"); else src=(bash -c '"$@" <"$0" | head -c '"$((VERIFY_MB * 1048576))" "$IMAGE" "${dec[@]}"); fi
+# (the image again past the cache: the start only, but a .gz stream is read further than the first MiBs)
+src=(bash -c 'dd if="$0" bs=4M '"${IFLAG[*]}"' status=none | { if [ $# -gt 0 ]; then "$@"; else cat; fi; } | head -c '"$((VERIFY_MB * 1048576))" "$IMAGE" "${dec[@]}")
 cmp -s <("${src[@]}") <(dd if="$TARGET_DISK" bs=1M count="$VERIFY_MB" iflag=direct status=none) ||
 	die "read-back differs from the image in the first $VERIFY_MB MiB - the disk may be faulty"
 blockdev --rereadpt "$TARGET_DISK" 2>/dev/null || partprobe "$TARGET_DISK" 2>/dev/null || true

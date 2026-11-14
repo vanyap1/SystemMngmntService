@@ -189,15 +189,12 @@ if [[ -n $IMAGE_FILE ]]; then
 	image_bytes=$(( (PART_START_SECTOR + PART_SECTORS) * 512 + MB ))
 	info "Creating the image $IMAGE_FILE ($((image_bytes / MB)) MiB, sparse)"
 	truncate -s "$image_bytes" "$IMAGE_TMP"
-	# the partition table is written into the file itself (no device: no re-read, no global sync in sfdisk);
-	# losetup -P then shows the partition right away
-	sfdisk -q --no-reread --no-tell-kernel "$IMAGE_TMP" <<END_SFDISK
-label: dos
-start=${PART_START_SECTOR}, size=${PART_SECTORS}, type=83, bootable
-END_SFDISK
+	# Never touch the file with buffered I/O (sfdisk / gzip / dd on the file itself): on a CIFS share a buffered
+	# read past 4 GiB hangs for good on 32-bit kernels (6.6 sunxi armv7, checked by hand) - everything goes through
+	# the loop device with direct I/O or dd iflag=direct.
 	# Direct I/O: the loop device reads / writes the file past the page cache. Buffered loop I/O on a large CIFS file
-	# deadlocks on some kernels (6.6.75 sunxi armv7, 4.6 GB image: wipefs / udev / loop worker stuck in
-	# folio_wait_bit_common with nothing on the wire, the cifs deferred close in msleep; a 700 MB file works).
+	# deadlocks on some kernels (6.6.75 sunxi armv7: buffered reads past 4 GiB of a file on the share never return -
+	# wipefs / udev / loop worker stuck in folio_wait_bit_common, nothing on the wire; below 4 GiB it works).
 	LOOP_DEV=$(losetup -fP --direct-io=on --show "$IMAGE_TMP" 2>/dev/null || losetup -fP --show "$IMAGE_TMP")
 	TARGET_DISK=$LOOP_DEV
 	dio=$(cat "/sys/block/$(basename "$LOOP_DEV")/loop/dio" 2>/dev/null || echo 0)
@@ -224,15 +221,15 @@ for p in $(lsblk -lnpo NAME "$TARGET_DISK" | tail -n +2); do
 	umount -q "$p" 2>/dev/null || true
 	swapoff "$p" 2>/dev/null || true
 done
-if [[ -z $IMAGE_FILE ]]; then                  # an image file is partitioned already (see "image file")
+if [[ -z $IMAGE_FILE ]]; then                  # a new image file is all zeros already: no reads / writes needed
 	wipefs -aq "$TARGET_DISK"
 	dd if=/dev/zero of="$TARGET_DISK" bs=1M count=$(( (PART_START_SECTOR * 512) / MB + 1 )) conv=fsync status=none
-	sfdisk -q "$TARGET_DISK" <<END_SFDISK || true
+fi
+sfdisk -q "$TARGET_DISK" <<END_SFDISK || true
 label: dos
 start=${PART_START_SECTOR}, size=${PART_SECTORS}, type=83, bootable
 END_SFDISK
-	blockdev --rereadpt "$TARGET_DISK" 2>/dev/null || partprobe "$TARGET_DISK" 2>/dev/null || true
-fi
+blockdev --rereadpt "$TARGET_DISK" 2>/dev/null || partprobe "$TARGET_DISK" 2>/dev/null || true
 settle 30
 TARGET_PART=""
 for _ in $(seq 20); do                         # the partition node may come a moment after udev
@@ -331,7 +328,7 @@ if [[ -n $IMAGE_FILE ]]; then
 	if [[ $COMPRESS == gz ]]; then
 		gz=gzip; command -v pigz >/dev/null && gz=pigz
 		info "Compressing to $IMAGE_FILE.gz ($gz)"
-		"$gz" -c "$IMAGE_TMP" >"$IMAGE_FILE.gz.partial"
+		dd if="$IMAGE_TMP" bs=4M iflag=direct status=none | "$gz" -c >"$IMAGE_FILE.gz.partial"   # past the page cache
 		mv "$IMAGE_FILE.gz.partial" "$IMAGE_FILE.gz"
 		rm -f "$IMAGE_TMP"
 		RESULT="$IMAGE_FILE.gz"

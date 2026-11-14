@@ -31,3 +31,23 @@ def api_apply():
 def api_restart():
     unit = updates.restart()
     return jsonify({'ok': True, 'message': f'Restarting {unit}…'})
+
+
+@bp.route('/api/update/plan', methods=['POST'])
+@login_required
+def api_plan():
+    """Fetch and list what a forced update would replace (Git panel → Update panel)."""
+    return jsonify(updates.plan())
+
+
+@bp.route('/api/update/force', methods=['POST'])
+@login_required
+def api_force():
+    """Update the panel to its upstream whatever is local (saved first), keep config.json, restart the unit.
+    {confirm: true} is required when plan() reported issues."""
+    d = request.get_json(silent=True) or {}
+    try:
+        res = updates.force_update(bool(d.get('confirm')))
+    except updates.UpdateBlocked as e:
+        return jsonify({'error': str(e), 'plan': e.plan}), 409
+    return jsonify({'ok': True, **res})

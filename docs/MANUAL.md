@@ -319,6 +319,7 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET / POST | `/api/git/credentials` | login | HTTPS username + token (write-only: only `token_set` / last 4 chars come back) |
 | GET | `/api/update/status[?force=1]` | login | Panel update check: commits the panel repo is behind its upstream (fetch runs in the background) |
 | POST | `/api/update/apply`, `/api/update/restart` | login | `git pull --ff-only` of the panel / restart the panel's own systemd unit |
+| POST | `/api/update/plan`, `/api/update/force` | login | Git panel → *Update panel*: fetch and list local changes in the way / update to the upstream whatever is local (`{confirm: true}` when the plan has issues; saved first: backup branch, git stash, copies in `.git/panel-update-backup/`; `config.json` kept), then restart the unit → 409 `{error, plan}` without confirmation |
 | GET | `/help[?doc=<path>]` | login | Documentation viewer / editor |
 | GET | `/help/file/<path>[?dl=1]` | login | Image, attachment or raw page from `help_dir` (sandboxed) |
 | GET | `/api/help/tree` | login | All pages `{path, title, mtime, size}` |
@@ -455,8 +456,9 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   a clone needs the red *all data will be destroyed* box ticked. *Image*: connect a share (`//server/share`, user, password, SMB version —
   mounted at `/mnt/smms-share` with mount(2), no cifs-utils; the password is kept only when *remember* is ticked,
   in the host credentials file outside the repository), browse it, pick a folder: the image
-  `<host>[_tag]_<date>.img[.gz]` is built there on a loop device with **direct I/O** (a buffered loop device over
-  a large file on a CIFS share hangs for good on some kernels — 6.6 sunxi; without direct I/O on a network share the
+  `<host>[_tag]_<date>.img[.gz]` is built there on a loop device with **direct I/O** (buffered reads past 4 GiB of a
+  file on a CIFS share hang for good on 32-bit kernels — 6.6 sunxi armv7 — so the image file is read / written only
+  through the loop device or `dd iflag=direct`, also by *Write image*; without direct I/O on a network share the
   script refuses); *grow* lets the partition take the whole card
   at the first boot (`armbian-resize-filesystem`). The job runs on the server with a live log and rsync progress;
   *Stop* removes an unfinished image. *Write image → disk*: pick a location (the mounted share, a mounted

@@ -151,6 +151,7 @@ const Git = {
             `<button class="btn btn-ghost btn-sm" onclick="Git.act('fetch')" title="git fetch --prune"><i class="fa-solid fa-cloud-arrow-down"></i> Fetch</button>` +
             `<button class="btn btn-info btn-sm" onclick="Git.act('pull', {mode: 'ff'})" title="git pull --ff-only"><i class="fa-solid fa-download"></i> Pull${st.behind ? ' ' + st.behind : ''}</button>` +
             `<button class="btn btn-primary btn-sm" onclick="Git.act('push')" title="git push (sets the upstream on the first push)"><i class="fa-solid fa-upload"></i> Push${st.ahead ? ' ' + st.ahead : ''}</button>` +
+            (this._isPanel() ? `<button class="btn btn-warning btn-sm" onclick="Git.updatePanel()" title="Fetch, bring the panel to ${esc(st.upstream || 'its upstream')} (local changes are saved first, config.json stays) and restart its service"><i class="fa-solid fa-rotate"></i> Update panel</button>` : '') +
             `<button class="btn-icon" onclick="Git.load()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button></div>`;
 
         if (d.problems.length) {
@@ -341,6 +342,63 @@ const Git = {
     resetHard() {
         const st = this.data.status;
         this.act('reset', {}, `Reset "${st.branch}" to ${st.upstream}?\n\nA backup branch (backup/<date>) keeps the current commits and uncommitted changes are stashed (git stash list).`);
+    },
+
+    /** Is the shown repository the one the panel runs from? */
+    _isPanel() {
+        const r = this.repos.find(x => this.data && x.id === this.data.repo.id);
+        return !!r && r.aliases.includes('panel');
+    },
+
+    /** Forced update of the panel itself (core/updates.py plan / force_update): asks only when something local is
+        in the way, then restarts the service and reloads the page when the new instance answers. */
+    updatePanel() {
+        if (this.busy) return;
+        this.busy = true;
+        this.el.classList.add('git-busy');
+        this._out = 'Fetching…';
+        const out = document.getElementById('git-out');
+        if (out) { out.hidden = false; out.textContent = this._out; }
+        const done = () => { this.busy = false; if (this.el) this.el.classList.remove('git-busy'); };
+        App.api('/api/update/plan', { method: 'POST' }).then(p => {
+            const list = (title, a) => a.length ? `\n\n${title}:\n  ${a.slice(0, 12).join('\n  ')}${a.length > 12 ? `\n  … +${a.length - 12}` : ''}` : '';
+            const head = p.behind ? `${p.behind} new commit(s) on ${p.upstream}:\n  ${p.commits.slice(0, 8).map(c => c.short + ' ' + c.subject).join('\n  ')}`
+                                  : `No new commits on ${p.upstream}.`;
+            const restart = p.can_restart ? 'Then the panel service restarts (a few seconds).' : 'The panel does not run as a service: restart it by hand.';
+            let text;
+            if (p.issues.length) {
+                text = `${head}\n\nLOCAL CHANGES ARE IN THE WAY:\n- ${p.issues.join('\n- ')}` + list('Modified files', p.changed) +
+                       list('Untracked files that get overwritten', p.in_way) +
+                       `\n\nIgnore them and update anyway? They are saved first (backup branch / git stash / copies in .git); ` +
+                       `config.json (settings of this host) is kept. ${restart}`;
+            } else if (!p.behind) {
+                done(); this._out = `Up to date with ${p.upstream}.`; this.render();
+                return toast(this._out);
+            } else {
+                text = `${head}\n\nUpdate the panel${p.kept.length ? ' (config.json is kept)' : ''}? ${restart}`;
+            }
+            if (!confirm(text)) { done(); this._out = ''; return this.render(); }
+            this._out = 'Updating…';
+            this.render();
+            return App.api('/api/update/force', { json: { confirm: p.issues.length > 0 } }).then(r => {
+                this._out = r.message + (r.restart ? `\nRestarting ${r.restart}…` : r.changed ? '\nRestart the panel by hand to run the new code.' : '');
+                this.render();
+                toast(r.message.split(' · ')[0]);
+                document.dispatchEvent(new CustomEvent('git-changed'));
+                if (r.restart) this._waitRestart(p.boot, Date.now());
+                else { done(); this.load(); }
+            });
+        }).catch(e => { done(); this._out = e.message; toast(e.message, true); this.load(); });
+    },
+
+    /** Reload once the restarted panel (another boot time) answers. */
+    _waitRestart(boot, started) {
+        setTimeout(() => {
+            fetch('/api/update/status', { cache: 'no-store' })
+                .then(r => r.status === 401 ? { boot: -1 } : r.json())
+                .then(d => { if (d.boot !== boot) location.reload(); else throw 0; })
+                .catch(() => { if (Date.now() - started < 120000) this._waitRestart(boot, started); else location.reload(); });
+        }, 1500);
     },
 
     fix(id, dangerLabel) {

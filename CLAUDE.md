@@ -168,7 +168,8 @@ static/
   of an earlier image job cannot be detached (`stale_loops`); an image needs free space and a 1 MiB write probe on
   the share (`probe_write`, bounded by a thread timeout — never block a request on the share). A watchdog thread
   notes stalls in the job log (`[watchdog]`, processes in state D). The image loop device uses direct I/O
-  (buffered loop over a big CIFS file hangs for good on 6.6 sunxi) and the scripts never call a global `sync`
+  (buffered reads past 4 GiB of a file on a CIFS share hang for good on 32-bit 6.6 sunxi — never read / write
+  a share file buffered in the scripts: loop with direct I/O or `dd iflag=direct`) and the scripts never call a global `sync`
   (it hangs on any stuck device): flush the own device / file only, `udevadm settle -t`.
 - Partition = used data + `RESERVE_MB` (+5 % ext4) + extra MiB, same formula in the script and `min_partition_mb`.
   It starts at the sector of the running root partition (rockchip u-boot needs 16 MiB); u-boot via Armbian's
@@ -303,6 +304,9 @@ static/
 ## Top bar
 - Layout: brand · `.tb-sections` (core/nav.py) · `.tb-page` (block `topbar_tools`) · `.tb-tools` (Video, Monitor,
   Devices, Services, Settings) · power menu (+ Logout) · update button. Labels in `.tb-label` hide on narrow screens.
+- Git panel → *Update panel* (only for the panel's own repo): `updates.plan()` / `force_update()` — asks only when
+  local commits / modified files / untracked files in the way exist, saves them (backup branch, stash, copies in
+  `.git/panel-update-backup/`), `reset --hard @{u}`, never replaces `KEEP` (`config.json`), restarts the unit.
 - The update check (`core/updates.py`) runs only while the UI polls `/api/update/status`, at most every
   `update_check_minutes`; tests and `tests/devserver.py` set it to 0 (`devserver.py --fake-update` shows the button).
   Never fetch or pull the real repository in tests — point `config.BASE_DIR` to a temporary clone (`tests/test_updates.py`).

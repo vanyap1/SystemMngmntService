@@ -4,6 +4,7 @@ import os
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 from tests.support import TMP, client, config  # noqa: F401  (support first)
 from core import git_ops, updates
@@ -102,6 +103,54 @@ class SelfUpdate(unittest.TestCase):
             self.assertEqual(self.c.post('/api/update/restart').status_code, 409)
         finally:
             updates.own_unit = saved
+
+    def _read(self, name):
+        with open(os.path.join(self.panel, name)) as f:
+            return f.read()
+
+    def test_force_update_clean_fast_forward(self):
+        p = self.c.post('/api/update/plan').get_json()
+        self.assertEqual((p['behind'], p['issues']), (2, []))
+        with mock.patch.object(updates, 'own_unit', return_value=None):
+            r = self.c.post('/api/update/force', json={}).get_json()
+        self.assertTrue(r['changed'])
+        self.assertIsNone(r['restart'])                                        # not a service here
+        self.assertEqual(self._read('app.py'), 'v2')
+
+    def test_force_update_saves_local_changes_and_keeps_config(self):
+        self._commit(self.panel, 'config.json', '{"default": {}}', 'config')   # tracked like the real one
+        self._commit(self.panel, 'local.py', 'mine', 'a local commit')        # diverged: ahead 2, behind 2
+        with open(os.path.join(self.panel, 'app.py'), 'w') as f:
+            f.write('edited here')
+        with open(os.path.join(self.panel, 'config.json'), 'w') as f:
+            f.write('{"hosts": {"h5": {"x": 1}}}')
+        with open(os.path.join(self.panel, 'new.py'), 'w') as f:              # untracked, comes with the update
+            f.write('my own new.py')
+        d = self.c.post('/api/update/force', json={})
+        self.assertEqual(d.status_code, 409)                                  # asks first
+        p = d.get_json()['plan']
+        self.assertEqual(p['changed'], ['app.py'])
+        self.assertEqual(p['in_way'], ['new.py'])
+        self.assertEqual(p['kept'], ['config.json'])
+        self.assertEqual(len(p['issues']), 3)
+        self.assertEqual(self._read('app.py'), 'edited here')                 # nothing touched yet
+        with mock.patch.object(updates, 'restart', return_value='systemmngmntservice.service') as rs, \
+                mock.patch.object(updates, 'own_unit', return_value='systemmngmntservice.service'):
+            r = self.c.post('/api/update/force', json={'confirm': True}).get_json()
+        rs.assert_called_once()
+        self.assertEqual(r['restart'], 'systemmngmntservice.service')
+        self.assertEqual((self._read('app.py'), self._read('new.py')), ('v2', 'x'))
+        self.assertEqual(self._read('config.json'), '{"hosts": {"h5": {"x": 1}}}')     # host settings kept
+        self.assertFalse(os.path.exists(os.path.join(self.panel, 'local.py')))
+        self.assertIn('backup/', git(self.panel, 'branch', '--list', 'backup/*'))
+        self.assertIn('a local commit', git(self.panel, 'log', '--oneline', '-1', git(self.panel, 'branch', '--list', 'backup/*').strip()))
+        self.assertIn('edited here', git(self.panel, 'stash', 'show', '-p', 'stash@{0}'))
+        bk = os.path.join(self.panel, '.git', 'panel-update-backup')
+        stamp = os.listdir(bk)[0]
+        with open(os.path.join(bk, stamp, 'new.py')) as f:
+            self.assertEqual(f.read(), 'my own new.py')
+        with open(os.path.join(bk, stamp, 'config.json')) as f:
+            self.assertIn('h5', f.read())
 
     def test_status_endpoint(self):
         d = self.c.get('/api/update/status').get_json()

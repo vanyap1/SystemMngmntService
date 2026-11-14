@@ -4,6 +4,7 @@ Nothing here touches a real disk, mounts a share or needs root: lsblk / the scri
 the share is a temporary folder.
 """
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -416,6 +417,15 @@ class Script(unittest.TestCase):
             src = f.read()
         self.assertIn('losetup -fP --direct-io=on --show', src)
         self.assertIn('loop/dio', src)
+        # buffered reads past 4 GiB of a file on a CIFS share hang for good (6.6 sunxi armv7): the image file is
+        # touched only through the loop device / dd iflag=direct, never by sfdisk / gzip / a plain read
+        self.assertNotRegex(src, r'sfdisk[^\n]*IMAGE_TMP')
+        self.assertRegex(src, r'dd if="\$IMAGE_TMP"[^\n]*iflag=direct[^\n]*\| "\$gz"')
+        self.assertNotRegex(src, r'(?m)^\s*sync\s*$')                     # no global sync
+        with open(self.PATHS[1]) as f:
+            wr = f.read()
+        self.assertIn('IFLAG=(iflag=direct)', wr)
+        self.assertEqual(len(re.findall(r'dd if="\$IMAGE" "\$\{IFLAG\[@\]\}"', wr)), 2)
 
     def test_refuses_without_root(self):
         if os.geteuid() == 0:
