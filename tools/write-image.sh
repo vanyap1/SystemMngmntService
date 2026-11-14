@@ -14,6 +14,7 @@ IMAGE="${IMAGE:-${1:-}}"
 TARGET_DISK="${TARGET_DISK:-${2:-}}"
 ASSUME_YES="${ASSUME_YES:-no}"
 BS="${BS:-4M}"
+VERIFY_MB="${VERIFY_MB:-16}"                 # bytes compared after writing (read back with O_DIRECT)
 
 set -euo pipefail
 info() { echo "==> $*"; }
@@ -69,9 +70,14 @@ if [[ ${#dec[@]} -eq 0 ]]; then
 else
 	dd if="$IMAGE" bs="$BS" status=progress | "${dec[@]}" | dd of="$TARGET_DISK" bs="$BS" iflag=fullblock conv=fsync status=none
 fi
-sync
+blockdev --flushbufs "$TARGET_DISK"           # this disk only: a plain `sync` hangs on any stuck device
+# read back the start of the disk past the page cache (partition table, u-boot, first MiBs of the file system)
+info "Checking the first $VERIFY_MB MiB"
+if [[ ${#dec[@]} -eq 0 ]]; then src=(head -c "$((VERIFY_MB * 1048576))" "$IMAGE"); else src=(bash -c '"$@" <"$0" | head -c '"$((VERIFY_MB * 1048576))" "$IMAGE" "${dec[@]}"); fi
+cmp -s <("${src[@]}") <(dd if="$TARGET_DISK" bs=1M count="$VERIFY_MB" iflag=direct status=none) ||
+	die "read-back differs from the image in the first $VERIFY_MB MiB - the disk may be faulty"
 blockdev --rereadpt "$TARGET_DISK" 2>/dev/null || partprobe "$TARGET_DISK" 2>/dev/null || true
-udevadm settle 2>/dev/null || true
+udevadm settle -t 30 2>/dev/null || true
 echo
 lsblk -o NAME,SIZE,FSTYPE,LABEL "$TARGET_DISK" || true
 info "Done: image written to $TARGET_DISK"

@@ -53,13 +53,39 @@ class PSU_CUSTOM6020(OneShotTcpPsu):
     # ------------------------------------------------------------------ #
     #  Output
     # ------------------------------------------------------------------ #
+    VERIFY_TIMEOUT = 2.0        # s to wait for a preset in the PSU module (0 = do not check)
+
+    def _confirm(self, ch: int, key: str, value: float, cmd: str) -> None:
+        """The controller answers OK at once, the PSU module applies a preset up to ~1.5 s later — and loses it
+        when commands come back to back. Poll set_voltage / set_current until it matches, send the command once
+        more, then PsuError: a test must never run on an old current limit."""
+        if not self.VERIFY_TIMEOUT:
+            return
+        got = None
+        for attempt in (1, 2):
+            end = time.time() + self.VERIFY_TIMEOUT
+            while True:
+                got = self.getData()[ch].get(key)
+                if got is not None and abs(got - value) <= 0.015 + abs(value) * 0.002:
+                    return
+                if time.time() >= end:
+                    break
+                time.sleep(0.1)
+            if attempt == 1:
+                self.command(cmd)
+        raise PsuError(f"CH{ch}: {key} {value:g} sent, the PSU module still has {got}")
+
     def setVoltage(self, ch: int, volts: float) -> None:
-        """Voltage preset, V."""
-        self.command(f"VOLT:{self._ch(ch)}:{float(volts):.2f}")
+        """Voltage preset, V (waits until the PSU module has it, see VERIFY_TIMEOUT)."""
+        cmd = f"VOLT:{self._ch(ch)}:{float(volts):.2f}"
+        self.command(cmd)
+        self._confirm(ch, "set_voltage", float(volts), cmd)
 
     def setCurrent(self, ch: int, amps: float) -> None:
-        """Current limit, A (the controller's overcurrent shutdown is limit + 1 A)."""
-        self.command(f"CURR:{self._ch(ch)}:{float(amps):.3f}")
+        """Current limit, A (the controller's overcurrent shutdown is limit + 1 A); waits until the PSU module has it."""
+        cmd = f"CURR:{self._ch(ch)}:{float(amps):.3f}"
+        self.command(cmd)
+        self._confirm(ch, "set_current", float(amps), cmd)
 
     def on(self, ch: int) -> None:
         self.command(f"OUT:{self._ch(ch)}:1")

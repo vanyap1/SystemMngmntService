@@ -3,7 +3,9 @@
    copy the running system to another disk, build a bootable .img on an SMB share (mounted and browsed here), or
    write an image from the share / a mounted local disk / a home folder onto a disk.
    The partition size = used data + reserve + extra MiB (or the whole disk). The job runs on the server and
-   survives closing the popup; this tab polls its log while visible.
+   survives closing the popup / leaving the page; this tab polls its log while visible (also when it is opened again
+   while a job runs — load() reattaches), the System Monitor shows its progress meanwhile (MonitorData `job`).
+   The three sections are collapsed until opened (``open``, kept for the page only).
    ========================================================================== */
 
 Devices.register({
@@ -16,6 +18,7 @@ Devices.register({
     logNext: 0,
     poll: null,
     wr: { root: null, path: '', listing: null, found: null, sel: null },   // Write image: location, folder, chosen image
+    open: new Set(),         // expanded sections: image, clone, write
 
     $(id) { return document.getElementById(id); },
     mib(n) { return Math.round(n).toLocaleString('en-US').replace(/,/g, ' ') + ' MiB'; },
@@ -38,7 +41,29 @@ Devices.register({
             if (!d.smb.mounted) { this.path = null; this.listing = null; }
             this.render();
             if (d.job) this._job(d.job, true);
+            if (this._active(d.job) && this._visible()) this._startPoll();    // reopened while a job runs
         });
+    },
+
+    _active(job) { return !!job && (job.state === 'running' || job.state === 'stopping'); },
+    _visible() { return Devices.isOpen() && Devices.tab === this.id; },
+
+    toggle(sec) {
+        if (this.open.has(sec)) this.open.delete(sec); else this.open.add(sec);
+        this._sections();
+    },
+
+    _sections() {
+        document.querySelectorAll('#devpane-clone .cl-sec').forEach(el => el.classList.toggle('open', this.open.has(el.dataset.sec)));
+    },
+
+    /** One-line state of each section, readable while it is collapsed. */
+    _summaries() {
+        const d = this.data, free = d.disks.filter(x => !x.system && !x.mounted.length).length;
+        const w = this.wr.sel, cd = this._disk(), wd = this._disk('wr');
+        this.$('cl-sum-image').textContent = d.smb.mounted ? (this.path !== null ? 'folder: /' + this.path : 'share connected') : '';
+        this.$('cl-sum-clone').textContent = cd ? 'target ' + cd.name : `${free} free disk${free === 1 ? '' : 's'}`;
+        this.$('cl-sum-write').textContent = w ? w.name + (wd ? ' → ' + wd.name : '') : '';
     },
 
     /** Folder part of the share field (//host/share/sub -> sub). */
@@ -47,7 +72,7 @@ Devices.register({
         return parts.slice(2).join('/');
     },
 
-    onShow() { if (this.data && this.data.job && this.data.job.state === 'running') this._startPoll(); },
+    onShow() { if (this.data && this._active(this.data.job)) this._startPoll(); },
     onHide() { this._stopPoll(); },
 
     render() {
@@ -60,12 +85,18 @@ Devices.register({
         if (!d.root) warn.push('The panel runs without root here — mounting, cloning and imaging are not possible (view only).');
         if (d.missing.length) warn.push('Missing tools: ' + d.missing.join(', ') + ' (apt install rsync fdisk e2fsprogs mount).');
         if (!d.uboot) warn.push('No u-boot found (/usr/lib/u-boot/platform_install.sh) — the copy would not boot by itself.');
+        if (d.hung && d.hung.length) warn.push('Hung I/O on this system: ' + d.hung.map(h => `${h.comm} (pid ${h.pid}${h.wchan ? ', ' + h.wchan : ''})`).join(', ') +
+            ' — such processes cannot be killed and make disk tools hang; no job starts until a reboot.');
+        if (d.stale_loops && d.stale_loops.length) warn.push('Loop device(s) left by an earlier image job: ' +
+            d.stale_loops.map(l => `${l.dev} → ${l.file}`).join(', ') + ' — detached when the next job starts (a reboot if that fails).');
+        if (d.smb.error) warn.push('SMB share: ' + d.smb.error + '.');
         this.$('cl-warn').hidden = !warn.length;
         this.$('cl-warn').innerHTML = warn.map(w => `<div><i class="fa-solid fa-triangle-exclamation"></i> ${esc(w)}</div>`).join('');
         this._renderDisks();
         this._renderShare();
         this._wrRender();
         this.sizes();
+        this._sections();
         Devices.summary(`${d.disks.length} disk(s) · share ${d.smb.mounted ? 'mounted' : 'not mounted'}`, this.id);
     },
 
@@ -103,14 +134,26 @@ Devices.register({
         return r && this.data ? this.data.disks.find(x => x.name === r.value) : null;
     },
 
-    pickDisk(group = 'cl') { this.$(group + '-confirm').value = ''; this._renderDisks(); this.sizes(); },
+    pickDisk(group = 'cl') { this.$(group + '-ok').checked = false; this._renderDisks(); this.sizes(); },
+
+    /** "All data will be destroyed" box of a target disk (cl / wr): enabled with a disk, text names it. */
+    _okBox(group, disk) {
+        const box = this.$(group + '-ok');
+        box.disabled = !disk;
+        if (!disk) box.checked = false;
+        this.$(group + '-ok-text').textContent = disk
+            ? `I understand: ALL DATA ON ${disk.path} (${App.fmtBytes(disk.size)}${disk.model ? ', ' + disk.model : ''}) WILL BE DESTROYED`
+            : 'Choose a target disk';
+        return !!disk && box.checked;
+    },
 
     // ── Sizes / buttons ────────────────────────────────────
 
     sizes() {
         const d = this.data;
         if (!d) return;
-        const busy = !!(d.job && (d.job.state === 'running' || d.job.state === 'stopping'));
+        const busy = this._active(d.job);
+        this._summaries();
         const ex = Math.max(0, parseInt(this.$('img-extra').value, 10) || 0);
         const part = d.min_mb + ex, img = d.part_start / 2048 + part + 1;
         this.$('img-size').innerHTML = `partition = ${this.mib(d.min_mb)} (data + reserve) + ${this.mib(ex)} = <b>${this.mib(part)}</b>, ` +
@@ -126,21 +169,20 @@ Devices.register({
         const disk = this._disk(), whole = this.$('cl-whole').checked;
         this.$('cl-extra').disabled = whole;
         this.$('cl-grow').disabled = whole;
-        let txt = 'Choose a disk.';
+        let txt = 'Choose a disk.', fits = true;
         if (disk) {
             const max = Math.floor((disk.size - d.part_start * 512) / 1048576) - 1;
             const cx = Math.max(0, parseInt(this.$('cl-extra').value, 10) || 0);
             const size = whole ? max : d.min_mb + cx;
+            fits = size <= max;
             txt = `${esc(disk.path)}: partition <b>${this.mib(size)}</b>` + (whole ? ' (whole disk)' : ` = ${this.mib(d.min_mb)} + ${this.mib(cx)}`) +
                 ` of ${this.mib(max)} possible` + (size > max ? ' — <span class="text-error">does not fit, lower the extra size</span>' : '');
         }
         this.$('cl-size').innerHTML = txt;
-        const ok = disk && this.$('cl-confirm').value.trim() === disk.name;
-        this.$('cl-confirm').placeholder = disk ? disk.name : 'e.g. mmcblk1';
-        this.$('cl-start').disabled = busy || !d.root || !ok;
+        const ok = this._okBox('cl', disk);
+        this.$('cl-start').disabled = busy || !d.root || !ok || !fits;
 
         const wd = this._disk('wr'), wimg = this.wr.sel;
-        this.$('wr-confirm').placeholder = wd ? wd.name : 'e.g. sda';
         let wt = !wimg ? 'Choose an image on the left.' : !wd ? 'Choose a target disk.' : '';
         if (wimg && wd) {
             const raw = /\.img$/i.test(wimg.name);
@@ -148,7 +190,8 @@ Devices.register({
                 (raw && wimg.size > wd.size ? ' — <span class="text-error">the image is larger than the disk</span>' : '');
         }
         this.$('wr-size').innerHTML = wt;
-        this.$('wr-start').disabled = busy || !d.root || !wimg || !wd || this.$('wr-confirm').value.trim() !== wd.name;
+        const wok = this._okBox('wr', wd);
+        this.$('wr-start').disabled = busy || !d.root || !wimg || !wd || !wok;
     },
 
     // ── Share ──────────────────────────────────────────────
@@ -317,10 +360,10 @@ Devices.register({
 
     startWrite() {
         const disk = this._disk('wr'), img = this.wr.sel;
-        if (!disk || !img) return;
-        if (!confirm(`ALL DATA ON ${disk.path} (${App.fmtBytes(disk.size)}) WILL BE DESTROYED.\nWrite ${img.name} onto it?`)) return;
-        App.api('/api/sysclone/write', { json: { root: img.root, path: img.path, disk: disk.name, confirm: this.$('wr-confirm').value.trim() } })
-            .then(r => { this.$('wr-confirm').value = ''; this._started(r.job); })
+        if (!disk || !img || !this.$('wr-ok').checked) return;
+        // the box is the confirmation; the server still requires it as the disk name
+        this._busyBtn('wr-start', App.api('/api/sysclone/write', { json: { root: img.root, path: img.path, disk: disk.name, confirm: disk.name } }))
+            .then(r => { this.$('wr-ok').checked = false; this._started(r.job); })
             .catch(e => toast(e.message, true));
     },
 
@@ -330,17 +373,24 @@ Devices.register({
         const body = { folder: this.path || '', extra_mb: parseInt(this.$('img-extra').value, 10) || 0, tag: this.$('img-tag').value.trim(),
                        compress: this.$('img-compress').value, grow: this.$('img-grow').checked };
         if (!confirm('Build a bootable image of the running system on the share?\nIt takes several minutes; the system keeps running.')) return;
-        App.api('/api/sysclone/image', { json: body }).then(r => this._started(r.job)).catch(e => toast(e.message, true));
+        this._busyBtn('img-start', App.api('/api/sysclone/image', { json: body })).then(r => this._started(r.job)).catch(e => toast(e.message, true));
     },
 
     startClone() {
         const disk = this._disk();
-        if (!disk) return;
-        if (!confirm(`ALL DATA ON ${disk.path} (${App.fmtBytes(disk.size)}) WILL BE DESTROYED.\nCopy the running system onto it?`)) return;
-        const body = { disk: disk.name, confirm: this.$('cl-confirm').value.trim(), extra_mb: parseInt(this.$('cl-extra').value, 10) || 0,
+        if (!disk || !this.$('cl-ok').checked) return;
+        const body = { disk: disk.name, confirm: disk.name, extra_mb: parseInt(this.$('cl-extra').value, 10) || 0,
                        whole: this.$('cl-whole').checked, grow: this.$('cl-grow').checked };
-        App.api('/api/sysclone/clone', { json: body }).then(r => { this.$('cl-confirm').value = ''; this._started(r.job); })
+        this._busyBtn('cl-start', App.api('/api/sysclone/clone', { json: body })).then(r => { this.$('cl-ok').checked = false; this._started(r.job); })
             .catch(e => toast(e.message, true));
+    },
+
+    /** The start checks the system and the share first (a few seconds): show it on the button meanwhile. */
+    _busyBtn(id, p) {
+        const b = this.$(id), html = b.innerHTML;
+        b.disabled = true;
+        b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking…';
+        return p.finally(() => { b.innerHTML = html; this.sizes(); });
     },
 
     stop() {
@@ -376,20 +426,28 @@ Devices.register({
         this.$('cl-job-time').textContent = `${m}:${String(s).padStart(2, '0')}` + (job.result ? ` · ${job.result}` : '');
         this.$('cl-stop').hidden = job.state !== 'running';
         const p = job.progress, running = job.state === 'running';
+        const st2 = job.stall, stall = this.$('cl-stall');
+        stall.hidden = !st2;
+        if (st2) {
+            const stuck = st2.stuck.map(x => `<b class="mono">${esc(x.comm)}</b> (pid ${x.pid}${x.wchan ? ', waits in ' + esc(x.wchan) : ''})`).join(', ');
+            stall.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> No output for ${Math.round(st2.quiet / 60)} min.` +
+                (stuck ? ` Stuck in the kernel (uninterruptible I/O): ${stuck} — usually the disk / share does not answer; Stop cannot end such a ` +
+                         'process, a reboot frees it.' : ' The job may still be working (no process is stuck in the kernel).');
+        }
         const pct = job.state === 'ok' ? 100 : p ? p.percent : 0;
         this.$('cl-bar').style.width = pct + '%';
         this.$('cl-bar').classList.toggle('err', job.state === 'error' || job.state === 'stopped');
         this.$('cl-prog-text').textContent = p ? `${p.percent}% · ${p.done} · ${p.speed} · ${running ? 'ETA ' + p.eta : ''}` : (running ? 'preparing…' : '');
-        if (!running) { this._stopPoll(); this.sizes(); }
+        if (!this._active(job)) { this._stopPoll(); this.sizes(); }
     },
 
     _startPoll() {
         this._stopPoll();
         this.poll = setInterval(() => {
             App.api('/api/sysclone/job?since=' + this.logNext).then(r => {
-                const wasRunning = this.data && this.data.job && this.data.job.state === 'running';
+                const was = this.data && this._active(this.data.job);
                 this._job(r.job, false);
-                if (wasRunning && r.job && r.job.state !== 'running') {
+                if (was && r.job && !this._active(r.job)) {
                     toast(r.job.state === 'ok' ? 'Done: ' + r.job.title : r.job.title + ': ' + r.job.state, r.job.state !== 'ok');
                     Devices.refresh();
                 }

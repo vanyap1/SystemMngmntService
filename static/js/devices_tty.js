@@ -63,7 +63,11 @@ Devices.register({
                 this.histPos = Math.max(-1, this.histPos - 1);
                 inp.value = this.histPos >= 0 ? this.hist[this.histPos] : '';
             }
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') this._hexInfo();
         });
+        inp.dataset.ph = inp.placeholder;
+        inp.addEventListener('input', () => this._hexInfo());
+        this.$('tt-hexsend').addEventListener('change', () => this.hexToggle());
         this.$('tt-note').addEventListener('input', () => this._noteSave());
         this.$('tt-note').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); this.noteToggle(false); } });
         this.$('tt-out').addEventListener('click', e => {
@@ -215,6 +219,52 @@ Devices.register({
         return out;
     },
 
+    /** UTF-8 bytes -> text. Bytes that are not valid UTF-8 become U+DC80 + (b - 0x80) like Python's surrogateescape:
+        shown as \xNN, mapped back to the same bytes by _bytesOf. ``st`` ({rest}) carries an unfinished sequence. */
+    _utf8(bytes, st) {
+        let b = bytes;
+        if (st && st.rest) { b = new Uint8Array(st.rest.length + bytes.length); b.set(st.rest); b.set(bytes, st.rest.length); st.rest = null; }
+        let s = '';
+        const n = b.length;
+        for (let i = 0; i < n;) {
+            const c = b[i];
+            if (c < 0x80) { s += String.fromCharCode(c); i++; continue; }
+            const len = c >= 0xc2 && c <= 0xdf ? 2 : c >= 0xe0 && c <= 0xef ? 3 : c >= 0xf0 && c <= 0xf4 ? 4 : 0;
+            let k = 1;
+            while (k < len && i + k < n) {
+                const x = b[i + k];
+                const lo = k > 1 ? 0x80 : c === 0xe0 ? 0xa0 : c === 0xf0 ? 0x90 : 0x80;
+                const hi = k > 1 ? 0xbf : c === 0xed ? 0x9f : c === 0xf4 ? 0x8f : 0xbf;
+                if (x < lo || x > hi) break;
+                k++;
+            }
+            if (len && k === len) {
+                let cp = c & (0xff >> (len + 1));
+                for (let j = 1; j < len; j++) cp = (cp << 6) | (b[i + j] & 0x3f);
+                s += String.fromCodePoint(cp); i += len;
+            } else if (len && i + k === n && st) { st.rest = b.slice(i); break; }     // cut at the chunk end: wait
+            else { s += String.fromCharCode(0xdc00 + c); i++; }
+        }
+        return s;
+    },
+
+    LONE: /(?<![\ud800-\udbff])[\udc80-\udcff]/g,       // a raw byte kept by _utf8
+
+    /** Text from _utf8 -> the original bytes. */
+    _bytesOf(text) {
+        const enc = new TextEncoder(), out = [];
+        for (const ch of text) {
+            const c = ch.charCodeAt(0);
+            if (ch.length === 1 && c >= 0xdc80 && c <= 0xdcff) out.push(c - 0xdc00);
+            else if (c < 0x80) out.push(c);
+            else out.push(...enc.encode(ch));
+        }
+        return Uint8Array.from(out);
+    },
+
+    /** Raw bytes of _utf8 text as \xNN (for plain-text outputs: log file, macro reply). */
+    _esc8(text) { return text.replace(this.LONE, ch => '\\x' + (ch.charCodeAt(0) & 0xff).toString(16).padStart(2, '0')); },
+
     _chunk(c) {
         const bytes = this._b64(c.b64), t = c.t * 1000;
         this.raw.push({ t, dir: c.dir, bytes, src: c.src });
@@ -224,10 +274,9 @@ Devices.register({
 
     /** Bytes of one direction -> display lines (a datagram / a sent message always starts a new line). */
     _text(dir, bytes, t, src) {
-        if (dir === 'sys') { this._close(dir); return this._push({ t, dir, text: new TextDecoder().decode(bytes) }); }
+        if (dir === 'sys') { this._close(dir); return this._push({ t, dir, text: this._utf8(bytes) }); }
         if (dir === 'tx' || (src && this.state && this.state.conn && this.state.conn.transport === 'udp')) this._close(dir);
-        const dec = this.dec[dir] || (this.dec[dir] = new TextDecoder('utf-8', { fatal: false }));
-        let s = dec.decode(bytes, { stream: true });
+        let s = this._utf8(bytes, this.dec[dir] || (this.dec[dir] = {}));
         if (this.carryCR[dir]) { s = '\r' + s; this.carryCR[dir] = false; }
         if (s.endsWith('\r')) { this.carryCR[dir] = true; s = s.slice(0, -1); }
         const parts = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
@@ -327,7 +376,7 @@ Devices.register({
         const src = l.src ? `<span class="tt-src">${esc(l.src)}</span>` : '';
         const js = l.json ? `<button class="tt-jb" data-json="${i}" title="Show the parsed JSON">{}</button>` : '';
         let text = l.text, pre = '', post = '';
-        const head = text.slice(0, 600), bad = (head.match(/[\x00-\x08\x0e-\x1f\x7f\ufffd]/g) || []).length;
+        const head = text.slice(0, 600), bad = (head.match(/[\x00-\x08\x0e-\x1f\x7f\ufffd]|(?<![\ud800-\udbff])[\udc80-\udcff]/g) || []).length;
         if (head.length > 40 && bad / head.length > 0.2) {                // binary data: don't flood the page with garbage
             pre = `<span class="tt-cut">[binary, ${text.length} chars — use Hex]</span> `;
             text = text.slice(0, 64);
@@ -335,20 +384,27 @@ Devices.register({
             post = ` <span class="tt-cut">… +${text.length - this.MAX_LINE} chars</span>`;
             text = text.slice(0, this.MAX_LINE);
         }
-        const vis = pre + esc(text).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, ch => `<span class="tt-ctl">\\x${ch.charCodeAt(0).toString(16).padStart(2, '0')}</span>`) + post;
+        const vis = pre + esc(text).replace(/[\x00-\x08\x0b-\x1f\x7f]|(?<![\ud800-\udbff])[\udc80-\udcff]/g,
+                                             ch => `<span class="tt-ctl">\\x${(ch.charCodeAt(0) & 0xff).toString(16).padStart(2, '0')}</span>`) + post;
         return `<div class="tt-l ${l.dir}${l.open ? ' open' : ''}">${time}${mark}${src}${js}<span class="tt-x">${vis || '&#8203;'}</span></div>`;
     },
 
+    /** Hex dump of one chunk: rows of 16 bytes with an offset, aligned columns (time and direction only on the first
+        row); source and size after the first row's ASCII column. Panel notes (sys) stay text. */
     _hexHtml(c) {
-        const out = [];
-        for (let o = 0; o < c.bytes.length || (o === 0 && !c.bytes.length); o += 16) {
-            const row = Array.from(c.bytes.slice(o, o + 16));
-            const hex = row.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+        const time = this.$('tt-time').checked, mark = { rx: '', tx: '›', sys: '●' }[c.dir];
+        const head = o => (time ? `<span class="tt-t">${o ? '' : this._fmtTime(c.t)}</span>` : '') + `<span class="tt-dir">${o ? '' : mark}</span>`;
+        if (c.dir === 'sys') return `<div class="tt-l sys tt-hr tt-h0">${head(0)}<span class="tt-x">${esc(this._esc8(this._utf8(c.bytes)))}</span></div>`;
+        const out = [], n = c.bytes.length;
+        for (let o = 0; o < n || !o; o += 16) {
+            const row = Array.from(c.bytes.subarray(o, o + 16));
+            let hex = row.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+            if (row.length > 8) hex = hex.slice(0, 23) + ' ' + hex.slice(23);           // gap after 8 bytes
             const asc = row.map(b => b >= 32 && b < 127 ? String.fromCharCode(b) : '·').join('');
-            out.push(`<div class="tt-l ${c.dir}">${this.$('tt-time').checked && !o ? `<span class="tt-t">${this._fmtTime(c.t)}</span>` : this.$('tt-time').checked ? '<span class="tt-t"></span>' : ''}` +
-                `<span class="tt-dir">${c.dir === 'tx' ? '›' : c.dir === 'sys' ? '●' : ''}</span>${c.src && !o ? `<span class="tt-src">${esc(c.src)}</span>` : ''}` +
-                `<span class="tt-hex">${esc(hex.padEnd(47))}</span> <span class="tt-asc">${esc(asc)}</span></div>`);
-            if (!c.bytes.length) break;
+            const tail = o ? '' : `<span class="tt-src">${c.src ? esc(c.src) + ' · ' : ''}${n} B</span>`;
+            out.push(`<div class="tt-l ${c.dir} tt-hr${o ? '' : ' tt-h0'}">${head(o)}<span class="tt-off">${o.toString(16).padStart(4, '0').toUpperCase()}</span>` +
+                     `<span class="tt-hex">${hex.padEnd(48)}</span><span class="tt-asc">${esc(asc.padEnd(16))}</span>${tail}</div>`);
+            if (!n) break;
         }
         return out.join('');
     },
@@ -422,7 +478,7 @@ Devices.register({
     },
 
     saveLog() {
-        const text = this.lines.map(l => `${this._fmtTime(l.t)} ${({ rx: '<', tx: '>', sys: '#' })[l.dir]}${l.src ? ' ' + l.src : ''} ${l.text}`).join('\n');
+        const text = this.lines.map(l => `${this._fmtTime(l.t)} ${({ rx: '<', tx: '>', sys: '#' })[l.dir]}${l.src ? ' ' + l.src : ''} ${this._esc8(l.text)}`).join('\n');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
         a.download = `terminal_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
@@ -459,9 +515,82 @@ Devices.register({
             const parts = r.chunks.filter(c => c.dir === 'rx').map(c => this._b64(c.b64));
             const all = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
             parts.reduce((off, x) => { all.set(x, off); return off + x.length; }, 0);
-            const reply = new TextDecoder().decode(all);
+            const reply = this._esc8(this._utf8(all));
             return { oneshot: true, text: reply, ms: r.ms, end: r.end };
         }).catch(e => { toast(e.message, true); throw e; });
+    },
+
+    // hex send field: same rules as core/ttyterm.parse_hex (keep both equal, see tests/test_ttyterm.py)
+    HEX_HELP: 'hex bytes: 01 03 0A · 01030A · 0x01,0x03 · \\x01\\x03 · 01:03:0A · {0x01, 0x03} · "text" 0D 0A',
+
+    /** Hex send field -> array of bytes; throws Error with the reason. */
+    parseHex(text) {
+        const out = [], re = /"((?:[^"\\]|\\.)*)"|([^\s,;:{}\[\]()"-]+)|(")/g;
+        let m;
+        while ((m = re.exec(text))) {
+            if (m[1] !== undefined) { out.push(...this._unescape(m[1])); continue; }
+            if (m[3]) throw new Error('unclosed quote');
+            const tok = m[2];
+            const parts = /^(0x|\\x)/i.test(tok) || tok.includes('\\') ? tok.split(/0x|\\x/i).filter(Boolean) : [tok];
+            for (const p of parts.length ? parts : [tok]) {
+                if (!/^[0-9a-f]+$/i.test(p) || (p.length % 2 && p.length > 1)) throw new Error(`"${tok}" is not a byte sequence`);
+                const q = p.length > 1 ? p : '0' + p;
+                for (let i = 0; i < q.length; i += 2) out.push(parseInt(q.substr(i, 2), 16));
+            }
+        }
+        return out;
+    },
+
+    /** Text field with \n \r \t \0 \\ \" \xNN escapes -> array of bytes (like ttyterm.decode_payload). */
+    _unescape(s) {
+        const out = [], enc = new TextEncoder();
+        for (let i = 0; i < s.length;) {
+            const n = s[i + 1];
+            if (s[i] === '\\' && n !== undefined) {
+                const e = { n: 10, r: 13, t: 9, 0: 0, '\\': 92, '"': 34 }[n];
+                if (e !== undefined) { out.push(e); i += 2; continue; }
+                if (n === 'x' && /^[0-9a-f]{2}$/i.test(s.substr(i + 2, 2))) { out.push(parseInt(s.substr(i + 2, 2), 16)); i += 4; continue; }
+            }
+            const ch = String.fromCodePoint(s.codePointAt(i));
+            out.push(...enc.encode(ch)); i += ch.length;
+        }
+        return out;
+    },
+
+    /** Bytes -> text for the send field (printable as is, the rest as escapes). */
+    _escapeText(bytes) {
+        const map = { '\n': '\\n', '\r': '\\r', '\t': '\\t', '\\': '\\\\' };
+        return this._esc8(this._utf8(Uint8Array.from(bytes))).replace(/[\x00-\x1f\x7f\\]/g,
+            ch => map[ch] || '\\x' + ch.charCodeAt(0).toString(16).padStart(2, '0'));
+    },
+
+    _hexStr(bytes) { return bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' '); },
+
+    /** The hex checkbox converts the field: text -> "41 54 0D 0A" (unless it is hex already), valid hex -> text. */
+    hexToggle() {
+        const inp = this.$('tt-input'), v = inp.value;
+        if (v) {
+            if (this.$('tt-hexsend').checked) {
+                try { this.parseHex(v); } catch (e) { inp.value = this._hexStr(this._unescape(v)); }
+            } else {
+                try { inp.value = this._escapeText(this.parseHex(v)); } catch (e) { /* keep as typed */ }
+            }
+        }
+        this._hexInfo();
+    },
+
+    /** Live check of the field in hex mode: byte count or the error. */
+    _hexInfo() {
+        const hex = this.$('tt-hexsend').checked, inp = this.$('tt-input'), info = this.$('tt-hexinfo');
+        inp.placeholder = hex ? this.HEX_HELP + '; Enter sends' : inp.dataset.ph;
+        let msg = '', bad = false;
+        if (hex && inp.value.trim()) {
+            try { msg = `${this.parseHex(inp.value).length} B`; } catch (e) { msg = 'invalid'; bad = true; info.title = e.message + ' — ' + this.HEX_HELP; }
+        }
+        if (!bad) info.title = hex ? this.HEX_HELP : '';
+        info.textContent = msg;
+        info.classList.toggle('text-error', bad);
+        inp.classList.toggle('tt-bad', bad);
     },
 
     sendInput() {
@@ -490,6 +619,7 @@ Devices.register({
             `Accept: text/html,application/json,*/*\\r\\nAccept-Language: ${navigator.languages ? navigator.languages.join(',') : navigator.language}\\r\\nConnection: close\\r\\n`;
         this.$('tt-eol').value = 'crlf'; this.prof().eol = 'crlf';
         this.$('tt-hexsend').checked = false;
+        this._hexInfo();
         this.$('tt-input').focus();
     },
 
@@ -511,6 +641,7 @@ Devices.register({
             if (!tag) return;
             const cmd = cmds[+tag.dataset.cmd];
             this.$('tt-input').value = cmd;
+            this._hexInfo();
             if (b && b.dataset.na === 'send') this.sendInput();
             else this.$('tt-input').focus();
         };
@@ -681,12 +812,14 @@ Devices.register({
             this.cur = prof.name; this.session = d.name; this.macRes = [];
             // output: lines back, raw bytes rebuilt for the hex view, JSON parsed again (fills the plot)
             this.series = {}; this.plotSel.clear(); this.jsonBuf = null; this.open = { rx: null, tx: null };
-            const enc = new TextEncoder();
             this.lines = []; this.raw = [];
             for (const l of d.lines || []) {
-                const line = this._push({ t: l.t, dir: l.dir, text: l.text, src: l.src });
+                const b = l.b64 ? this._b64(l.b64) : this._bytesOf(l.text);   // b64: a line with bytes that are not UTF-8
+                const line = this._push({ t: l.t, dir: l.dir, text: l.b64 ? this._utf8(b) : l.text, src: l.src });
                 line.open = false;
-                this.raw.push({ t: l.t, dir: l.dir, bytes: enc.encode(l.text + (l.dir === 'sys' ? '' : '\n')), src: l.src });
+                const bytes = new Uint8Array(b.length + (l.dir === 'sys' ? 0 : 1));
+                bytes.set(b); if (l.dir !== 'sys') bytes[b.length] = 10;
+                this.raw.push({ t: l.t, dir: l.dir, bytes, src: l.src });
                 if (l.dir === 'rx' && (prof.view || {}).json !== false) this._json(line);
             }
             prof.note = d.note || prof.note || '';

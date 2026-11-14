@@ -8,6 +8,7 @@ accident; they are refused while a test script runs (``blocked`` is set by route
 """
 import base64
 import collections
+import re
 import socket
 import threading
 import time
@@ -402,21 +403,43 @@ def oneshot(conn, data, wait=True, timeout_ms=1000, idle_ms=250):
     return {'chunks': d['chunks'], 'ms': ms, 'end': end, 'state': s.state()}
 
 
+HEX_FORMAT = 'hex bytes: 01 03 0A, 01030A, 0x01,0x03, \\x01\\x03, 01:03:0A, {0x01, 0x03}; "text" in quotes'
+_HEX_TOKEN = re.compile(r'"((?:[^"\\]|\\.)*)"|([^\s,;:{}\[\]()"-]+)|(")')
+_HEX_PREFIX = re.compile(r'0[xX]|\\[xX]')
+_HEX_DIGITS = re.compile(r'[0-9a-fA-F]+')
+
+
+def parse_hex(text):
+    """Hex send field -> bytes. Separators: spaces , ; : - and C-array brackets; bytes may be written as pairs
+    (``01 03``), a run of pairs (``0103000A``), with ``0x`` / ``\\x`` prefixes, one digit (``A`` = 0A); ``"text"``
+    in double quotes is inserted as text (with the usual escapes). Mirrored by ``Tty.parseHex`` in devices_tty.js."""
+    out = bytearray()
+    for m in _HEX_TOKEN.finditer(text):
+        quoted, tok, bad = m.groups()
+        if quoted is not None:
+            out += decode_payload(quoted, False)
+            continue
+        if bad is not None:
+            raise TtyError(f'Hex: unclosed quote — {HEX_FORMAT}')
+        parts = [p for p in _HEX_PREFIX.split(tok) if p] if _HEX_PREFIX.match(tok) or '\\' in tok else [tok]
+        for p in parts or [tok]:
+            if not _HEX_DIGITS.fullmatch(p) or (len(p) % 2 and len(p) > 1):
+                raise TtyError(f'Hex: "{tok}" is not a byte sequence — {HEX_FORMAT}')
+            out += bytes.fromhex(p if len(p) > 1 else '0' + p)
+    return bytes(out)
+
+
 def decode_payload(text, is_hex):
-    """The send field -> bytes ('48 65 0x6C,6c' in hex mode; text is UTF-8 with \\n \\r \\t \\xNN escapes)."""
+    """The send field -> bytes (hex mode: ``parse_hex``; text is UTF-8 with \\n \\r \\t \\0 \\\\ \\xNN escapes)."""
     if is_hex:
-        toks = text.replace(',', ' ').split()
-        try:
-            return bytes(int(t[2:] if t.lower().startswith('0x') else t, 16) for t in toks) if toks else b''
-        except ValueError:
-            raise TtyError('Hex: bytes like "48 65 6C 0x6C"')
+        return parse_hex(text)
     out, i = bytearray(), 0
     while i < len(text):
         ch = text[i]
         if ch == '\\' and i + 1 < len(text):
             n = text[i + 1]
-            if n in 'nrt0\\':
-                out += {'n': b'\n', 'r': b'\r', 't': b'\t', '0': b'\0', '\\': b'\\'}[n]
+            if n in 'nrt0\\"':
+                out += {'n': b'\n', 'r': b'\r', 't': b'\t', '0': b'\0', '\\': b'\\', '"': b'"'}[n]
                 i += 2
                 continue
             hx = text[i + 2:i + 4]
@@ -489,6 +512,23 @@ def list_sessions():
     return _store.list()
 
 
+def _keep_bytes(line):
+    """A line with bytes that are not UTF-8 holds them as U+DC80..U+DCFF (the browser decodes like Python's
+    surrogateescape); such text can't be written as UTF-8, so the exact bytes go to ``b64`` and ``text`` keeps a
+    readable copy."""
+    try:
+        line['text'].encode('utf-8')
+        return
+    except UnicodeEncodeError:
+        pass
+    try:
+        raw = line['text'].encode('utf-8', 'surrogateescape')
+    except UnicodeEncodeError:
+        raw = line['text'].encode('utf-8', 'replace')
+    line['b64'] = base64.b64encode(raw).decode()
+    line['text'] = raw.decode('utf-8', 'replace')
+
+
 def save_session(name, data, overwrite=False):
     """{profile, lines: [{t, dir, text, src}], note} under ``name`` (409 when it exists and ``overwrite`` is false)."""
     _, name = _store.slug(name)
@@ -501,7 +541,9 @@ def save_session(name, data, overwrite=False):
                 t = float(l.get('t') or 0)
             except (TypeError, ValueError):
                 t = 0
-            lines.append({'t': t, 'dir': l['dir'], 'text': str(l.get('text') or '')[:20000], 'src': str(l.get('src') or '')[:60]})
+            line = {'t': t, 'dir': l['dir'], 'text': str(l.get('text') or '')[:20000], 'src': str(l.get('src') or '')[:60]}
+            _keep_bytes(line)
+            lines.append(line)
     return _store.save(name, {'profile': prof, 'lines': lines, 'note': str(data.get('note') or '')[:20000]}, overwrite)
 
 

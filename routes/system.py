@@ -4,7 +4,8 @@ import subprocess
 
 from flask import Blueprint, jsonify, request
 
-from core.auth import login_required
+from core import sysclone
+from core.auth import is_logged_in, login_required
 from core.monitor import monitor
 from core.shell import sh
 
@@ -63,7 +64,10 @@ def api_monitor():
         since = float(request.args.get('since', 0))
     except ValueError:
         since = 0.0
-    return jsonify(monitor.snapshot(since))
+    d = monitor.snapshot(since)
+    if is_logged_in():                       # a clone / image job is not shown to anonymous visitors
+        d['job'] = sysclone.job_brief()
+    return jsonify(d)
 
 
 @bp.route('/api/power/<action>', methods=['POST'])

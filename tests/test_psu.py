@@ -22,6 +22,8 @@ class FakePsu:
     def __init__(self):
         self.received = []
         self.state = {'OUT1': '0', 'VOLT1': '0.00'}
+        self.data = DATA.split(',')
+        self.lose_presets = False
         self.sock = socket.socket()
         self.sock.bind(('127.0.0.1', 0))
         self.sock.listen(8)
@@ -30,7 +32,14 @@ class FakePsu:
 
     def _answer(self, cmd):
         if cmd == 'GET_PSU_DATA':
-            return DATA
+            return ','.join(self.data)
+        for ch, base in (('1', 0), ('2', 10)):                 # presets reach the module data (set_voltage / set_current)
+            if self.lose_presets:
+                break
+            if cmd.startswith(f'VOLT:{ch}:'):
+                self.data[base + 4] = cmd.split(':')[2]
+            if cmd.startswith(f'CURR:{ch}:'):
+                self.data[base + 5] = cmd.split(':')[2]
         if cmd == '*IDN?':
             return 'Device: SAMD21, MultichannelCerPsu\nVersion: 2.90\nBuild: Nov  3 2026, 0001'
         if cmd.startswith('VOLT:1:'):
@@ -119,9 +128,19 @@ class Psu(unittest.TestCase):
     def tearDown(self):
         self.fake.close()
 
+    def test_presets_are_confirmed_in_the_module_data(self):
+        self.psu.setCurrent(1, 0.4)
+        self.assertEqual(self.psu.getData()[1]['set_current'], 0.4)
+        self.fake.lose_presets = True                       # the module never takes it: resent once, then an error
+        self.psu.VERIFY_TIMEOUT = 0.3
+        self.fake.received.clear()
+        with self.assertRaisesRegex(PsuError, 'set_current 0.7 sent, the PSU module still has 0.4'):
+            self.psu.setCurrent(1, 0.7)
+        self.assertEqual([c for c in self.fake.received if c.startswith('CURR')], ['CURR:1:0.700', 'CURR:1:0.700'])
+
     def test_commands_on_the_wire(self):
         self.psu.setup(1, 12, 0.5)
-        self.assertEqual(self.fake.received, ['VOLT:1:12.00', 'CURR:1:0.500', 'OUT:1:1'])
+        self.assertEqual([c for c in self.fake.received if c != 'GET_PSU_DATA'], ['VOLT:1:12.00', 'CURR:1:0.500', 'OUT:1:1'])
         self.assertTrue(self.psu.isOn(1))
         self.assertEqual(self.psu.getVoltage(1), 12.0)
         self.psu.off(1)

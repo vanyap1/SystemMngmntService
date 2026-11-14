@@ -1,4 +1,5 @@
-"""Top bar sections (core/nav.py) and the lazily loaded file tree of the code editor (/api/tree)."""
+"""Top bar sections (core/nav.py), the lazily loaded file tree of the code editor (/api/tree) and creating files /
+folders in it (/api/file_create)."""
 import os
 import tempfile
 import unittest
@@ -82,6 +83,53 @@ class LazyTree(unittest.TestCase):
             editor.TREE_LIMIT = saved
         self.assertEqual(len(d['entries']), 1)
         self.assertTrue(d['truncated'])
+
+
+class CreateEntries(unittest.TestCase):
+    def setUp(self):
+        self.root = tempfile.mkdtemp(dir=TMP)
+        os.makedirs(os.path.join(self.root, 'testPlatform'))
+        self._saved = config.CFG['target_dir']
+        config.CFG['target_dir'] = self.root
+        self.c = client(logged_in=True)
+
+    def tearDown(self):
+        config.CFG['target_dir'] = self._saved
+
+    def create(self, **body):
+        return self.c.post('/api/file_create', json=body)
+
+    def test_file_in_a_subfolder_and_test_skeleton(self):
+        tp = os.path.join(self.root, 'testPlatform')
+        r = self.create(dir=tp, name='psu_check_test.py')
+        self.assertEqual(r.status_code, 200)
+        path = r.get_json()['path']
+        self.assertEqual(path, os.path.join(tp, 'psu_check_test.py'))
+        text = open(path).read()
+        self.assertTrue(text.startswith('"""Psu check: '))
+        self.assertIn('ts.run(steps, finalize)', text)
+        compile(text, path, 'exec')
+        self.assertEqual(open(self.create(dir=tp, name='notes.txt').get_json()['path']).read(), '')
+        self.assertEqual(self.create(dir=tp, name='notes.txt').status_code, 409)
+
+    def test_folder_then_file_inside_and_root_default(self):
+        r = self.create(dir=os.path.join(self.root, 'testPlatform'), name='station2', kind='dir')
+        self.assertEqual(r.get_json()['kind'], 'dir')
+        sub = r.get_json()['path']
+        self.assertTrue(os.path.isdir(sub))
+        self.assertEqual(self.create(dir=sub, name='a.py').status_code, 200)
+        self.assertTrue(os.path.isfile(os.path.join(self.root, self.create(name='top.txt').get_json()['name'])))
+
+    def test_refused(self):
+        for body, code in (({'dir': '/etc', 'name': 'x'}, 403), ({'dir': self.root + '/..', 'name': 'x'}, 403),
+                           ({'name': ''}, 400), ({'name': '.hidden'}, 400), ({'name': '..'}, 400),
+                           ({'dir': os.path.join(self.root, 'missing'), 'name': 'x'}, 404)):
+            with self.subTest(body=body):
+                self.assertEqual(self.create(**body).status_code, code)
+        self.assertEqual(self.create(name='../escape.txt').status_code, 400)
+        r = self.create(name='a/../b.txt')                    # the name is cleaned, never a path
+        self.assertEqual(r.get_json()['name'], 'a_.._b.txt')
+        self.assertEqual(os.path.dirname(r.get_json()['path']), os.path.realpath(self.root))
 
 
 if __name__ == '__main__':

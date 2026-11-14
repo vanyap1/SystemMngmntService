@@ -36,6 +36,13 @@ psu.allOff()                                    # both outputs off (use it in fi
 psu.isOn(1)                                     # True / False
 ```
 
+The controller answers a preset at once, but the PSU module takes it over up to ~1.5 s later and can lose it when
+commands come back to back. `setVoltage` / `setCurrent` (and `setup`) therefore wait until the module reports the
+new preset (`set_voltage` / `set_current` in `getData()`), send it once more if needed and raise `PsuError` if the
+module still has the old value — a test never runs on an old current limit. `psu.VERIFY_TIMEOUT = 0` switches the
+check off (2 s by default).
+
+
 ## Measurements
 
 ```python

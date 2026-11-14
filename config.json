@@ -123,17 +123,17 @@
                     {
                         "name": "PSU",
                         "conn": {
-                            "transport": "tcp",
+                            "transport": "udp",
                             "port": "/dev/ttyUSB0",
                             "baud": "115200",
                             "parity": "N",
                             "bytesize": "8",
                             "stopbits": "1",
-                            "host": "192.168.1.91",
-                            "netport": "8080",
-                            "listen": "5006"
+                            "host": "192.168.1.10",
+                            "netport": "3001",
+                            "listen": "3000"
                         },
-                        "eol": "crlf",
+                        "eol": "",
                         "commands": [
                             {
                                 "name": "GetVoltageCH1",
@@ -158,7 +158,7 @@
                         "replyMs": 1000,
                         "note": "Voltage CH1: [[ADC:MEAS:EXT1:VOLT?1]]   Output on: [[OUTP ON]]\n",
                         "view": {
-                            "hex": false,
+                            "hex": true,
                             "time": true,
                             "tx": true,
                             "json": true,

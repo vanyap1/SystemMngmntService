@@ -25,6 +25,10 @@ from instruments.rigol_dho804 import RIGOL_DHO804  # noqa: E402
 from instruments.rigol_dho924 import RIGOL_DHO924  # noqa: E402
 from instruments.scpi import InstrumentError, ScpiInstrument  # noqa: E402
 from instruments.serial_term import SerialTerm, TermError  # noqa: E402
+from instruments.siglent_sdg import parse_params  # noqa: E402
+from instruments.siglent_sdg1032x import SIGLENT_SDG1032X  # noqa: E402
+from instruments.siglent_sdl1020x import SIGLENT_SDL1020X  # noqa: E402
+from instruments.siglent_spd1305x import SIGLENT_SPD1305X  # noqa: E402
 from instruments.ssh_term import SshError, SshTerm  # noqa: E402
 
 PNG = b'\x89PNG\r\n\x1a\n' + b'x' * 50
@@ -267,6 +271,254 @@ class Owon(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bad()
         ld.close()
+
+
+class SiglentLoad(unittest.TestCase):
+    """SDL1020X: modes with read-back levels, input state, measurements, protections, empty line after errors."""
+
+    def setUp(self):
+        self.st = {'func': 'CURRENT', 'inp': 0, 'lev': {'CUR': 1.0, 'VOL': 1.0, 'RES': 1.0, 'POW': 1.0},
+                   'prot': {'CUR': 0, 'POW': 0}, 'errors': ['-113,Undefined header,FOO?'], 'lose': 0, 'misc': {}}
+        names = {'CURRent': 'CURRENT', 'VOLTage': 'VOLTAGE', 'RESistance': 'RESISTANCE', 'POWer': 'POWER'}
+
+        def answer(cmd):
+            st = self.st
+            if cmd == '*IDN?':
+                return 'Siglent Technologies,SDL1020X,SDL13GCXA00546,1.1.1.23R4'
+            if cmd in ('SYST:ERR?', ':SYSTem:ERRor?'):
+                return (st['errors'].pop(0) + '\n') if st['errors'] else '+0, No error'
+            if cmd == ':SOUR:FUNC?':
+                return st['func']
+            if cmd == ':SOUR:INP:STAT?':
+                return str(st['inp'])
+            on = st['inp']
+            meas = {':MEAS:VOLT?': 12.0, ':MEAS:CURR?': st['lev']['CUR'] * on, ':MEAS:POW?': 12 * st['lev']['CUR'] * on,
+                    ':MEAS:RES?': 24.0}
+            if cmd in meas:
+                return f'{meas[cmd]:.6f}'
+            parts = cmd.split()
+            key = parts[0]
+            if key.endswith(':LEV:IMM?'):
+                return f"{st['lev'][key.split(':')[2][:3].upper()]:.6f}"
+            if key.endswith('?') and key[:-1] in st['misc']:
+                return f"{st['misc'][key[:-1]]:.6f}"
+            if key.endswith('PROT:STAT?'):
+                return str(st['prot'][key.split(':')[2][:3].upper()])
+            if len(parts) < 2:
+                return None
+            if st['lose']:
+                st['lose'] -= 1
+                return None
+            if key == ':SOUR:FUNC':
+                st['func'] = names[parts[1]]
+            elif key == ':SOUR:INP:STAT':
+                st['inp'] = 1 if parts[1] == 'ON' else 0
+            elif key.endswith(':LEV:IMM'):
+                st['lev'][key.split(':')[2][:3].upper()] = float(parts[1])
+            elif key.endswith('PROT:STAT'):
+                st['prot'][key.split(':')[2][:3].upper()] = 1 if parts[1] == 'ON' else 0
+            else:
+                st['misc'][key] = float(parts[1])
+            return None
+        self.srv = FakeScpi(answer)
+        self.ld = SIGLENT_SDL1020X('127.0.0.1', self.srv.port, timeout=1)
+        self.ld.WRITE_DELAY = 0
+
+    def tearDown(self):
+        self.ld.close()
+        self.srv.close()
+
+    def test_modes_input_and_measure(self):
+        self.assertEqual(self.ld.checkModel(), 'SDL1020X')
+        self.ld.setup('CC', 0.5)
+        self.assertTrue(self.ld.isOn())
+        self.assertEqual((self.ld.getMode(), self.ld.getLevel()), ('CC', 0.5))
+        self.assertEqual(self.ld.measureAll(), (12.0, 0.5, 6.0))
+        self.assertEqual(self.ld.waitCurrent(0.5, timeout=0.5), 0.5)
+        self.ld.setCR(24)
+        self.assertEqual((self.ld.getMode(), self.ld.getLevel()), ('CR', 24.0))
+        self.ld.setCP(6)
+        self.ld.setCV(10)
+        self.assertEqual(self.ld.getLevel('CP'), 6.0)
+        self.ld.off()
+        self.assertFalse(self.ld.isOn())
+        with self.assertRaises(ValueError):
+            self.ld.setCC(31)                                # above the SDL1020X 30 A
+        with self.assertRaises(ValueError):
+            self.ld.setup('XX', 1)
+
+    def test_lost_command_retried_and_protections(self):
+        self.st['lose'] = 1
+        self.ld.setCC(0.25)                                  # first level write lost, sent again
+        self.assertEqual(self.st['lev']['CUR'], 0.25)
+        self.ld.setCurrentProtection(1.0)
+        self.ld.setPowerProtection(1.0)
+        self.assertEqual(self.ld.protection(), {'current': True, 'power': True})
+        self.ld.setCurrentProtection(None)
+        self.assertFalse(self.ld.protection()['current'])
+        self.assertEqual(self.ld.errors(), ['-113,Undefined header,FOO?'])
+        self.assertEqual(self.ld.getMode(), 'CC')            # the empty line did not shift the answers
+
+
+class SiglentGenerator(unittest.TestCase):
+    """SDG1032X: BSWV parameters read back, values the generator limits are reported, output / load / burst."""
+
+    def setUp(self):
+        def ch():
+            return {'BSWV': {'WVTP': 'SINE', 'FRQ': '1000HZ', 'AMP': '4V', 'OFST': '0V', 'PHSE': '0'},
+                    'OUTP': 'OFF', 'LOAD': 'HZ', 'BTWV': 'OFF', 'ARB': 'StairUp'}
+        self.chs = {'C1': ch(), 'C2': ch()}
+        units = {'FRQ': 'HZ', 'AMP': 'V', 'OFST': 'V', 'WIDTH': 'S', 'HLEV': 'V', 'LLEV': 'V'}
+
+        def answer(cmd):
+            if cmd == '*IDN?':
+                return 'Siglent Technologies,SDG1032X,SDG1XDDXA01104,1.01.01.33R8'
+            if cmd == 'STL?':
+                return 'STL M10, ExpFal, M2, StairUp'
+            head, _, args = cmd.partition(' ')
+            c, _, what = head.partition(':')
+            st = self.chs.get(c)
+            if st is None:
+                return None
+            if what == 'BSWV?':
+                return f"{c}:BSWV " + ','.join(f'{k},{v}' for k, v in st['BSWV'].items())
+            if what == 'OUTP?':
+                return f"{c}:OUTP {st['OUTP']},LOAD,{st['LOAD']},PLRT,NOR"
+            if what in ('BTWV?', 'SWWV?', 'MDWV?'):
+                return f"{c}:{what[:-1]} STATE,{st['BTWV'] if what == 'BTWV?' else 'OFF'}"
+            if what == 'ARWV?':
+                return f"{c}:ARWV INDEX,2,NAME,{st['ARB']}"
+            a = args.split(',')
+            if what == 'BSWV':
+                k, v = a[0], a[1]
+                if k == 'AMP' and float(v) > (10 if st['LOAD'] == '50' else 20):
+                    v = '10' if st['LOAD'] == '50' else '20'           # the generator limits silently
+                st['BSWV'][k] = v + units.get(k, '') if k != 'WVTP' else v
+            elif what == 'OUTP':
+                if a[0] in ('ON', 'OFF'):
+                    st['OUTP'] = a[0]
+                elif a[0] == 'LOAD':
+                    st['LOAD'] = a[1]
+            elif what == 'BTWV' and a[0] == 'STATE':
+                st['BTWV'] = a[1]
+            elif what == 'ARWV' and a[1] in ('StairUp', 'ExpFal'):
+                st['ARB'] = a[1]
+            return None
+        self.srv = FakeScpi(answer)
+        self.g = SIGLENT_SDG1032X('127.0.0.1', self.srv.port, timeout=1)
+        self.g.WRITE_DELAY = 0
+
+    def tearDown(self):
+        self.g.close()
+        self.srv.close()
+
+    def test_parse_params(self):
+        self.assertEqual(parse_params('C1:BSWV WVTP,SINE,FRQ,1000HZ,AMP,4V,AMPVRMS,1.414Vrms,PHSE,0'),
+                         {'WVTP': 'SINE', 'FRQ': 1000.0, 'AMP': 4.0, 'AMPVRMS': 1.414, 'PHSE': 0.0})
+
+    def test_square_on_off_and_readback(self):
+        self.assertEqual(self.g.checkModel(), 'SDG1032X')
+        self.g.square(2, 10e3, 3.3, offset=1.65, duty=25)
+        b = self.g.getBasic(2)
+        self.assertEqual((b['WVTP'], b['FRQ'], b['AMP'], b['OFST'], b['DUTY']), ('SQUARE', 10000.0, 3.3, 1.65, 25.0))
+        self.assertTrue(self.g.isOn(2))
+        self.assertFalse(self.g.isOn(1))
+        self.g.dc(1, 2.5, on=False)
+        self.assertEqual((self.g.getWaveform(1), self.g.getOffset(1)), ('DC', 2.5))
+        self.g.allOff()
+        self.assertFalse(self.g.isOn(2))
+        with self.assertRaises(ValueError):
+            self.g.setFrequency(1, 40e6)                    # above 30 MHz
+        with self.assertRaises(ValueError):
+            self.g.on(3)
+
+    def test_limited_amplitude_is_an_error(self):
+        self.g.setLoad(1, 50)
+        self.assertEqual(self.g.outputState(1)['load'], 50.0)
+        with self.assertRaisesRegex(InstrumentError, 'AMP: 15 asked, the generator has 10.0'):
+            self.g.setAmplitude(1, 15)
+        self.g.setLoad(1, 'HZ')
+        self.g.setAmplitude(1, 15)
+
+    def test_arb_burst_and_list(self):
+        self.assertEqual(self.g.arbList(), {'M10': 'ExpFal', 'M2': 'StairUp'})
+        self.g.arb(1, 'ExpFal', 500, 2, on=False)
+        self.assertEqual(self.g.getWaveform(1), 'ARB')
+        with self.assertRaisesRegex(InstrumentError, 'not found'):
+            self.g.arb(1, 'Nothing')
+        self.g.burst(1, 5)
+        self.assertEqual(self.g.getMode(1), 'BURST')
+        self.g.trigger(1)
+        self.g.burstOff(1)
+        self.assertEqual(self.g.getMode(1), '')
+        self.assertIn('C1:BTWV MTRIG', self.srv.lines)
+
+
+class Siglent(unittest.TestCase):
+    """SPD1305X: setpoints read back, output state from SYST:STAT?, the extra empty line after an error answer."""
+
+    def setUp(self):
+        self.st = {'v': 3.3, 'a': 1.0, 'stat': 0, 'errors': ['-113,Undefined header,OUTPut?'], 'lose': 0}
+
+        def answer(cmd):
+            st = self.st
+            if cmd == '*IDN?':
+                return 'Siglent Technologies,SPD1305X,SPD13ECQA01701,2.1.2.12R3,V2.0'
+            if cmd.startswith(('CH1:VOLT ', 'CH1:CURR ', 'OUTP CH1,')) and st['lose']:
+                st['lose'] -= 1                              # a command lost by the supply
+                return None
+            if cmd.startswith('CH1:VOLT '):
+                st['v'] = float(cmd.split()[1])
+                return None
+            if cmd.startswith('CH1:CURR '):
+                st['a'] = float(cmd.split()[1])
+                return None
+            if cmd.startswith('OUTP CH1,'):
+                st['stat'] = st['stat'] | 0x10 if cmd.endswith('ON') else st['stat'] & ~0x10
+                return None
+            if cmd == 'SYST:ERR?' or cmd == ':SYSTem:ERRor?':
+                return (st['errors'].pop(0) + '\n') if st['errors'] else '+0, No error'
+            on = bool(st['stat'] & 0x10)
+            return {'CH1:VOLT?': f"{st['v']:.3f}", 'CH1:CURR?': f"{st['a']:.3f}", 'SYST:STAT?': hex(st['stat']),
+                    'MEAS:VOLT?': f"{st['v'] * on:.3f}", 'MEAS:CURR?': f"{0.2 * on:.3f}",
+                    'MEAS:POWE?': f"{st['v'] * 0.2 * on:.3f}", 'TIME:SET? CH1,2': '5.000,1.000,10,',
+                    'IP?': '192.168.1.74', 'MASK?': '255.255.255.0', 'GATE?': '192.168.1.1',
+                    'DHCP?': 'DHCP:OFF'}.get(cmd)
+        self.srv = FakeScpi(answer)
+        self.p = SIGLENT_SPD1305X('127.0.0.1', self.srv.port, timeout=1)
+        self.p.WRITE_DELAY = 0
+
+    def tearDown(self):
+        self.p.close()
+        self.srv.close()
+
+    def test_setup_measure_off(self):
+        self.assertEqual(self.p.checkModel(), 'SPD1305X')
+        self.p.setup(12, 0.5)
+        self.assertTrue(self.p.isOn())
+        self.assertEqual(self.p.measureAll(), (12.0, 0.2, 2.4))
+        self.assertEqual(self.p.waitVoltage(12.0, timeout=0.5), 12.0)
+        self.assertEqual((self.p.getSetVoltage(), self.p.getSetCurrent()), (12.0, 0.5))
+        self.p.off()
+        self.assertFalse(self.p.status()['output'])
+        with self.assertRaises(ValueError):
+            self.p.setVoltage(31)                        # above the SPD1305X range
+
+    def test_lost_commands_are_sent_again(self):
+        self.st['lose'] = 1
+        self.p.setVoltage(5)
+        self.assertEqual(self.st['v'], 5.0)
+        self.st['lose'] = 2
+        with self.assertRaisesRegex(InstrumentError, 'did not take'):
+            self.p.setCurrent(2)
+
+    def test_errors_with_the_extra_empty_line(self):
+        self.assertEqual(self.p.errors(), ['-113,Undefined header,OUTPut?'])
+        self.assertEqual(self.p.getSetVoltage(), 3.3)    # the empty line did not shift the answers
+        self.assertEqual(self.p.getTimer(2), (5.0, 1.0, 10.0))
+        self.assertEqual(self.p.network()['dhcp'], 'OFF')
+        self.st['stat'] = 0x01
+        self.assertTrue(self.p.isCC())
 
 
 class SerialTermTest(unittest.TestCase):

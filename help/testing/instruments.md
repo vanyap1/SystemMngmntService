@@ -24,6 +24,9 @@ small file — see `rigol_dho804.py` / `rigol_dho924.py` on top of the common `r
 |---|---|---|---|---|
 | `psu_custom6020.py` | `PSU_CUSTOM6020` | custom 2-channel SCPI power supply, 60 V / 20 A (TCP :8080) | `psu = PSU_CUSTOM6020("192.168.1.91")` | [PSU_CUSTOM6020](psu-custom6020.md) |
 | `psu_custom305.py` | `PSU_CUSTOM305` | custom 1-channel Ethernet PSU controller, 30 V / 5 A (TCP :8080) | `psu = PSU_CUSTOM305("192.168.1.99")` | [PSU_CUSTOM305](psu-custom305.md) |
+| `siglent_spd1305x.py` | `SIGLENT_SPD1305X` | Siglent SPD1305X power supply, 30 V / 5 A (LAN :5025) | `psu = SIGLENT_SPD1305X("192.168.1.74")` | [Siglent SPD](siglent-spd.md) |
+| `siglent_sdg1032x.py` | `SIGLENT_SDG1032X` | Siglent SDG1032X generator, 2 ch, 30 MHz (LAN :5025) | `gen = SIGLENT_SDG1032X("192.168.1.73")` | [Siglent SDG](siglent-sdg.md) |
+| `siglent_sdl1020x.py` | `SIGLENT_SDL1020X` | Siglent SDL1020X electronic load, 150 V / 30 A / 200 W (LAN :5025) | `load = SIGLENT_SDL1020X("192.168.1.72")` | [Siglent SDL](siglent-sdl.md) |
 | `rigol_dho924.py` | `RIGOL_DHO924` | Rigol DHO924 oscilloscope, 4 ch, 250 MHz (LXI :5555) | `scope = RIGOL_DHO924("192.168.1.146")` | [Rigol DHO](rigol-dho.md) |
 | `rigol_dho804.py` | `RIGOL_DHO804` | Rigol DHO804 oscilloscope, 4 ch, 70 MHz (LXI :5555) | `scope = RIGOL_DHO804("192.168.1.147")` | [Rigol DHO](rigol-dho.md) |
 | `owon_xdm.py` | `OWON_XDM` | OWON XDM series bench multimeter (USB or LAN) | `dmm = OWON_XDM(serial="/dev/ttyUSB0")` | [OWON XDM](owon-xdm.md) |
@@ -44,6 +47,9 @@ small file — see `rigol_dho804.py` / `rigol_dho924.py` on top of the common `r
 | `uut_serial.py` | `UUTSerial` | binary UART link to the UUT | `UUTSerial("/dev/ttyS1", 9600)` | `instruments/uut_serial.py` |
 | `scpi.py` | `ScpiInstrument` | base of SCPI drivers (LAN or serial) | see below | this page |
 | `rigol_dho.py` | `RigolScope` | common part of the Rigol DHO800 / DHO900 drivers | — | [Rigol DHO](rigol-dho.md) |
+| `siglent_spd.py` | `SiglentSPD` | common part of the Siglent SPD1000X drivers | — | [Siglent SPD](siglent-spd.md) |
+| `siglent_sdg.py` | `SiglentSDG` | common part of the Siglent SDG generator drivers | — | [Siglent SDG](siglent-sdg.md) |
+| `siglent_sdl.py` | `SiglentSDL` | common part of the Siglent SDL1000X load drivers | — | [Siglent SDL](siglent-sdl.md) |
 | `psu_tcp.py` | `OneShotTcpPsu` | transport of the custom PSU controllers | — | — |
 
 ## How to create a device
@@ -144,6 +150,9 @@ from instruments.scpi import ScpiInstrument
 
 class MyGenerator(ScpiInstrument):
     DEFAULT_PORT = 5025                        # raw SCPI socket of the instrument
+    MODEL = "AG1022"                           # checkModel() compares it with *IDN?
+    # WRITE_DELAY = 0.05                       # pause after commands without an answer (slow instruments)
+    # SKIP_EMPTY = True                        # instrument sends empty lines after some answers (Siglent)
 
     def setFrequency(self, ch, hz):
         self.write(f":SOUR{ch}:FREQ {hz}")
@@ -161,6 +170,7 @@ The base gives every SCPI driver these functions too:
 ```python
 scope.idn()                                     # *IDN? — "maker,model,serial,firmware"
 scope.ping()                                    # True if the instrument answers
+scope.checkModel()                              # model from *IDN?; InstrumentError if the class MODEL differs
 scope.reset()                                   # *RST — factory defaults
 scope.clearStatus()                             # *CLS
 scope.waitDone(10)                              # *OPC? — wait until the last commands finished

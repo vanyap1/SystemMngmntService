@@ -12,6 +12,7 @@ import re
 import socket
 import stat
 import subprocess
+import threading
 import time
 
 from core import credentials
@@ -19,6 +20,7 @@ from core import credentials
 MOUNT_POINT = '/mnt/smms-share'
 VERSIONS = ['', '3.1.1', '3.0', '2.1', '2.0', '1.0']          # '' = negotiate
 MAX_ENTRIES = 3000
+STAT_SECONDS = 5                    # free space query on the share: give up after this (server gone)
 _HOST = re.compile(r'^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$')
 _SHARE = re.compile(r'^[^/\\:*?"<>|,]{1,80}$')
 _FOLDER = re.compile(r'^[^/\\\x00]{1,120}$')
@@ -92,11 +94,21 @@ def status():
     out = {'mounted': bool(src), 'source': src, 'mount_point': MOUNT_POINT, 'free': None, 'total': None,
            'root': os.geteuid() == 0, 'settings': credentials.smb_public(), 'versions': VERSIONS}
     if src:
-        try:
-            st = os.statvfs(MOUNT_POINT)
+        box = {}
+
+        def query():                    # in a thread: statvfs on a dead server sleeps in the kernel for minutes
+            try:
+                box['st'] = os.statvfs(MOUNT_POINT)
+            except OSError:
+                pass
+        t = threading.Thread(target=query, daemon=True, name='smb-statvfs')
+        t.start()
+        t.join(STAT_SECONDS)
+        if t.is_alive():
+            out['error'] = f'the server does not answer (no reply in {STAT_SECONDS} s)'
+        elif 'st' in box:
+            st = box['st']
             out['free'], out['total'] = st.f_bavail * st.f_frsize, st.f_blocks * st.f_frsize
-        except OSError:
-            pass
     return out
 
 

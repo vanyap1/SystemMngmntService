@@ -162,7 +162,14 @@ static/
 - `tools/clone-system.sh` does the work (also usable from SSH); `core/sysclone.py` only validates and runs it
   (env vars, `ASSUME_YES=yes`), one job at a time, in its own session (Stop = SIGTERM to the group; the script's
   trap unmounts, detaches the loop device and deletes an unfinished `.partial` image). Never the system disk, never
-  a disk with mounted partitions, a clone needs the typed disk name — checked in the backend, not only in the UI.
+  a disk with mounted partitions, a clone / write needs `confirm` = the disk name (the UI sends it only with the red
+  "all data will be destroyed" box ticked) — checked in the backend, not only in the UI.
+- Reliability: `preflight()` refuses a job while processes hang in uninterruptible I/O (`hung_io`) or a loop device
+  of an earlier image job cannot be detached (`stale_loops`); an image needs free space and a 1 MiB write probe on
+  the share (`probe_write`, bounded by a thread timeout — never block a request on the share). A watchdog thread
+  notes stalls in the job log (`[watchdog]`, processes in state D). The image loop device uses direct I/O
+  (buffered loop over a big CIFS file hangs for good on 6.6 sunxi) and the scripts never call a global `sync`
+  (it hangs on any stuck device): flush the own device / file only, `udevadm settle -t`.
 - Partition = used data + `RESERVE_MB` (+5 % ext4) + extra MiB, same formula in the script and `min_partition_mb`.
   It starts at the sector of the running root partition (rockchip u-boot needs 16 MiB); u-boot via Armbian's
   `/usr/lib/u-boot/platform_install.sh` (`write_uboot_platform`), a sunxi .bin as fallback.
@@ -199,9 +206,9 @@ static/
   abort stays a KeyboardInterrupt (Stop button). Tests: `tests/test_watch.py` (subprocesses), `demo_estop_test.py`.
 - Instrument drivers live in the package `testPlatform/instruments/`; scripts import them as
   `from instruments.psu_custom6020 import PSU_CUSTOM6020`. **Naming: file = maker + model / series in lower case,
-  class = the same in capitals** (`psu_custom6020.py` / `PSU_CUSTOM6020`, `psu_custom305.py`, `rigol_dho924.py` /
+  class = the same in capitals** (`psu_custom6020.py` / `PSU_CUSTOM6020`, `psu_custom305.py`, `siglent_spd1305x.py` / `SIGLENT_SPD1305X`, `siglent_sdg1032x.py` / `SIGLENT_SDG1032X`, `siglent_sdl1020x.py` / `SIGLENT_SDL1020X`, `rigol_dho924.py` /
   `RIGOL_DHO924`, `rigol_dho804.py`, `owon_xdm.py` / `OWON_XDM`, `owon_oel.py` / `OWON_OEL`, `fs9922.py`,
-  `fs9922_bridge.py`, `ads1115.py`, `stlink_stm8.py`). A family shares a common module (`rigol_dho.py` `RigolScope`,
+  `fs9922_bridge.py`, `ads1115.py`, `stlink_stm8.py`). A family shares a common module (`rigol_dho.py` `RigolScope`, `siglent_spd.py` `SiglentSPD`, `siglent_sdg.py` `SiglentSDG`, `siglent_sdl.py` `SiglentSDL`,
   `psu_tcp.py` `OneShotTcpPsu`) and each model is a small file on top. Protocols / tools keep generic names
   (`modbus.py`, `scpi.py`, `serial_term.py`, `ssh_term.py`, `param_file.py`, `uut_serial.py`). Every file must be
   in the catalog tables of `help/testing/instruments.md` (tested). Firmware images and
@@ -219,7 +226,14 @@ static/
   transport, lock, one reconnect, IEEE blocks; "no valid value" 9.9E37 → None). How-to + every function:
   `help/testing/instruments.md` and one page per driver — `tests/test_docs_content.py` checks each public function
   is described. Tests (`tests/test_instruments.py`) use a fake SCPI server, a pty, a fake `ssh`, temp folders.
-  The real scope (192.168.1.146) and PSUs (.91, .99) may be queried by hand, read-only — never change settings or
+  Siglent SPD (.74): setpoints read back after writing (it drops commands), output state from SYST:STAT?, skip
+  the empty line after an error answer. Siglent SDG (.73): BSWV values read back (out-of-range values are silently
+  limited → InstrumentError), an unknown query gets no answer (timeout). `checkModel()` (MODEL) and `SKIP_EMPTY` live
+  in `scpi.ScpiInstrument`. PSU_CUSTOM6020 presets reach the module up to ~1.5 s late and get lost back to back —
+  `setVoltage`/`setCurrent` confirm them in `getData()` (VERIFY_TIMEOUT). Measure the supply only through its
+  external sensors (`getVoltage`/`getCurrent`), never the module's registers. Below 1 A the module's current limit
+  is not exact (0.6 A at a 0.4 A preset): in tests the load's CC level bounds the current.
+  The real scope (192.168.1.146) and PSUs (.91, .99, .74), generator (.73), load (.72, on PSU .91 CH2: max 16 V / 1 A) may be queried by hand, read-only — never change settings or
   switch outputs without asking. Drivers that import `instruments.*` start with the `__package__` shim so
   `python3 instruments/<driver>.py` (read-only self-check in `__main__`) works.
 - `modbus.py`: low-level Modbus master for scripts (ModbusRTU / TCP / UDP / RTUoverTCP / RTUoverUDP, functions

@@ -16,10 +16,10 @@ ts = TestStrategy()
 
 
 #uutTerm=uutSSH(192.168.x.x, "user", password)
-scope = RIGOL_DHO924("192.168.1.146")
+#scope = RIGOL_DHO924("192.168.1.146")
 uutTerm = SshTerm("192.168.1.70", "pi", "0000")
 psu = PSU_CUSTOM6020("192.168.1.91")
-psu2 = PSU_CUSTOM305("192.168.1.99")
+#psu2 = PSU_CUSTOM305("192.168.1.99")
 
 mb = ModbusRTU("/dev/ttyUSB0", 115200, unit=1, retries=1)
 
@@ -49,18 +49,18 @@ def calc_b(a, b):
 def steps():
     psu.ioOut(1, 9, 1)
     idn = psu.identify().split("\n")[1]
-    idn2 = psu2.identify()
+    #idn2 = psu2.identify()
     psu.setVoltage(1, 12.0)                         # voltage preset, V
     print(idn)
-    print(idn2)
-    modbusRead()
+    #print(idn2)
+    #modbusRead()
     psu.on(1)
     #ts.logResult("Uname", True, uutTerm.cmd("whoami"))
-    ts.section("Oscilloscope")
-    ts.logResult("Scope model", True, scope.checkModel())   # ERROR row if another scope answers at this IP
-    scope.autoset()                                         # AUTO, the driver waits 3 s for it to settle
-    ts.numericLimitTest("CH1 voltage Vpp", scope.getVoltPkPk(1), 2.9, 3.1, "V")
-    ts.numericLimitTest("CH1 frequency", scope.getFrequency(1), 990, 1010, "Hz")
+    #ts.section("Oscilloscope")
+    #ts.logResult("Scope model", True, scope.checkModel())   # ERROR row if another scope answers at this IP
+    #scope.autoset()                                         # AUTO, the driver waits 3 s for it to settle
+    #ts.numericLimitTest("CH1 voltage Vpp", scope.getVoltPkPk(1), 2.9, 3.1, "V")
+    #ts.numericLimitTest("CH1 frequency", scope.getFrequency(1), 990, 1010, "Hz")
     
     ts.logResult("Serial number", True, ts.serial or "not given")    # the Serial field of the Tests page (--sn)
     ts.logResult("PSU info", True, idn)

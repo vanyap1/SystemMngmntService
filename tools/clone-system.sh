@@ -53,6 +53,11 @@ else
 fi
 info()  { echo "==> $*"; }
 die()   { echo "ERROR: $*" >&2; exit 1; }
+# udev queue: bounded wait (a udev worker stuck on a hung device must not stop the job)
+settle() { udevadm settle -t "${1:-30}" 2>/dev/null || echo "note: udev events still pending after ${1:-30} s"; }
+# Flushes are scoped to our device / file: a plain `sync` walks every block device and hangs for good when any of
+# them (e.g. a loop device of an earlier job on a dead share) is stuck in I/O.
+flush_dev() { [[ -b ${1:-} ]] && blockdev --flushbufs "$1" 2>/dev/null || true; }
 uboot_version() { (set +o pipefail; strings "$1" 2>/dev/null | grep -m1 -E 'U-Boot (SPL|TPL|20)' || echo '?'); }
 
 [[ $EUID -eq 0 ]] || die "run with sudo"
@@ -66,13 +71,13 @@ IMAGE_TMP=""
 DONE=no
 cleanup() {
 	set +e
-	sync
 	mountpoint -q "$DST_MNT/boot" 2>/dev/null && umount "$DST_MNT/boot"
 	mountpoint -q "$DST_MNT" && umount "$DST_MNT"
 	mountpoint -q "$SRC_MNT/boot" 2>/dev/null && umount "$SRC_MNT/boot"
 	mountpoint -q "$SRC_MNT" && umount "$SRC_MNT"
 	rmdir "$SRC_MNT" "$DST_MNT" 2>/dev/null
 	[[ -n $LOOP_DEV ]] && losetup -d "$LOOP_DEV" 2>/dev/null
+	[[ -n $LOOP_DEV || -z ${TARGET_DISK:-} ]] || flush_dev "$TARGET_DISK"
 	if [[ $DONE != yes && -n $IMAGE_TMP && -f $IMAGE_TMP ]]; then
 		echo "removing the unfinished image $IMAGE_TMP"
 		rm -f "$IMAGE_TMP"
@@ -184,9 +189,23 @@ if [[ -n $IMAGE_FILE ]]; then
 	image_bytes=$(( (PART_START_SECTOR + PART_SECTORS) * 512 + MB ))
 	info "Creating the image $IMAGE_FILE ($((image_bytes / MB)) MiB, sparse)"
 	truncate -s "$image_bytes" "$IMAGE_TMP"
-	LOOP_DEV=$(losetup -fP --show "$IMAGE_TMP")
+	# the partition table is written into the file itself (no device: no re-read, no global sync in sfdisk);
+	# losetup -P then shows the partition right away
+	sfdisk -q --no-reread --no-tell-kernel "$IMAGE_TMP" <<END_SFDISK
+label: dos
+start=${PART_START_SECTOR}, size=${PART_SECTORS}, type=83, bootable
+END_SFDISK
+	# Direct I/O: the loop device reads / writes the file past the page cache. Buffered loop I/O on a large CIFS file
+	# deadlocks on some kernels (6.6.75 sunxi armv7, 4.6 GB image: wipefs / udev / loop worker stuck in
+	# folio_wait_bit_common with nothing on the wire, the cifs deferred close in msleep; a 700 MB file works).
+	LOOP_DEV=$(losetup -fP --direct-io=on --show "$IMAGE_TMP" 2>/dev/null || losetup -fP --show "$IMAGE_TMP")
 	TARGET_DISK=$LOOP_DEV
-	info "Loop device: $LOOP_DEV"
+	dio=$(cat "/sys/block/$(basename "$LOOP_DEV")/loop/dio" 2>/dev/null || echo 0)
+	fstype=$(stat -f -c %T "$(dirname "$IMAGE_FILE")" 2>/dev/null || echo '?')
+	info "Loop device: $LOOP_DEV (direct I/O $([[ $dio == 1 ]] && echo on || echo off), image on $fstype)"
+	# without it a loop device over a share hangs for good (unkillable, only a reboot frees it): refuse instead
+	[[ $dio == 1 || $fstype != smb2 && $fstype != cifs && $fstype != nfs ]] ||
+		die "the loop device has no direct I/O on the network share ($fstype) - buffered loop I/O on a share hangs on some kernels"
 fi
 
 # ---------- confirmation ----------
@@ -205,22 +224,29 @@ for p in $(lsblk -lnpo NAME "$TARGET_DISK" | tail -n +2); do
 	umount -q "$p" 2>/dev/null || true
 	swapoff "$p" 2>/dev/null || true
 done
-wipefs -aq "$TARGET_DISK"
-dd if=/dev/zero of="$TARGET_DISK" bs=1M count=$(( (PART_START_SECTOR * 512) / MB + 1 )) conv=fsync status=none
-sfdisk -q "$TARGET_DISK" <<END_SFDISK || true
+if [[ -z $IMAGE_FILE ]]; then                  # an image file is partitioned already (see "image file")
+	wipefs -aq "$TARGET_DISK"
+	dd if=/dev/zero of="$TARGET_DISK" bs=1M count=$(( (PART_START_SECTOR * 512) / MB + 1 )) conv=fsync status=none
+	sfdisk -q "$TARGET_DISK" <<END_SFDISK || true
 label: dos
 start=${PART_START_SECTOR}, size=${PART_SECTORS}, type=83, bootable
 END_SFDISK
-blockdev --rereadpt "$TARGET_DISK" 2>/dev/null || partprobe "$TARGET_DISK" 2>/dev/null || true
-[[ -z $LOOP_DEV ]] || partx -u "$LOOP_DEV" 2>/dev/null || true
-udevadm settle
-TARGET_PART=$(lsblk -lnpo NAME,TYPE "$TARGET_DISK" | awk '$2=="part"{print $1; exit}')
+	blockdev --rereadpt "$TARGET_DISK" 2>/dev/null || partprobe "$TARGET_DISK" 2>/dev/null || true
+fi
+settle 30
+TARGET_PART=""
+for _ in $(seq 20); do                         # the partition node may come a moment after udev
+	TARGET_PART=$(lsblk -lnpo NAME,TYPE "$TARGET_DISK" | awk '$2=="part"{print $1; exit}')
+	[[ -b ${TARGET_PART:-} ]] && break
+	[[ -z $LOOP_DEV ]] || partx -u "$LOOP_DEV" 2>/dev/null || true
+	sleep 0.5
+done
 [[ -b ${TARGET_PART:-} ]] || die "no partition appeared on $TARGET_DISK"
 
 info "Formatting $TARGET_PART ($FS_TYPE)"
 # shellcheck disable=SC2086
 "mkfs.$FS_TYPE" -F -q -L "$FS_LABEL" $MKFS_OPTS "$TARGET_PART"
-udevadm settle
+settle 30
 NEW_UUID=$(blkid -p -s UUID -o value "$TARGET_PART")
 NEW_PARTUUID=$(blkid -s PARTUUID -o value "$TARGET_PART" || true)
 info "New UUID: $NEW_UUID"
@@ -280,7 +306,8 @@ if [[ $GROW_ON_BOOT == yes ]]; then
 		red "warning: no armbian-resize-filesystem.service - the partition will not grow at the first boot"
 	fi
 fi
-sync
+info "Flushing the copy"
+sync -f "$DST_MNT/"
 umount "$DST_MNT"
 
 # ---------- u-boot ----------
@@ -294,7 +321,7 @@ if [[ $WRITE_UBOOT == yes ]]; then
 		dd if="$UBOOT_BIN" of="$TARGET_DISK" bs=1k seek=8 conv=fsync status=none
 		echo "    written: $(uboot_version <(dd if="$TARGET_DISK" bs=1k skip=8 count=1024 status=none))"
 	fi
-	sync
+	flush_dev "$TARGET_DISK"
 fi
 
 # ---------- image: finish ----------
@@ -313,13 +340,14 @@ if [[ -n $IMAGE_FILE ]]; then
 		RESULT="$IMAGE_FILE"
 	fi
 	DONE=yes
-	sync
+	sync "$RESULT"
 	info "Done: image $RESULT ($(du -h --apparent-size "$RESULT" | cut -f1), UUID=$NEW_UUID, partition $TARGET_SIZE_MB MiB)"
 	echo "Write it to an SD card / eMMC (balenaEtcher, Win32DiskImager, dd)."
 	[[ $GROW_ON_BOOT == yes ]] && echo "The partition grows to the whole card at the first boot."
 	exit 0
 fi
 
+flush_dev "$TARGET_DISK"
 DONE=yes
 info "Done: system copied to $TARGET_PART (UUID=$NEW_UUID, $TARGET_SIZE_MB MiB)"
 echo "Backups on the target: /etc/fstab.clone-bak, /boot/armbianEnv.txt.clone-bak"

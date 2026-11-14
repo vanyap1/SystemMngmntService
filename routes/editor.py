@@ -133,24 +133,66 @@ def api_file_rename():
         return jsonify({'error': str(e)}), 500
 
 
+TEST_TEMPLATE = '''"""{title}: what this test checks (the first docstring line is shown on the Tests page)."""
+from testStrategy import TestStrategy
+
+ts = TestStrategy()
+
+
+def steps():
+    ts.section("Checks")
+    ts.logResult("Example step", True, "OK")
+    ts.numericLimitTest("Example value", 5.0, 4.5, 5.5, "V")
+
+
+def finalize():
+    pass                                        # bring the fixture to a safe state: outputs off, ports closed
+
+
+ts.run(steps, finalize)
+'''
+
+
+def _same_owner(path, folder):
+    """New files of the panel (root) belong to the owner of their folder, so they stay editable over SSH."""
+    if os.geteuid() != 0:
+        return
+    try:
+        st = os.stat(folder)
+        os.chown(path, st.st_uid, st.st_gid)
+    except OSError:
+        pass
+
+
 @bp.route('/api/file_create', methods=['POST'])
 @login_required
 def api_file_create():
+    """New empty file (or folder: kind="dir") in ``dir`` (default target_dir). A new ``*_test.py`` gets the
+    skeleton of a test script."""
     data = request.get_json(silent=True) or {}
     name = _clean_name(data.get('name'))
-    if not name:
-        return jsonify({'error': 'No name'}), 400
+    if not name or name in ('.', '..') or name.startswith('.'):
+        return jsonify({'error': 'Invalid name'}), 400
     target = config.target_dir()
     dir_path = data.get('dir') or target
     real_dir = os.path.realpath(dir_path)
     if real_dir != os.path.realpath(target) and not resolve_inside(dir_path, target):
         return jsonify({'error': 'Access denied'}), 403
+    if not os.path.isdir(real_dir):
+        return jsonify({'error': 'Folder does not exist'}), 404
     new_path = os.path.join(real_dir, name)
-    if os.path.exists(new_path):
-        return jsonify({'error': 'Already exists'}), 409
+    if os.path.lexists(new_path):
+        return jsonify({'error': f'{name} already exists'}), 409
+    kind = 'dir' if data.get('kind') == 'dir' else 'file'
     try:
-        open(new_path, 'w').close()
-        return jsonify({'success': True, 'path': new_path, 'name': name})
+        if kind == 'dir':
+            os.mkdir(new_path)
+        else:
+            with open(new_path, 'x', encoding='utf-8') as f:
+                if name.endswith('_test.py'):
+                    f.write(TEST_TEMPLATE.format(title=name[:-len('_test.py')].replace('_', ' ').capitalize()))
+        _same_owner(new_path, real_dir)
+        return jsonify({'success': True, 'path': new_path, 'name': name, 'kind': kind})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

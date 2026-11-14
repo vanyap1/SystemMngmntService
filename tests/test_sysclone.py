@@ -77,7 +77,9 @@ class Jobs(unittest.TestCase):
         config.BASE_DIR = self.tmp
         sysclone._job = None
         self.patches = [mock.patch('os.geteuid', return_value=0),
-                        mock.patch.object(sysclone, 'disks', return_value=sysclone.disks(TREE, '/dev/mmcblk0p1'))]
+                        mock.patch.object(sysclone, 'disks', return_value=sysclone.disks(TREE, '/dev/mmcblk0p1')),
+                        mock.patch.object(sysclone, 'preflight'),
+                        mock.patch.object(sysclone, 'image_bytes', return_value=1024 * 1024)]
         for p in self.patches:
             p.start()
 
@@ -123,9 +125,77 @@ class Jobs(unittest.TestCase):
         with self.assertRaises(sysclone.CloneError) as cm:
             sysclone.start_clone('mmcblk1', 0, confirm='mmcblk1')
         self.assertEqual(cm.exception.status, 409)
+        end = time.time() + 5
+        while len(sysclone.job_status()['lines']) < 2 and time.time() < end:   # the script's first line
+            time.sleep(0.02)
         self.assertIn('size=max grow=no', sysclone.job_status()['lines'][1])
         sysclone.stop()
         self.assertEqual(self._wait()['state'], 'stopped')
+
+    def test_monitor_brief_and_stall(self):
+        self.assertIsNone(sysclone.job_brief())
+        with mock.patch.dict(os.environ, {'SLOW': '1'}):
+            sysclone.start_clone('mmcblk1', 512, confirm='mmcblk1')
+        b = sysclone.job_brief()
+        self.assertNotIn('lines', b)
+        self.assertIsNone(b['stall'])
+        with mock.patch.object(sysclone, 'STALL_SECONDS', -1), \
+                mock.patch.object(sysclone, 'stuck_processes', return_value=[{'pid': 9, 'comm': 'wipefs', 'wchan': 'x'}]):
+            self.assertEqual(sysclone.job_status()['stall']['stuck'][0]['comm'], 'wipefs')
+        self.assertNotIn('job', client().get('/api/monitor').get_json())          # anonymous: no job
+        self.assertEqual(client(True).get('/api/monitor').get_json()['job']['kind'], 'clone')
+        sysclone.stop()
+        self.assertEqual(self._wait()['state'], 'stopped')
+        self.assertIsNone(client(True).get('/api/monitor').get_json()['job'])
+
+    def test_preflight_refuses_hung_io_and_stuck_loops(self):
+        self.patches[2].stop()                          # the real preflight
+        try:
+            with mock.patch.object(sysclone, 'hung_io', return_value=[{'pid': 5, 'comm': 'wipefs', 'wchan': 'folio_wait_bit_common'}]), \
+                    self.assertRaises(sysclone.CloneError) as cm:
+                sysclone.start_clone('mmcblk1', 512, confirm='mmcblk1')
+            self.assertIn('wipefs (pid 5, folio_wait_bit_common)', str(cm.exception))
+            loops = [{'dev': '/dev/loop0', 'file': '/mnt/smms-share/x.img.partial'}]
+            with mock.patch.object(sysclone, 'hung_io', return_value=[]), mock.patch.object(sysclone, 'stale_loops', return_value=loops), \
+                    mock.patch('subprocess.run') as run, self.assertRaises(sysclone.CloneError) as cm:
+                sysclone.start_clone('mmcblk1', 512, confirm='mmcblk1')
+            run.assert_called_once()
+            self.assertEqual(run.call_args[0][0], ['losetup', '-d', '/dev/loop0'])
+            self.assertIn('reboot', str(cm.exception))
+            self.assertIsNone(sysclone._job)
+        finally:
+            self.patches[2].start()
+
+    def test_hung_io_and_stale_loops(self):
+        proc = tempfile.mkdtemp(dir=self.tmp)
+        for pid, state, comm in [(1, 'D', 'kworker/u8:2+loop0'), (2, 'D', 'kworker/u8:3-flush-179:0'), (3, 'D', 'wipefs'),
+                                 (4, 'S', 'bash')]:
+            os.makedirs(os.path.join(proc, str(pid)))
+            with open(os.path.join(proc, str(pid), 'stat'), 'w') as f:
+                f.write(f'{pid} ({comm}) {state} 1 {pid} {pid} 0 -1')
+        self.assertEqual([h['pid'] for h in sysclone.hung_io(proc, gap=0)], [1, 3])     # flush worker ignored
+        sysd = tempfile.mkdtemp(dir=self.tmp)
+        for n, back in [('loop0', '/mnt/smms-share/a.img.partial'), ('loop1', '/var/lib/snapd/x.snap'), ('loop2', '/tmp/b.img.partial')]:
+            os.makedirs(os.path.join(sysd, n, 'loop'))
+            with open(os.path.join(sysd, n, 'loop', 'backing_file'), 'w') as f:
+                f.write(back + '\n')
+        os.makedirs(os.path.join(sysd, 'loop3'))                                         # not attached
+        with mock.patch.object(smb, 'MOUNT_POINT', '/mnt/smms-share'):
+            self.assertEqual([x['dev'] for x in sysclone.stale_loops(sysd)], ['/dev/loop0', '/dev/loop2'])
+
+    def test_stuck_processes_reads_proc(self):
+        proc = tempfile.mkdtemp(dir=self.tmp)
+        for pid, state, pgrp, comm, wchan in [(10, 'D', 7, 'wipefs (x)', 'folio_wait_bit_common'), (11, 'S', 7, 'bash', '0'),
+                                              (12, 'D', 99, 'other', 'x'), (13, 'D', 7, 'dd', '0')]:
+            os.makedirs(os.path.join(proc, str(pid)))
+            with open(os.path.join(proc, str(pid), 'stat'), 'w') as f:
+                f.write(f'{pid} ({comm}) {state} 1 {pgrp} {pgrp} 0 -1')
+            with open(os.path.join(proc, str(pid), 'wchan'), 'w') as f:
+                f.write(wchan)
+        os.makedirs(os.path.join(proc, 'self'))
+        got = sorted(sysclone.stuck_processes(7, proc), key=lambda x: x['pid'])
+        self.assertEqual(got, [{'pid': 10, 'comm': 'wipefs (x)', 'wchan': 'folio_wait_bit_common'},
+                               {'pid': 13, 'comm': 'dd', 'wchan': ''}])
 
     def test_failure_is_reported(self):
         with mock.patch.dict(os.environ, {'FAIL': 'yes'}):
@@ -143,7 +213,31 @@ class Jobs(unittest.TestCase):
                 sysclone.start_image('missing', 0)
         st = self._wait()
         self.assertRegex(st['lines'][1], rf'^==> target {share}/images/.+_rel_\d{{8}}_\d{{6}}\.img extra=2048 size= grow=yes compress=gz$')
+        self.assertEqual(os.listdir(os.path.join(share, 'images')), [])         # the write probe cleaned up
         shutil.rmtree(share)
+
+    def test_image_refused_when_the_share_is_full_or_hangs(self):
+        share = tempfile.mkdtemp()
+        with mock.patch.object(smb, 'MOUNT_POINT', share), mock.patch.object(smb, 'status', return_value={'mounted': True}):
+            with mock.patch.object(sysclone, 'image_bytes', return_value=1 << 60), self.assertRaises(sysclone.CloneError) as cm:
+                sysclone.start_image('', 0)
+            self.assertEqual(cm.exception.status, 507)
+            with mock.patch.object(sysclone, 'PROBE_SECONDS', 0.2), \
+                    mock.patch('os.fsync', side_effect=lambda fd: time.sleep(2)), self.assertRaises(sysclone.CloneError) as cm:
+                sysclone.start_image('', 0)
+            self.assertIn('does not answer', str(cm.exception))
+        self.assertIsNone(sysclone._job)
+        shutil.rmtree(share, ignore_errors=True)
+
+    def test_watchdog_notes_a_stall_once(self):
+        with mock.patch.dict(os.environ, {'SLOW': '1'}), mock.patch.object(sysclone, 'WATCH_SECONDS', 0.05), \
+                mock.patch.object(sysclone, 'STALL_SECONDS', 0.1), \
+                mock.patch.object(sysclone, 'stuck_processes', return_value=[{'pid': 9, 'comm': 'sfdisk', 'wchan': 'sync_bdevs'}]):
+            sysclone.start_clone('mmcblk1', 512, confirm='mmcblk1')
+            time.sleep(0.6)
+            lines = [ln for ln in sysclone.job_status()['lines'] if ln.startswith('[watchdog]')]
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn('sfdisk pid 9 in sync_bdevs', lines[0])
 
 
 class Share(unittest.TestCase):
@@ -315,6 +409,13 @@ class Script(unittest.TestCase):
             self.assertTrue(os.access(p, os.X_OK), p)
             r = subprocess.run(['bash', '-n', p], capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_image_loop_uses_direct_io(self):
+        # buffered loop I/O on a large image on a CIFS share hangs for good on some kernels (6.6 sunxi)
+        with open(self.PATH) as f:
+            src = f.read()
+        self.assertIn('losetup -fP --direct-io=on --show', src)
+        self.assertIn('loop/dio', src)
 
     def test_refuses_without_root(self):
         if os.geteuid() == 0:

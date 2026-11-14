@@ -29,7 +29,7 @@ For what the project is and what it looks like, see the [README](../README.md).
 | **Service control** | status / start / stop / restart of the target service and any other systemd unit |
 | **System monitor** | CPU, RAM, temperature, active network interface and block devices with live charts; on the main page and as a floating, resizable, semi-transparent window on every other page |
 | **Backups & deploy** | archive the project, upload a `.tar.gz`, deploy it with an automatic backup |
-| **Code editor** | file tree, Monaco editor with outline, **run / debug Python** (breakpoints, step over / into / out, variables, hover values), service log, **interactive terminal** (a real shell: mc, htop, nano, vim), command macros |
+| **Code editor** | file tree (new file / folder in any folder: hover a folder, or the toolbar buttons for the folder clicked last), Monaco editor with outline, **run / debug Python** (breakpoints, step over / into / out, variables, hover values), service log, **interactive terminal** (a real shell: mc, htop, nano, vim), command macros |
 | **Test platform** | run `*_test.py` fixture sequences, live PASS/FAIL table, operator prompts, stop-on-fail, a log per run, yield statistics |
 | **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
 | **Docs** | Markdown knowledge base in `help/`: sidebar tree, full-text search, rendered view with table of contents and code copy buttons, Monaco editor with live preview, toolbar, image paste/drop upload, attachments; **diagram editor** for pinouts and block diagrams (exported to SVG, embedded in pages) |
@@ -85,9 +85,10 @@ SystemMngmntService/
 │   └── img/
 ├── help/            # Documentation (Markdown), help/img images, help/docs attachments, help/examples raw notes
 ├── testPlatform/     # Test platform: *_test.py sequences, testStrategy.py / testWatch.py (run from the Tests page)
-│   └── instruments/  # Drivers, file = instrument model: psu_custom6020, psu_custom305, rigol_dho804/924, owon_xdm,
-│                     #   owon_oel, fs9922, ads1115, stlink_stm8; protocols / tools: modbus, scpi, serial_term,
-│                     #   ssh_term, param_file, uut_serial; fw/ = firmware, binaries
+│   └── instruments/  # Drivers, file = instrument model: psu_custom6020, psu_custom305, siglent_spd1305x,
+│                     #   siglent_sdg1032x, siglent_sdl1020x, rigol_dho804/924, owon_xdm, owon_oel, fs9922, ads1115,
+│                     #   stlink_stm8; protocols / tools: modbus, scpi, serial_term, ssh_term, param_file, uut_serial;
+│                     #   fw/ = firmware, binaries
 ├── testLogs/         # One log file per test run (git-ignored)
 ├── tests/            # Unit/integration tests (unittest) + dev server and screenshot helpers
 ├── docs/             # MANUAL.md (this file), img/ README screenshots (tests/docs_screenshots.sh)
@@ -235,7 +236,7 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/status?name=` | public | `systemctl status` output; anonymous: target service only |
 | POST | `/api/service/<start\|stop\|restart>?name=` | public for `public_service_actions`, else login | Service action |
 | GET | `/api/sysinfo` | login | CPU, RAM, network, disks (JSON; editor side panel) |
-| GET | `/api/monitor?since=` | public | System monitor: current CPU/RAM/temperature/active interface/disk I/O, block devices, chart history newer than `since` |
+| GET | `/api/monitor?since=` | public | System monitor: current CPU/RAM/temperature/active interface/disk I/O, block devices, chart history newer than `since`; logged in: `job` = running clone / image job (no log) or null |
 | POST | `/api/power/<reboot\|poweroff>` | login | Reboot / shut down |
 | GET | `/api/backups` | login | Archive list (JSON) |
 | POST | `/backups/create` | login | Create archive (form) |
@@ -245,7 +246,7 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | POST | `/api/backups/delete` | login | Delete archive |
 | GET | `/api/tree[?path=]` | login | One folder of the target directory (the editor loads folders when they are opened) |
 | GET/POST | `/api/file` | login | Read / write file |
-| POST | `/api/file_create`, `/api/file_rename`, `/api/file_delete` | login | File operations |
+| POST | `/api/file_create`, `/api/file_rename`, `/api/file_delete` | login | File operations; `file_create` {dir, name, kind: file / dir} — a new `*_test.py` gets a test script skeleton, new entries belong to the folder's owner |
 | GET | `/api/file_raw` | login | Raw file (image preview) |
 | POST | `/api/exec` | login | Execute shell command |
 | POST | `/api/term/open` | login | Start a shell in a pty `{cols, rows}` or reattach `{id}` → `{id, user, offset}` |
@@ -424,13 +425,16 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   continue later. Serial ports are locked while a test script runs.
 - **Terminal** — raw data terminal for a serial port, a TCP client or UDP (send to host:port and / or listen on a
   port — empty = a free port chosen automatically; datagrams show their sender) in one tool (`core/ttyterm.py`).
-  Received data as text lines (`\r\n`, `\n`, `\r`; long lines scroll sideways, *wrap* optional) or a hex dump, with
-  times; sent data in another colour. *Flood guard*: above 256 KB/s or 1000 packets/s (a video stream, the wrong
+  Received data as text lines (`\r\n`, `\n`, `\r`; long lines scroll sideways, *wrap* optional; control bytes and
+  bytes that are not UTF-8 shown as `\xNN`, saved sessions keep them exactly) or a hex dump (16 bytes per row with
+  offset and ASCII, sender and size on the first row of each packet), with times; sent data in another colour. *Flood guard*: above 256 KB/s or 1000 packets/s (a video stream, the wrong
   port) data is only counted, not stored or shown, and read in small batches (cheap on the CPU) until the rate is
   back to normal; binary garbage and very long lines are folded in the view. JSON objects in the stream (one per line or spread over
   lines) get a `{}` badge (pretty view) and their numbers / booleans are collected per field path — *Plot* opens a
   popup to tick fields, one live chart per field. Send field with line ending (default: LF for serial, CR LF for TCP,
-  none for UDP), `\n \r \t \xNN` escapes or hex bytes, history (↑ ↓); *HTTP GET* fills a browser-like request (host,
+  none for UDP), `\n \r \t \0 \\ \xNN` escapes or **hex** bytes in any common notation — `01 03 0A`, `01030A`,
+  `0x01,0x03`, `\x01\x03`, `01:03:0A`, `01-03-0A`, `{0x01, 0x03}`, text in quotes (`"AT" 0D 0A`); the byte count /
+  an error shows next to *hex*, ticking it converts the field (text → `41 54 0D 0A`, valid hex → text), history (↑ ↓); *HTTP GET* fills a browser-like request (host,
   user agent, language). Not connected, a send is **one-shot**: open → send → wait for the reply (until the peer
   closes, 250 ms after the last byte, or the *≤ ms* timeout; *reply* off = don't wait) → close — e.g. SCPI
   instruments with one TCP connection per command. Connected (*Connect*), the connection stays open. **Macros**
@@ -448,16 +452,27 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   reserve + *Extra* (default 1024 MiB) — or the whole disk — so the target may be smaller than the source; files
   are copied with rsync, fstab / `armbianEnv.txt` get the new UUID, u-boot is written with Armbian's
   `write_uboot_platform` (sunxi and rockchip). The system disk and disks with mounted partitions cannot be chosen;
-  a clone needs the disk name typed. *Image*: connect a share (`//server/share`, user, password, SMB version —
+  a clone needs the red *all data will be destroyed* box ticked. *Image*: connect a share (`//server/share`, user, password, SMB version —
   mounted at `/mnt/smms-share` with mount(2), no cifs-utils; the password is kept only when *remember* is ticked,
   in the host credentials file outside the repository), browse it, pick a folder: the image
-  `<host>[_tag]_<date>.img[.gz]` is built there on a loop device; *grow* lets the partition take the whole card
+  `<host>[_tag]_<date>.img[.gz]` is built there on a loop device with **direct I/O** (a buffered loop device over
+  a large file on a CIFS share hangs for good on some kernels — 6.6 sunxi; without direct I/O on a network share the
+  script refuses); *grow* lets the partition take the whole card
   at the first boot (`armbian-resize-filesystem`). The job runs on the server with a live log and rsync progress;
   *Stop* removes an unfinished image. *Write image → disk*: pick a location (the mounted share, a mounted
   non-system disk such as a local NAS, or a home folder), browse it (only folders and `.img` / `.img.gz` /
   `.img.xz` / `.img.zst` are shown) or *Find images* below the folder, choose a target disk (same rules as a
-  clone, name typed) — `tools/write-image.sh` writes it with dd (progress of the bytes read). Needs root (the
-  panel service).
+  clone, box ticked) — `tools/write-image.sh` writes it with dd (progress of the bytes read) and reads the first
+  16 MiB back past the cache to compare. Needs root (the
+  panel service). The three sections are collapsed until opened; the running / last job is shown above them. The
+  job keeps running when the popup is closed or the page changes — the tab reattaches to its log when opened again,
+  and the System Monitor (card / floating window, logged in only) shows a progress strip while it runs. Without
+  output for 2 min the job lists its processes stuck in the kernel (state D, with the wait channel) — such a process
+  (hung share / disk) cannot be stopped, only a reboot frees it; the watchdog also writes this into the job log.
+  Before a job starts the panel checks: no process hangs in uninterruptible I/O (otherwise every disk tool would hang
+  too — reboot first), loop devices left by an earlier image job are detached, and for an image the share has the
+  free space and answers a 1 MiB write / read within 20 s. The scripts flush only their own device / file (no
+  global `sync`) and wait for udev at most 30 s.
 
 ## Test log viewer (`/logs`)
 
@@ -559,7 +574,7 @@ A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar 
 - Scripts: every `*_test.py` in `tests_dir` (default `testPlatform/`); the first line of the module docstring is
   shown as the description. Demo scripts (`demo_*_test.py`) need no hardware.
 - Instruments are objects from `testPlatform/instruments/`, named after the real model: power supplies
-  `PSU_CUSTOM6020` / `PSU_CUSTOM305`, oscilloscopes `RIGOL_DHO804` / `RIGOL_DHO924`, OWON bench multimeter and
+  `PSU_CUSTOM6020` / `PSU_CUSTOM305` / `SIGLENT_SPD1305X`, generator `SIGLENT_SDG1032X`, electronic load `SIGLENT_SDL1020X`, oscilloscopes `RIGOL_DHO804` / `RIGOL_DHO924`, OWON bench multimeter and
   electronic load, a low-level Modbus master (RTU / TCP / UDP), serial and SSH terminals, parameter files, and a
   base class for any other SCPI instrument. How to create them, a complete example and every function: `help/testing/instruments.md`
   (Docs page → testing → Instruments).

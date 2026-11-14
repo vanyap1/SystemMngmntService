@@ -225,6 +225,7 @@ const Monitor = {
     create(root) {
         root.classList.add('mon');
         root.innerHTML = `
+            <div class="mon-job" hidden></div>
             <div class="mon-tiles"></div>
             <div class="mon-charts">
                 <div class="mon-chart-box"><div class="mon-chart-head"><b>CPU</b><span class="mon-legend" data-k="cpu"></span>
@@ -266,6 +267,7 @@ const Monitor = {
     },
 
     _render(root, d) {
+        Monitor._job(root.querySelector('.mon-job'), d.job);
         const c = d.current || {};
         const cpu = c.cpu, mem = c.mem, net = c.net || {};
         const q = s => root.querySelector(s);
@@ -301,6 +303,24 @@ const Monitor = {
 
         q('.mon-blocks').innerHTML = Monitor._blocks(d.blocks || [], c.disk || {});
         q('.mon-iface').innerHTML = Monitor._iface(net);
+    },
+
+    /** Clone / image job of HW Utils (logged in only, present while it runs): progress strip, click opens the tab. */
+    _job(el, j) {
+        el.hidden = !j;
+        if (!j) return;
+        const p = j.progress, m = Math.floor(j.elapsed / 60), s = Math.floor(j.elapsed % 60);
+        const stuck = j.stall && j.stall.stuck.length;
+        el.classList.toggle('warn', !!j.stall);
+        el.title = 'Open HW Utils → Clone / Image';
+        el.innerHTML = `<div class="mon-job-head"><i class="fa-solid ${stuck ? 'fa-triangle-exclamation' : 'fa-compact-disc fa-spin'}"></i>` +
+            `<b>${esc(j.title)}</b><span class="badge badge-info">${esc(j.state)}</span><span class="spacer"></span>` +
+            `<span class="mono small">${m}:${String(s).padStart(2, '0')}</span></div>` +
+            `<div class="cl-progress"><div class="cl-bar" style="width:${p ? p.percent : 0}%"></div><span>` +
+            (p ? `${p.percent}% · ${esc(p.done)} · ${esc(p.speed)} · ETA ${esc(p.eta)}` : 'preparing…') + '</span></div>' +
+            (j.stall ? `<div class="small">No output for ${Math.round(j.stall.quiet / 60)} min${stuck ? ' — ' +
+                j.stall.stuck.map(x => esc(x.comm)).join(', ') + ' stuck in the kernel (I/O)' : ''}</div>` : '');
+        el.onclick = () => { if (typeof Devices !== 'undefined') { Devices.open(); Devices.setTab('clone'); } };
     },
 
     _blocks(blocks, io) {

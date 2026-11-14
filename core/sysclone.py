@@ -29,6 +29,10 @@ DD_PROGRESS = re.compile(r'^(\d+) bytes .*copied, ([\d.,]+) s, ([\d.,]+ \S+/s)')
 IMAGE_EXT = re.compile(r'\.(img|img\.gz|img\.xz|img\.zst)$', re.I)
 FIND_DEPTH, FIND_MAX, FIND_SECONDS = 5, 300, 8.0
 MB = 1024 * 1024
+STALL_SECONDS = 120                  # no output / progress this long -> look for job processes stuck in the kernel
+WATCH_SECONDS = 10                   # job watchdog period
+PROBE_SECONDS = 20                   # a share must answer a small write / read within this time
+HUNG_GAP = 1.0                       # two /proc samples this far apart: D in both = hung I/O (preflight)
 
 
 class CloneError(Exception):
@@ -134,6 +138,8 @@ def info():
         'missing': [t for t in TOOLS if not _which(t)],
         'disks': disks(root_part=root_part, boot_part=boot_part),
         'job': job_status(),
+        'hung': [] if busy() else hung_io(gap=0.3),     # shown as a warning; preflight refuses a job then
+        'stale_loops': [] if busy() else stale_loops(),
     }
 
 
@@ -148,6 +154,7 @@ class Job:
         self.state = 'running'
         self.rc = None
         self.started, self.finished = time.time(), None
+        self.active = self.started           # last output line / progress update
         self.result = ''
         self.proc = None
         self.lock = threading.Lock()
@@ -158,6 +165,7 @@ class Job:
             return
         m, dd = PROGRESS.match(text), DD_PROGRESS.match(text)
         with self.lock:
+            self.active = time.time()
             if m:                            # rsync --info=progress2: keep only the latest value
                 self.progress = {'done': m.group(1), 'percent': int(m.group(2)), 'speed': m.group(3), 'eta': m.group(4)}
                 return
@@ -175,14 +183,167 @@ class Job:
             if r:
                 self.result = r.group(1)
 
-    def status(self, since=0):
+    def note(self, text):
+        """A line from the panel itself (watchdog): logged, but it does not count as output of the job."""
+        with self.lock:
+            if len(self.lines) == self.lines.maxlen:
+                self.first += 1
+            self.lines.append(text)
+
+    def status(self, since=0, lines=True):
         with self.lock:
             since = max(since, self.first)
-            lines = list(self.lines)[since - self.first:]
-            return {'kind': self.kind, 'title': self.title, 'state': self.state, 'rc': self.rc,
-                    'started': self.started, 'finished': self.finished, 'progress': self.progress,
-                    'result': self.result, 'next': self.first + len(self.lines), 'lines': lines,
-                    'elapsed': (self.finished or time.time()) - self.started}
+            d = {'kind': self.kind, 'title': self.title, 'state': self.state, 'rc': self.rc,
+                 'started': self.started, 'finished': self.finished, 'progress': self.progress,
+                 'result': self.result, 'next': self.first + len(self.lines),
+                 'elapsed': (self.finished or time.time()) - self.started, 'stall': None}
+            if lines:
+                d['lines'] = list(self.lines)[since - self.first:]
+            quiet = time.time() - self.active
+        if d['state'] in ('running', 'stopping') and quiet > STALL_SECONDS:
+            d['stall'] = {'quiet': int(quiet), 'stuck': stuck_processes(self.proc.pid) if self.proc else []}
+        return d
+
+
+def _proc_states(proc='/proc', pgid=None):
+    """{pid: (state, comm, wchan)} of all processes (or of one process group)."""
+    out = {}
+    for e in os.listdir(proc):
+        if not e.isdigit():
+            continue
+        try:
+            with open(os.path.join(proc, e, 'stat'), encoding='utf-8', errors='replace') as f:
+                st = f.read()
+            fields = st[st.rindex(')') + 2:].split()
+            if pgid is not None and int(fields[2]) != pgid:
+                continue
+            wchan = ''
+            if fields[0] == 'D':
+                try:
+                    with open(os.path.join(proc, e, 'wchan'), encoding='utf-8') as f:
+                        wchan = f.read().strip()
+                except OSError:
+                    pass
+            out[int(e)] = (fields[0], st[st.index('(') + 1:st.rindex(')')], '' if wchan == '0' else wchan)
+        except (OSError, ValueError, IndexError):
+            continue
+    return out
+
+
+def hung_io(proc='/proc', gap=None):
+    """Processes stuck in uninterruptible I/O: state D in two samples ``gap`` s apart. Kernel workers count only
+    for loop devices / cifs (flush workers are briefly D under normal load). One such process makes every global
+    ``sync`` (sfdisk, mkfs ...) hang, so no job starts while it is there."""
+    first = {p: v for p, v in _proc_states(proc).items() if v[0] == 'D'}
+    if not first:
+        return []
+    time.sleep(HUNG_GAP if gap is None else gap)
+    out = []
+    for pid, (state, comm, wchan) in sorted(_proc_states(proc).items()):
+        if state != 'D' or pid not in first or first[pid][1] != comm:
+            continue
+        if comm.startswith('kworker') and not re.search(r'loop|cifs|smb|deferredclose', comm):
+            continue
+        out.append({'pid': pid, 'comm': comm, 'wchan': wchan})
+    return out
+
+
+def stale_loops(sys_block='/sys/block'):
+    """Loop devices left over by an earlier image job: backed by a file on the share or a ``*.partial`` image."""
+    out = []
+    try:
+        names = sorted(n for n in os.listdir(sys_block) if n.startswith('loop'))
+    except OSError:
+        return out
+    for n in names:
+        try:
+            with open(os.path.join(sys_block, n, 'loop', 'backing_file'), encoding='utf-8', errors='replace') as f:
+                back = f.read().strip()
+        except OSError:
+            continue
+        if back.startswith(smb.MOUNT_POINT + '/') or back.endswith('.partial') or back.endswith('.partial (deleted)'):
+            out.append({'dev': '/dev/' + n, 'file': back})
+    return out
+
+
+def _bounded(fn, seconds):
+    """Run ``fn`` in a thread; (True, result) or (False, None) when it did not return in time (a call on a dead
+    share may sleep in the kernel for minutes — the request must not)."""
+    box = {}
+
+    def run():
+        try:
+            box['r'] = fn()
+        except Exception as e:  # noqa: BLE001 - reported to the caller
+            box['e'] = e
+    t = threading.Thread(target=run, daemon=True, name='sysclone-probe')
+    t.start()
+    t.join(seconds)
+    if t.is_alive():
+        return False, None
+    if 'e' in box:
+        raise box['e']
+    return True, box.get('r')
+
+
+def probe_write(folder, seconds=None):
+    """Write, read back and delete 1 MiB in ``folder`` within ``seconds``; CloneError when the share hangs / fails."""
+    path = os.path.join(folder, f'.smms-probe-{os.getpid()}')
+    data = os.urandom(MB)
+
+    def run():
+        with open(path, 'wb') as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        with open(path, 'rb') as f:
+            back = f.read()
+        os.remove(path)
+        return back == data
+    try:
+        ok, same = _bounded(run, PROBE_SECONDS if seconds is None else seconds)
+    except OSError as e:
+        raise CloneError(f'The share does not accept writes: {e.strerror or e}', 503)
+    if not ok:
+        raise CloneError(f'The share does not answer (a 1 MiB write / read took over {PROBE_SECONDS} s) — check the '
+                         'server / network, then reconnect it', 503)
+    if not same:
+        raise CloneError('The share returned different data than written (1 MiB test)', 503)
+
+
+def probe_read(path, seconds=None):
+    """Read the first MiB of ``path`` within ``seconds`` (an image on a share / disk that does not answer)."""
+    def run():
+        with open(path, 'rb') as f:
+            return len(f.read(MB))
+    try:
+        ok, _ = _bounded(run, PROBE_SECONDS if seconds is None else seconds)
+    except OSError as e:
+        raise CloneError(f'The image cannot be read: {e.strerror or e}', 503)
+    if not ok:
+        raise CloneError(f'Reading the image takes over {PROBE_SECONDS} s — the share / disk does not answer', 503)
+
+
+def preflight():
+    """Before any job: no hung I/O on the system, no loop device left over by an earlier image job (detached here
+    when possible). Raises CloneError with what to do."""
+    hung = hung_io()
+    if hung:
+        names = ', '.join(f'{h["comm"]} (pid {h["pid"]}{", " + h["wchan"] if h["wchan"] else ""})' for h in hung[:6])
+        raise CloneError(f'Hung I/O on this system: {names}. Such processes cannot be killed and make disk tools '
+                         'hang too — reboot first.', 409)
+    for lp in stale_loops():
+        _bounded(lambda d=lp['dev']: subprocess.run(['losetup', '-d', d], capture_output=True, timeout=10), 12)
+    left = stale_loops()
+    if left:
+        raise CloneError('Loop device(s) of an earlier image job cannot be detached: ' +
+                         ', '.join(f'{x["dev"]} → {x["file"]}' for x in left) + ' — reboot first.', 409)
+
+
+def stuck_processes(pgid, proc='/proc'):
+    """Processes of the job's group in uninterruptible sleep (state D) with the kernel function they wait in —
+    a job without output for minutes and such a process usually hangs on I/O (a share, a dying card)."""
+    return [{'pid': p, 'comm': c, 'wchan': w} for p, (st, c, w) in sorted(_proc_states(proc, pgid).items()) if st == 'D']
 
 
 _job = None
@@ -191,6 +352,11 @@ _lock = threading.Lock()
 
 def job_status(since=0):
     return _job.status(since) if _job else None
+
+
+def job_brief():
+    """The running job without its log (System Monitor shows it), None when idle."""
+    return _job.status(lines=False) if busy() else None
 
 
 def busy():
@@ -220,6 +386,33 @@ def _reader(job):
         job.add(f'[exit code {job.rc}]')
 
 
+def _watch(job):
+    """Watchdog: while the job runs, note in its log when it has been quiet for STALL_SECONDS and which of its
+    processes are stuck in the kernel (once per change), and when it recovers."""
+    last = None
+    while job.state in ('running', 'stopping'):
+        time.sleep(WATCH_SECONDS)
+        if job.state not in ('running', 'stopping'):
+            break
+        quiet = time.time() - job.active
+        if quiet < STALL_SECONDS:
+            if last is not None:
+                job.note('[watchdog] output again — the job continues')
+                last = None
+            continue
+        stuck = stuck_processes(job.proc.pid) if job.proc else []
+        key = tuple((x['pid'], x['wchan']) for x in stuck)
+        if key == last:
+            continue
+        last = key
+        if stuck:
+            job.note(f'[watchdog] no output for {int(quiet) // 60} min; stuck in the kernel (uninterruptible I/O): ' +
+                     ', '.join(f'{x["comm"]} pid {x["pid"]}{" in " + x["wchan"] if x["wchan"] else ""}' for x in stuck) +
+                     ' — the device / share does not answer. Stop cannot end such a process; a reboot frees it.')
+        else:
+            job.note(f'[watchdog] no output for {int(quiet) // 60} min (no process is stuck in the kernel — still working?)')
+
+
 def _human(n):
     for unit in ('B', 'K', 'M', 'G', 'T'):
         if n < 1024 or unit == 'T':
@@ -236,6 +429,7 @@ def _start(kind, title, env, name='clone-system.sh', total=None):
     with _lock:
         if busy():
             raise CloneError('Another clone / image job is running', 409)
+        preflight()
         full = dict(os.environ, PATH=':'.join(SBIN), NO_COLOR='1', ASSUME_YES='yes', LC_ALL='C', **env)
         job = Job(kind, title, env, total)
         job.add(f'$ {" ".join(f"{k}={v}" for k, v in env.items())} {script(name)}')
@@ -243,6 +437,7 @@ def _start(kind, title, env, name='clone-system.sh', total=None):
                                stderr=subprocess.STDOUT, start_new_session=True, cwd='/')
         _job = job
     threading.Thread(target=_reader, args=(job,), name='sysclone', daemon=True).start()
+    threading.Thread(target=_watch, args=(job,), name='sysclone-watch', daemon=True).start()
     return job.status()
 
 
@@ -257,7 +452,8 @@ def _extra(v):
 
 
 def _target(disk, confirm):
-    """A writable target disk from disks(): never the system disk, nothing mounted, its name typed in ``confirm``."""
+    """A writable target disk from disks(): never the system disk, nothing mounted, ``confirm`` = its name (the UI
+    sends it only with the "all data will be destroyed" box ticked)."""
     d = next((x for x in disks() if x['name'] == disk), None)
     if not d:
         raise CloneError(f'Unknown disk: {disk}', 404)
@@ -266,7 +462,7 @@ def _target(disk, confirm):
     if d['mounted']:
         raise CloneError(f'{d["path"]} has mounted partitions ({", ".join(d["mounted"])}) — unmount them first', 409)
     if (confirm or '').strip() != d['name']:
-        raise CloneError(f'Type the disk name "{d["name"]}" to confirm')
+        raise CloneError(f'Confirm that all data on {d["path"]} will be destroyed')
     return d
 
 
@@ -290,6 +486,14 @@ def image_name(tag='', when=None):
     return f'{host}_{tag}_{stamp}.img' if tag else f'{host}_{stamp}.img'
 
 
+def image_bytes(extra_mb):
+    """Size of the image file of the running system (same formula as the script)."""
+    root_part = _root_part()
+    used = _used_bytes('/') + (_used_bytes('/boot') if _boot_part() else 0)
+    start = _part_start(root_part) if root_part else 8192
+    return start * 512 + (min_partition_mb(used) + extra_mb) * MB + MB
+
+
 def start_image(folder='', extra_mb=1024, tag='', compress='', grow=True):
     """Build ``<host>[_tag]_<date>.img[.gz]`` in ``folder`` of the mounted share."""
     if compress not in ('', 'gz'):
@@ -298,10 +502,21 @@ def start_image(folder='', extra_mb=1024, tag='', compress='', grow=True):
         target = smb.path_of(folder)
     except smb.SmbError as e:
         raise CloneError(str(e), e.status)
-    if not os.path.isdir(target):
+    ok, isdir = _bounded(lambda: os.path.isdir(target), PROBE_SECONDS)
+    if not ok:
+        raise CloneError('The share does not answer — check the server / network, then reconnect it', 503)
+    if not isdir:
         raise CloneError('Folder not found on the share', 404)
+    extra = _extra(extra_mb)
+    # the server may allocate the whole (sparse) file at once; gz keeps the raw image until it is compressed
+    need = image_bytes(extra) * 3 // 2 if compress else image_bytes(extra)
+    st = os.statvfs(target)
+    if st.f_bavail * st.f_frsize < need:
+        raise CloneError(f'Not enough space on the share: {st.f_bavail * st.f_frsize // MB} MiB free, '
+                         f'{need // MB} MiB needed', 507)
+    probe_write(target)
     name = image_name(tag)
-    env = {'IMAGE_FILE': os.path.join(target, name), 'EXTRA_MB': str(_extra(extra_mb)),
+    env = {'IMAGE_FILE': os.path.join(target, name), 'EXTRA_MB': str(extra),
            'GROW_ON_BOOT': 'yes' if grow else 'no'}
     if compress:
         env['COMPRESS'] = compress
@@ -441,6 +656,7 @@ def start_write(root, path, disk, confirm=''):
     if not os.path.isfile(full) or not IMAGE_EXT.search(full):
         raise CloneError('Not an image file (.img, .img.gz, .img.xz, .img.zst)', 404)
     d = _target(disk, confirm)
+    probe_read(full)
     size = os.path.getsize(full)
     if full.lower().endswith('.img') and size > d['size']:
         raise CloneError(f'The image ({size // MB} MiB) is larger than {d["path"]} ({d["size"] // MB} MiB)')

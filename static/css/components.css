@@ -516,13 +516,25 @@ a.git-remote:hover { color: var(--info); }
 .cl-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 .cl-sys { font-size: 12px; color: var(--text-2); }
 .cl-warn { border: 1px solid var(--warn); border-radius: var(--radius); padding: 8px 12px; color: var(--warn); font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
-.cl-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; align-items: start; }
-@media (max-width: 1100px) { .cl-grid { grid-template-columns: 1fr; } }
+/* sections collapsed until opened (devices_clone.js toggle) */
+.cl-card.cl-sec { padding: 0; gap: 0; }
+.cl-sec-head { padding: 10px 14px; cursor: pointer; user-select: none; border-radius: var(--radius-lg); }
+.cl-sec-head:hover { background: var(--bg-hover); }
+.cl-chev { font-size: 11px; color: var(--text-mute); width: 12px; transition: transform .15s; }
+.cl-sec.open .cl-chev { transform: rotate(90deg); }
+.cl-sum { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cl-sec-body { display: none; flex-direction: column; gap: 10px; padding: 0 14px 12px; }
+.cl-sec.open .cl-sec-body { display: flex; }
+.cl-sec.open .cl-sec-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.cl-p { margin: 0; flex: 1 1 320px; line-height: 1.5; }
+.cl-danger { color: var(--danger); font-weight: 600; font-size: 12.5px; }
+.cl-danger input:disabled + span { color: var(--text-mute); font-weight: 400; }
+.cl-stall { border: 1px solid var(--warn); border-radius: var(--radius); padding: 6px 10px; color: var(--warn); font-size: 12.5px; }
 .cl-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 .cl-head { display: flex; align-items: center; gap: 10px; }
 .cl-title { font-size: 13px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--info); }
 .cl-head .hint, .cl-head .btn { margin-left: auto; }
-.cl-card > p.hint { margin: 0; line-height: 1.5; }
+.cl-card > p.hint, .cl-sec-body > p.hint { margin: 0; line-height: 1.5; }
 .cl-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .cl-row > .field { flex: 1 1 140px; min-width: 0; margin: 0; }
 .cl-row > .field.cl-grow2 { flex: 2 1 200px; }
@@ -673,6 +685,14 @@ a.git-remote:hover { color: var(--info); }
 .tt-hex { color: var(--code); }
 .tt-asc { color: var(--text-dim); }
 .tt-l.tx .tt-hex { color: var(--warn); }
+.tt-hr .tt-t { display: inline-block; width: 13ch; }       /* hex dump: fixed columns, rows line up */
+.tt-hr .tt-dir { display: inline-block; width: 1ch; }
+.tt-h0:not(:first-child) { margin-top: 3px; }
+.tt-off { color: var(--text-mute); margin-right: 2ch; }
+.tt-hr .tt-hex { margin-right: 2ch; }
+.tt-hr .tt-asc { margin-right: 2ch; }
+.tt-hexinfo:empty { display: none; }
+.tt-send .input.tt-bad { border-color: var(--danger); }
 .tt-jb { font: inherit; font-size: 10.5px; padding: 0 4px; margin-right: 6px; border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 4px; cursor: pointer; }
 .tt-send { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-top: 1px solid var(--border); background: var(--bg-bar); }
 .tt-send #tt-input { flex: 1; min-width: 0; }
@@ -714,3 +734,12 @@ a.git-remote:hover { color: var(--info); }
 .mb-res { white-space: nowrap; }
 .mb-res .mb-v { white-space: nowrap; }
 .mb-res:has(.mb-v) { white-space: normal; }
+
+/* System Monitor: running clone / image job (monitor.js Monitor._job) */
+.mon-job { border: 1px solid var(--info); border-radius: var(--radius); padding: 6px 10px; cursor: pointer;
+           display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
+.mon-job[hidden] { display: none; }
+.mon-job.warn { border-color: var(--warn); color: var(--warn); }
+.mon-job-head { display: flex; align-items: center; gap: 8px; }
+.mon-job-head > i { color: var(--info); }
+.mon-job.warn .mon-job-head > i { color: var(--warn); }

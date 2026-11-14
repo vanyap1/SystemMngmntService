@@ -156,6 +156,8 @@ class ScpiInstrument:
     DEFAULT_BAUD = 115200
     TERM = "\n"                       # line end of commands and answers
     WRITE_DELAY = 0.0                 # pause after a command without an answer (slow serial instruments)
+    SKIP_EMPTY = False                # skip empty lines in answers (Siglent sends one after an error answer)
+    MODEL = ""                        # model in *IDN? of a model class, checked by checkModel()
     INVALID = 9.0e37                  # SCPI "no valid value" (9.9E37 overload / not measurable)
 
     def __init__(self, host: Optional[str] = None, port: Optional[int] = None, serial: Optional[str] = None,
@@ -216,7 +218,10 @@ class ScpiInstrument:
         """Send a query, return the answer line (stripped)."""
         def go():
             self.link.write(cmd.encode("ascii") + self.TERM.encode())
-            return self.link.readline().decode("ascii", errors="replace").strip()
+            while True:
+                line = self.link.readline().decode("ascii", errors="replace").strip()
+                if line or not self.SKIP_EMPTY:
+                    return line
         return self._exchange(go, cmd)
 
     def queryFloat(self, cmd: str) -> Optional[float]:
@@ -253,6 +258,14 @@ class ScpiInstrument:
     def idn(self) -> str:
         """*IDN? — manufacturer, model, serial number, firmware."""
         return self.query("*IDN?")
+
+    def checkModel(self) -> str:
+        """*IDN? model; InstrumentError if it is not the MODEL of this class (a wrong IP of another instrument)."""
+        parts = self.idn().split(",")
+        model = parts[1].strip() if len(parts) > 1 else ""
+        if self.MODEL and model.upper() != self.MODEL.upper():
+            raise InstrumentError(f"{self!r}: {model or 'unknown'} answers, {self.MODEL} expected")
+        return model
 
     def ping(self) -> bool:
         """True if the instrument answers *IDN?."""

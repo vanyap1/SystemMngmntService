@@ -369,7 +369,7 @@
                                 <select class="input input-sm" id="tt-eol" onchange="Devices.tabs.tty.eolInput()" title="Line ending added to every send">
                                     <option value="">no line ending</option><option value="lf">LF \n</option><option value="cr">CR \r</option><option value="crlf">CR LF \r\n</option>
                                 </select>
-                                <label class="check-row small" title="Send hex bytes: 48 65 6C 6C 6F"><input type="checkbox" id="tt-hexsend"> hex</label>
+                                <label class="check-row small" title="Send hex bytes: 01 03 0A, 01030A, 0x01,0x03, \x01\x03, 01:03:0A, {0x01, 0x03}, &quot;text&quot; 0D 0A. Ticking / unticking converts the field."><input type="checkbox" id="tt-hexsend"> hex</label><span class="small faint tt-hexinfo" id="tt-hexinfo"></span>
                                 <button type="button" class="btn btn-ghost btn-sm tt-f tt-tcp" onclick="Devices.tabs.tty.httpTemplate()" title="Fill a browser-like HTTP GET request (host, user agent, language of this browser)"><i class="fa-solid fa-globe"></i> HTTP GET</button>
                                 <label class="check-row small" title="Not connected: open, send, wait for the reply, close. Connected (Connect above): the connection stays open, replies appear in the output."><input type="checkbox" id="tt-wait" checked onchange="Devices.tabs.tty.replyInput()"> reply</label>
                                 <label class="mb-lbl" title="How long to wait for the reply of a one-shot send">≤ <input class="input input-sm mb-num" id="tt-reply-ms" type="number" min="50" step="50" oninput="Devices.tabs.tty.replyInput()"> ms</label>
@@ -404,10 +404,20 @@
                     </div>
                     <div class="dev-scroll cl-body">
                         <div class="cl-warn" id="cl-warn" hidden></div>
-                        <div class="cl-grid">
-                            <!-- Image -> SMB -->
-                            <div class="cl-card">
-                                <div class="cl-head"><span class="cl-title">Image → SMB server</span><span class="hint" id="smb-state">not connected</span></div>
+                        <!-- running / last job -->
+                        <div class="cl-card cl-job" id="cl-job" hidden>
+                            <div class="cl-head"><span class="cl-title" id="cl-job-title"></span><span class="badge" id="cl-job-state"></span>
+                                <span class="hint" id="cl-job-time"></span><span class="spacer"></span>
+                                <button type="button" class="btn btn-danger btn-sm" id="cl-stop" onclick="Devices.tabs.clone.stop()"><i class="fa-solid fa-stop"></i> Stop</button></div>
+                            <div class="cl-progress"><div class="cl-bar" id="cl-bar"></div><span id="cl-prog-text"></span></div>
+                            <div class="cl-stall" id="cl-stall" hidden></div>
+                            <pre class="cl-log" id="cl-log"></pre>
+                        </div>
+                            <!-- Image -> SMB (sections: collapsed until opened, Devices.tabs.clone.toggle) -->
+                            <div class="cl-card cl-sec" data-sec="image">
+                                <div class="cl-head cl-sec-head" onclick="Devices.tabs.clone.toggle('image')"><i class="fa-solid fa-chevron-right cl-chev"></i>
+                                    <span class="cl-title">Image → SMB server</span><span class="cl-sum" id="cl-sum-image"></span><span class="hint" id="smb-state">not connected</span></div>
+                                <div class="cl-sec-body">
                                 <p class="hint">Bootable <code>.img</code> of the running system: a partition of the size of the used data + reserve + extra,
                                     built on a loop device right on the share. Write it to an SD card / eMMC (balenaEtcher, Win32DiskImager, dd);
                                     with “grow” the partition takes the whole card at the first boot.</p>
@@ -445,32 +455,37 @@
                                     <span class="spacer"></span>
                                     <button type="button" class="btn btn-warning btn-sm" id="img-start" onclick="Devices.tabs.clone.startImage()"><i class="fa-solid fa-compact-disc"></i> Start image</button>
                                 </div>
+                                </div>
                             </div>
                             <!-- Clone -> disk -->
-                            <div class="cl-card">
-                                <div class="cl-head"><span class="cl-title">Clone system → disk</span>
-                                    <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.refresh()" title="Read the disks again"><i class="fa-solid fa-rotate"></i> Disks</button></div>
-                                <p class="hint">Copies the running system onto another disk and makes it bootable. <b class="text-error">All data on the chosen disk is destroyed.</b>
+                            <div class="cl-card cl-sec" data-sec="clone">
+                                <div class="cl-head cl-sec-head" onclick="Devices.tabs.clone.toggle('clone')"><i class="fa-solid fa-chevron-right cl-chev"></i>
+                                    <span class="cl-title">Clone system → disk</span><span class="cl-sum" id="cl-sum-clone"></span></div>
+                                <div class="cl-sec-body">
+                                <div class="cl-row cl-act"><p class="hint cl-p">Copies the running system onto another disk and makes it bootable. <b class="text-error">All data on the chosen disk is destroyed.</b>
                                     The disk the system runs from cannot be chosen.</p>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.refresh()" title="Read the disks again"><i class="fa-solid fa-rotate"></i> Disks</button></div>
                                 <div class="cl-disks" id="cl-disks"></div>
                                 <div class="cl-row">
                                     <div class="field"><label for="cl-extra">Extra size, MiB (above the data)</label><input class="input" id="cl-extra" type="number" min="0" step="128" value="1024" oninput="Devices.tabs.clone.sizes()">
                                         <label class="check-row small"><input type="checkbox" id="cl-whole" onchange="Devices.tabs.clone.sizes()"> whole disk</label>
                                         <label class="check-row small"><input type="checkbox" id="cl-grow" onchange="Devices.tabs.clone.sizes()"> grow to the whole disk at the first boot</label></div>
-                                    <div class="field"><label for="cl-confirm">Type the disk name to confirm</label><input class="input mono" id="cl-confirm" autocomplete="off" spellcheck="false" oninput="Devices.tabs.clone.sizes()"></div>
                                 </div>
+                                <label class="check-row cl-danger"><input type="checkbox" id="cl-ok" onchange="Devices.tabs.clone.sizes()" disabled> <span id="cl-ok-text">Choose a disk</span></label>
                                 <div class="hint" id="cl-size"></div>
                                 <div class="cl-row cl-act"><span class="spacer"></span>
                                     <button type="button" class="btn btn-danger btn-sm" id="cl-start" onclick="Devices.tabs.clone.startClone()" disabled><i class="fa-solid fa-clone"></i> Start clone</button></div>
+                                </div>
                             </div>
-                        </div>
                         <!-- Image -> disk -->
-                        <div class="cl-card">
-                            <div class="cl-head"><span class="cl-title">Write image → disk</span>
+                        <div class="cl-card cl-sec" data-sec="write">
+                            <div class="cl-head cl-sec-head" onclick="Devices.tabs.clone.toggle('write')"><i class="fa-solid fa-chevron-right cl-chev"></i>
+                                <span class="cl-title">Write image → disk</span><span class="cl-sum" id="cl-sum-write"></span></div>
+                            <div class="cl-sec-body">
+                            <div class="cl-row cl-act"><p class="hint cl-p">Writes an image (<code>.img</code>, <code>.img.gz</code>, <code>.img.xz</code>, <code>.img.zst</code>) from the SMB share, a mounted local disk (NAS)
+                                or a home folder onto a whole disk. <b class="text-error">All data on the chosen disk is destroyed.</b></p>
                                 <select class="input input-sm cl-root" id="wr-root" onchange="Devices.tabs.clone.wrRoot(this.value)" title="Where the images are"></select>
                                 <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.clone.wrFind()" title="Search .img / .img.gz / .img.xz / .img.zst in this folder and below"><i class="fa-solid fa-magnifying-glass"></i> Find images</button></div>
-                            <p class="hint">Writes an image (<code>.img</code>, <code>.img.gz</code>, <code>.img.xz</code>, <code>.img.zst</code>) from the SMB share, a mounted local disk (NAS)
-                                or a home folder onto a whole disk. <b class="text-error">All data on the chosen disk is destroyed.</b></p>
                             <div class="cl-wr">
                                 <div class="cl-browser">
                                     <div class="cl-crumbs"><div id="wr-crumbs" class="cl-crumb-path"></div><span class="spacer"></span>
@@ -480,22 +495,13 @@
                                 <div class="cl-wr-side">
                                     <div class="cl-wr-sel" id="wr-sel"></div>
                                     <div class="cl-disks" id="wr-disks"></div>
-                                    <div class="cl-row">
-                                        <div class="field"><label for="wr-confirm">Type the disk name to confirm</label><input class="input mono" id="wr-confirm" autocomplete="off" spellcheck="false" oninput="Devices.tabs.clone.sizes()"></div>
-                                    </div>
+                                    <label class="check-row cl-danger"><input type="checkbox" id="wr-ok" onchange="Devices.tabs.clone.sizes()" disabled> <span id="wr-ok-text">Choose a disk</span></label>
                                     <div class="hint" id="wr-size"></div>
                                     <div class="cl-row cl-act"><span class="spacer"></span>
                                         <button type="button" class="btn btn-danger btn-sm" id="wr-start" onclick="Devices.tabs.clone.startWrite()" disabled><i class="fa-solid fa-download"></i> Write image</button></div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- running / last job -->
-                        <div class="cl-card cl-job" id="cl-job" hidden>
-                            <div class="cl-head"><span class="cl-title" id="cl-job-title"></span><span class="badge" id="cl-job-state"></span>
-                                <span class="hint" id="cl-job-time"></span><span class="spacer"></span>
-                                <button type="button" class="btn btn-danger btn-sm" id="cl-stop" onclick="Devices.tabs.clone.stop()"><i class="fa-solid fa-stop"></i> Stop</button></div>
-                            <div class="cl-progress"><div class="cl-bar" id="cl-bar"></div><span id="cl-prog-text"></span></div>
-                            <pre class="cl-log" id="cl-log"></pre>
+                            </div>
                         </div>
                     </div>
                 </section>

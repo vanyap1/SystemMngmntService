@@ -31,7 +31,6 @@ MEAS_ITEMS = ("VMAX", "VMIN", "VPP", "VTOP", "VBASe", "VAMP", "VAVG", "VRMS", "O
 class RigolScope(ScpiInstrument):
     """Common driver of the DHO800 / DHO900 series; scripts use the model classes (rigol_dho804, rigol_dho924)."""
     DEFAULT_PORT = 5555
-    MODEL = ""                                           # model in *IDN?, checked by checkModel()
 
     def __init__(self, host: str = "192.168.1.146", port: int = DEFAULT_PORT, timeout: float = 5.0) -> None:
         super().__init__(host=host, port=port, timeout=timeout)
@@ -43,14 +42,6 @@ class RigolScope(ScpiInstrument):
         if ch not in (1, 2, 3, 4):
             raise ValueError("channel must be 1…4")
         return f"CHANnel{ch}"
-
-    def checkModel(self) -> str:
-        """*IDN? model; InstrumentError if it is not the model of this class (a wrong IP of another scope)."""
-        parts = self.idn().split(",")
-        model = parts[1].strip() if len(parts) > 1 else ""
-        if self.MODEL and model.upper() != self.MODEL:
-            raise InstrumentError(f"{self!r}: {model or 'unknown'} answers, {self.MODEL} expected")
-        return model
 
     def checkErrors(self) -> None:
         """Raise InstrumentError if the scope's error queue is not empty (call it after a group of settings)."""

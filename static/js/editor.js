@@ -205,13 +205,22 @@ function buildTree(items, depth, ul) {
 
         if (item.type === 'dir') {
             row.innerHTML = `<span class="arrow"></span><span class="ico"></span><span class="lbl">${esc(item.name)}</span>` +
-                (item.link ? '<i class="fa-solid fa-link tree-link" title="symbolic link"></i>' : '');
+                (item.link ? '<i class="fa-solid fa-link tree-link" title="symbolic link"></i>' : '') +
+                `<span class="faction">` +
+                  `<button class="faction-btn" data-new="file" title="New file in ${esc(item.name)}"><i class="fa-solid fa-file-circle-plus"></i></button>` +
+                  `<button class="faction-btn" data-new="dir" title="New folder in ${esc(item.name)}"><i class="fa-solid fa-folder-plus"></i></button>` +
+                `</span>`;
+            row.querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', e => {
+                e.stopPropagation();
+                createEntry(item.path, b.dataset.new);
+            }));
             setDirOpen(row, false);
             const sub = document.createElement('ul');
             sub.className = 'tree-children';
             sub.style.cssText = 'list-style:none;padding:0;margin:0';
             row._expand = () => expandDir(row, sub, item, depth);
             row.addEventListener('click', () => {
+                selectFolder(row);
                 if (sub.classList.contains('open')) collapseDir(row, sub, item);
                 else row._expand();
             });
@@ -249,10 +258,12 @@ function buildTree(items, depth, ul) {
     return ul;
 }
 
+let treeRootPath = '';
 function reloadTree() {
     const el = document.getElementById('file-tree');
     const scroll = el.scrollTop;
-    loadDir('').then(d => {
+    return loadDir('').then(d => {
+        treeRootPath = d.path || '';
         const ul = document.createElement('ul');
         ul.id = 'tree-root';
         ul.dataset.path = '';
@@ -268,6 +279,10 @@ function reloadTree() {
         if (typeof currentPath !== 'undefined' && currentPath) {
             const row = [...el.querySelectorAll('.tree-row[data-path]')].find(r => r.dataset.path === currentPath);
             if (row) { row.classList.add('selected'); activeRow = row; const t = tabs.get(currentPath); if (t) t.row = row; }
+        }
+        if (selectedFolder) {
+            const row = [...el.querySelectorAll('.tree-row[data-type="dir"]')].find(r => r.dataset.path === selectedFolder);
+            if (row) row.classList.add('folder-current'); else selectedFolder = '';
         }
     }).catch(e => {
         el.innerHTML = `<div style="padding:12px;color:#f44">Failed to load tree: ${esc(e.message || '')}</div>`;
@@ -338,18 +353,48 @@ function refreshTree(manual) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshTree(false); });
 window.addEventListener('focus', () => refreshTree(false));
 
-function newFile() {
-    const name = prompt('New file name:');
-    if (!name || !name.trim()) return;
-    fetch('/api/file_create', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name: name.trim()})
-    }).then(r => r.json()).then(d => {
-        if (d.success) { reloadTree(); toast(d.name + ' created'); }
-        else toast('Error: ' + (d.error || 'unknown'), true);
-    }).catch(() => toast('Request failed', true));
+// ── New file / folder ───────────────────────────────────────────────────────
+// The toolbar buttons create in the "current folder": the folder clicked last in the tree (marked), else the
+// folder of the open file, else target_dir. Folder rows have their own + buttons on hover.
+let selectedFolder = '';
+
+function selectFolder(row) {
+    document.querySelectorAll('#file-tree .folder-current').forEach(r => r.classList.remove('folder-current'));
+    selectedFolder = row ? row.dataset.path : '';
+    if (row) row.classList.add('folder-current');
 }
+
+function currentFolder() {
+    if (selectedFolder) return selectedFolder;
+    if (typeof currentPath !== 'undefined' && currentPath) return currentPath.slice(0, currentPath.lastIndexOf('/'));
+    return '';
+}
+
+function relFolder(dir) {
+    if (!dir || dir === treeRootPath) return '/';
+    return dir.startsWith(treeRootPath + '/') ? dir.slice(treeRootPath.length) + '/' : dir + '/';
+}
+
+function createEntry(dir, kind) {
+    const what = kind === 'dir' ? 'folder' : 'file';
+    const hint = kind === 'dir' ? '' : '\n(a name ending in _test.py gets a test script skeleton)';
+    const name = prompt(`New ${what} in ${relFolder(dir)}${hint}`);
+    if (!name || !name.trim()) return;
+    App.api('/api/file_create', {json: {dir: dir || '', name: name.trim(), kind}}).then(d => {
+        if (dir) { openDirs.add(dir); saveOpenDirs(); }
+        toast(`${relFolder(dir)}${d.name} created`);
+        return reloadTree().then(() => {
+            const row = [...document.querySelectorAll('#file-tree .tree-row[data-path]')].find(r => r.dataset.path === d.path);
+            if (!row) return;
+            row.scrollIntoView({block: 'nearest'});
+            if (kind === 'dir') selectFolder(row);
+            else openFile(d.path, d.name, row);
+        });
+    }).catch(e => toast('Error: ' + (e.message || 'request failed'), true));
+}
+
+function newFile() { createEntry(currentFolder(), 'file'); }
+function newFolder() { createEntry(currentFolder(), 'dir'); }
 
 function renameFile(path, name) {
     const newName = prompt('Rename "' + name + '" to:', name);

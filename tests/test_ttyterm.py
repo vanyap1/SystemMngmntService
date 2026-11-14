@@ -218,6 +218,27 @@ class Misc(unittest.TestCase):
         with self.assertRaises(ttyterm.TtyError):
             ttyterm.decode_payload('4G', True)
 
+    def test_hex_formats(self):
+        want = b'\x01\x03\x0a'
+        for text in ('01 03 0A', '01030a', '0x01,0x03,0x0A', '\\x01\\x03\\x0a', '01:03:0A', '01-03-0A',
+                     '{0x01, 0x03, 0x0A}', '[01; 03; 0A]', '1 3 A', '0x010x030x0A'):
+            self.assertEqual(ttyterm.parse_hex(text), want, text)
+        self.assertEqual(ttyterm.parse_hex('"AT\\"x" 0D 0A'), b'AT"x\r\n')
+        self.assertEqual(ttyterm.parse_hex('  '), b'')
+        for bad in ('123', '4G', '0x', '"open', 'x1', '01 0x1G'):
+            with self.assertRaises(ttyterm.TtyError, msg=bad):
+                ttyterm.parse_hex(bad)
+
+    def test_session_raw_bytes(self):
+        # the browser keeps bytes that are not UTF-8 as U+DC80..U+DCFF; they must survive save -> load
+        line = {'t': 1, 'dir': 'rx', 'text': 'ok\udc9c\x00я', 'src': ''}
+        line2 = dict(line, text='plain')
+        ttyterm._keep_bytes(line)
+        ttyterm._keep_bytes(line2)
+        self.assertEqual(base64.b64decode(line['b64']), b'ok\x9c\x00' + 'я'.encode())
+        self.assertEqual(line['text'], 'ok\ufffd\x00я')
+        self.assertNotIn('b64', line2)
+
     def test_profiles(self):
         d = ttyterm.check_profiles({'profiles': [{'name': 'ESP', 'eol': 'bogus', 'conn': {'transport': 'serial', 'x': 1},
                                                   'commands': [{'name': 'ver', 'data': 'AT+GMR', 'eol': 'crlf', 'period': 5, 'timer': 1}],
