@@ -1,4 +1,5 @@
-"""V4L2 video devices streamed as MJPEG through ffmpeg."""
+"""Video devices streamed as MJPEG through ffmpeg: V4L2 /dev/video* and network sources net:<name> (RTSP / HTTP,
+core/video_sources.py, Settings → Video)."""
 import glob
 import os
 import re
@@ -6,11 +7,14 @@ import subprocess
 
 from flask import Blueprint, Response, jsonify, request
 
+from core import config, video_sources
 from core.auth import login_required
 
 bp = Blueprint('video', __name__)
 
 _DEVICE_RE = re.compile(r'^/dev/video\d+$')
+_NET_RE = re.compile(r'^net:([A-Za-z0-9][\w-]{0,29})$')
+NET_RESOLUTIONS = ['source', '1920x1080', '1280x720', '704x576', '640x480', '320x240']
 _SIZE_RE = re.compile(r'^\d{3,5}x\d{3,5}$')
 FALLBACK_RESOLUTIONS = ['1280x720', '640x480', '320x240']
 
@@ -18,6 +22,8 @@ _active_video_procs = {}
 
 
 def get_device_resolutions(device):
+    if _NET_RE.match(device):
+        return NET_RESOLUTIONS
     if not _DEVICE_RE.match(device) or not os.path.exists(device):
         return FALLBACK_RESOLUTIONS
     try:
@@ -49,8 +55,15 @@ def _stop_proc(proc):
 
 
 def generate_video_stream(device_path, stream_id, resolution='640x480'):
-    cmd = ['ffmpeg', '-f', 'v4l2', '-video_size', resolution, '-i', device_path,
-           '-r', '25', '-q:v', '5', '-f', 'mpjpeg', '-boundary_tag', 'frame', '-']
+    m = _NET_RE.match(device_path)
+    if m:                    # network source: credentials only on ffmpeg's command line, scaled on request
+        src = video_sources.get(m.group(1))
+        scale = ['-vf', f'scale={resolution.replace("x", ":")}'] if _SIZE_RE.match(resolution) else []
+        cmd = ['ffmpeg', '-loglevel', 'error'] + video_sources.ffmpeg_input(src) + scale + \
+              ['-an', '-r', '15', '-q:v', '5', '-f', 'mpjpeg', '-boundary_tag', 'frame', '-']
+    else:
+        cmd = ['ffmpeg', '-f', 'v4l2', '-video_size', resolution, '-i', device_path,
+               '-r', '25', '-q:v', '5', '-f', 'mpjpeg', '-boundary_tag', 'frame', '-']
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     _active_video_procs[stream_id] = proc
     try:
@@ -80,6 +93,10 @@ def api_video_devices():
             pass
         label = f"{path} ({card_name})" if card_name else path
         devices.append({'path': path, 'name': card_name, 'label': label})
+    for s in video_sources.public():
+        host = s['url'].split('://', 1)[-1].split('/', 1)[0]
+        devices.append({'path': f'net:{s["name"]}', 'name': s['name'], 'label': f'{s["name"]} (network, {host})',
+                        'network': True})
     return jsonify({'devices': devices})
 
 
@@ -96,6 +113,16 @@ def api_video_feed():
     device = request.args.get('device', '/dev/video1')
     stream_id = request.args.get('sid', 'default')
     resolution = request.args.get('size', '640x480')
+    m = _NET_RE.match(device)
+    if m:
+        try:
+            video_sources.get(m.group(1))
+        except video_sources.SourceError:
+            return "Video source not found", 404
+        if resolution != 'source' and not _SIZE_RE.match(resolution):
+            resolution = 'source'
+        return Response(generate_video_stream(device, stream_id, resolution),
+                        mimetype='multipart/x-mixed-replace; boundary=frame')
     if not _DEVICE_RE.match(device):
         return "Invalid device", 400
     if not os.path.exists(device):
@@ -119,3 +146,54 @@ def api_video_stop():
             _stop_proc(proc)
         _active_video_procs.clear()
     return jsonify({'success': True})
+
+
+# ── Network video sources (Settings → Video) ────────────────
+
+@bp.errorhandler(video_sources.SourceError)
+def _source_error(e):
+    return jsonify({'error': str(e)}), e.status
+
+
+@bp.route('/api/video/sources')
+@login_required
+def api_sources():
+    return jsonify({'sources': video_sources.public(), 'transports': video_sources.TRANSPORTS})
+
+
+@bp.route('/api/video/sources', methods=['POST'])
+@login_required
+def api_sources_save():
+    """Replace the list; an empty password keeps the stored one. Applied to the device display at once."""
+    out = video_sources.save((request.get_json(silent=True) or {}).get('sources'))
+    from core import display_ui
+    display_ui.supervisor.kick()
+    return jsonify({'ok': True, 'sources': out})
+
+
+@bp.route('/api/video/sources/<name>/test', methods=['POST'])
+@login_required
+def api_source_test(name):
+    """Open the stream and read the video format (ffprobe, ~10 s at most)."""
+    return jsonify(video_sources.probe(name))
+
+
+@bp.route('/api/video/default')
+@login_required
+def api_default():
+    """Camera of the Video window in the top bar (Settings → Video): {device, resolution, label} or empty."""
+    v = config.get('video') or {}
+    return jsonify({'device': v.get('device', ''), 'resolution': v.get('resolution', '640x480')})
+
+
+@bp.route('/api/video/default', methods=['POST'])
+@login_required
+def api_default_save():
+    d = request.get_json(silent=True) or {}
+    device, res = str(d.get('device') or ''), str(d.get('resolution') or '640x480')
+    if device and not (_DEVICE_RE.match(device) or _NET_RE.match(device)):
+        return jsonify({'error': 'Device: /dev/videoN or net:<name>'}), 400
+    if res != 'source' and not _SIZE_RE.match(res):
+        return jsonify({'error': 'Resolution: WxH or source'}), 400
+    config.save_key('video', {'device': device, 'resolution': res})
+    return jsonify({'ok': True, 'device': device, 'resolution': res})

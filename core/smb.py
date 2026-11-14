@@ -40,7 +40,7 @@ def parse_share(text):
     s = s.lstrip('/')
     parts = [p for p in s.split('/') if p]
     if len(parts) < 2:
-        raise SmbError('Share must look like //server/share (or smb://server/share)')
+        raise SmbError('Share must look like smb://server/share')
     host, share, sub = parts[0], parts[1], '/'.join(parts[2:])
     if not _HOST.match(host):
         raise SmbError(f'Invalid server name: {host}')
@@ -49,6 +49,19 @@ def parse_share(text):
     if any(p in ('.', '..') for p in parts[2:]):
         raise SmbError('Invalid folder in the share path')
     return host, share, sub
+
+
+def canonical(text):
+    """Any accepted spelling -> 'smb://host/share[/sub]' (stored and shown in this form)."""
+    host, share, sub = parse_share(text)
+    return f'smb://{host}/{share}' + (f'/{sub}' if sub else '')
+
+
+def _canon_or_raw(text):
+    try:
+        return canonical(text)
+    except SmbError:
+        return (text or '').strip()
 
 
 def unc(host, share, sub=''):
@@ -85,6 +98,13 @@ def _mounts():
         return []
 
 
+def _settings():
+    pub = credentials.smb_public()
+    if pub.get('share'):
+        pub['share'] = _canon_or_raw(pub['share'])          # older settings: //host/share
+    return pub
+
+
 def status():
     """{'mounted', 'source', 'mount_point', 'free', 'total', 'settings'}."""
     src = ''
@@ -92,7 +112,7 @@ def status():
         if len(m) > 2 and m[1] == MOUNT_POINT:
             src = m[0].replace('\\040', ' ')
     out = {'mounted': bool(src), 'source': src, 'mount_point': MOUNT_POINT, 'free': None, 'total': None,
-           'root': os.geteuid() == 0, 'settings': credentials.smb_public(), 'versions': VERSIONS}
+           'root': os.geteuid() == 0, 'settings': _settings(), 'versions': VERSIONS}
     if src:
         box = {}
 
@@ -143,7 +163,7 @@ def mount(share, username='', password=None, vers='', remember=False):
     host, name, sub = parse_share(share)
     saved = credentials.smb()
     if password is None:
-        password = saved['password'] if saved['share'] == share.strip() or not saved['share'] else ''
+        password = saved['password'] if _canon_or_raw(saved['share']) == canonical(share) or not saved['share'] else ''
     if status()['mounted']:
         umount()
     try:
@@ -152,10 +172,11 @@ def mount(share, username='', password=None, vers='', remember=False):
         raise SmbError(f'Server name not found: {host}', 502)
     os.makedirs(MOUNT_POINT, mode=0o700, exist_ok=True)
     _sys_mount(unc(host, name), MOUNT_POINT, 'cifs', build_options(host, ip, name, username, password, vers))
-    credentials.set_smb(share=share.strip(), username=username or '', vers=vers or '',
+    credentials.set_smb(share=canonical(share), username=username or '', vers=vers or '',
                         password=password if remember else '')
     st = status()
     st['sub'] = sub
+    st['share'] = canonical(share)
     return st
 
 

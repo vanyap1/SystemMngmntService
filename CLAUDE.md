@@ -12,10 +12,12 @@
 - To test changes, run a second instance on a free port instead:
   `python3 -c "from app import app; app.run(host='127.0.0.1', port=5099)"`
   (as a normal user `sudo -n` fails, so status output shows a sudo error — expected).
-- `config.json` holds live settings and credentials; it is edited from the web UI. Don't commit changes to it
-  unless asked. `.secret_key` is generated at first start and is git-ignored.
-
-## Config (per host)
+- `config.json` holds live settings and credentials; it is edited from the web UI and is git-ignored (shared
+  defaults live in `config.base.json`). `.secret_key` is generated at first start and is git-ignored.
+- `config.base.json` (in git) = `{"default": {...}}` shared defaults; `config.json` (git-ignored, local) =
+  `{"default": {...}, "hosts": {"<hostname>": {...}}}` with passwords / camera logins — never commit it.
+  Effective = BUILTIN_DEFAULTS ← base default ← local default ← local hosts[HOSTNAME]. Tests point both paths to
+  temp files (support.py).
 - `config.json` = `{"default": {...}, "hosts": {"<hostname>": {...}}}`. The same repo is deployed to several
   machines; each one is identified by `socket.gethostname()` (`config.HOSTNAME`).
 - Effective config (`config.CFG`) = `BUILTIN_DEFAULTS` ← `default` ← `hosts[HOSTNAME]` (deep merge).
@@ -55,11 +57,16 @@ core/
   sysclone.py          HW Utils Clone / Image: disks, minimal partition, image locations, one background job
                        (tools/clone-system.sh or tools/write-image.sh)
   smb.py               SMB share for images: mount(2) at /mnt/smms-share, browse, mkdir; login in credentials.py
+  display_ui.py        device display: supervisor of one Kivy script from UI/ on the board's screen (Settings → Display),
+                       GPU detection (render nodes, renderer from Kivy's log)
+  ui_screens.py        UI designer screens UI/screens/<name>.json: schema (TYPES), validation, store, .trash
 routes/                one blueprint per feature; listed in routes/__init__.py BLUEPRINTS
 templates/
   base.html            page skeleton: top bar, shared modals, shared scripts
   partials/            flash, services modal, video controls/modal, devices modal, power menu, update button, monitor_float
   <page>.html          extends base.html
+UI/                    device display scripts (Kivy): smms_ui.py helper, system_monitor / test_status / demo_*.py, images/,
+                       backgrounds/ (one picture for all scripts, chosen in Settings → Display, drawn by smms_ui)
 help/                  documentation (user content): *.md pages, img/, docs/ attachments, examples/ raw notes
 tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
 install.sh             installer: menu, online/offline install, service unit, `bundle` → tools/offline_bundle.py
@@ -92,6 +99,8 @@ static/
   the floating Monitor window on other pages is logged-in only.
 - **Logged in**: everything else (backups, sysinfo, editor, terminal, settings, video, devices/GPIO, power, macros).
 - `auth.enabled = false` ⇒ every visitor is treated as logged in.
+- The device display script (core/display_ui) counts as logged in with its `X-SMMS-Token` — only from 127.0.0.1 and
+  only while that process runs (`auth._display_token`). Nothing else may bypass the login.
 - Backend is the source of truth: **every route is `@login_required` unless it is intentionally public**.
   Public routes are only the ones listed above plus `/login`, `/logout`, `/favicon.ico`, static files.
   Hiding a button in a template is never a substitute for the decorator.
@@ -292,6 +301,31 @@ static/
   0600, never in config.json); pass it only via `token=` (one-shot credential helper + env); run every text shown to
   the user through `scrub()`; `credentials.public()` is the only thing returned. Destructive actions create a
   backup first (`Repo.backup()`). New problem ⇒ `Repo.problems()` + its fix in `Repo.fix()` + a test.
+
+## Device display (Settings → Display)
+- `core/display_ui.py` (supervisor) + `routes/display.py` + Settings tab (`settings_display.js`) + scripts in `UI/`.
+  The supervisor thread starts only in the panel's main process (`app.py __main__`, `devserver.py --display`) —
+  never in tests. It runs the script as the project owner, replaces it when the settings change (SIGTERM to the
+  group, SIGKILL after STOP_SECONDS), restarts it after a crash with BACKOFF, stops it when disabled.
+- Scripts start with `import smms_ui; smms_ui.setup()` before other Kivy imports; they read the panel only through
+  the HTTP API (`smms_ui.api`, `poll`) — never import `core/`. Blocking work off the Kivy thread (`in_background`).
+- `python3` here carries a file capability (cap_net_bind_service), so the kernel drops PR_SET_PDEATHSIG at exec:
+  `smms_ui.die_with_panel()` sets it again (SMMS_PARENT). Other python children of spawn.popen rely on systemd's
+  cgroup kill when the panel stops.
+- Output `auto` = X (`/tmp/.X11-unix/X<n>`) else DRM/KMS (`SDL_VIDEODRIVER=kmsdrm`); X cookie: the user's
+  ~/.Xauthority or a copy of lightdm's in `UI/.run/`. Tests (`tests/test_display.py`) use fake scripts in a temp UI/
+  — never start Kivy or touch the real screen in tests; check by hand with `SMMS_SHOT` screenshots.
+- New dependency for scripts ⇒ component `display` in install.sh `PKGS` and tools/offline_bundle.py `COMPONENTS`.
+- UI designer (page `/ui`, section UI between Code and Docs): `core/ui_screens.py` + `routes/uidesign.py` +
+  `templates/uidesign.html` + `static/js/uidesign.js`; screens run on the device through `UI/screen_runner.py`
+  (display script `screens/<name>.json`, reloads the file when it changes). The widget schema lives in
+  `ui_screens.TYPES` only (the editor gets it as ordered lists from `meta()`); a new widget type ⇒ TYPES +
+  `_widgetHtml` / `_field` in uidesign.js + `Stage.make` / `got` in screen_runner.py + tests/test_uidesign.py.
+  Camera widget: `CameraReader` thread (OpenCV, else ffmpeg) keeps only the newest frame; every exit path stops it
+  (screen reload, app stop joins it — a reading OpenCV thread at exit aborts the process). Never re-assign a
+  Rectangle's texture per frame (it resets tex_coords). The editor keeps one preview <img> per camera across renders.
+  Value formats exist twice (`fmtValue` in JS, `fmt` in the runner) — keep them equal; editor colours
+  `THEME_HEX` = `smms_ui.THEME` (tested).
 
 ## Installer
 - `install.sh` is the only installer (`setup.sh`/`setup_offline.sh` just call it). Steps must stay idempotent and

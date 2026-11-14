@@ -40,7 +40,7 @@ def api_job():
 @login_required
 def api_clone():
     d = _body()
-    return jsonify({'job': sysclone.start_clone(d.get('disk', ''), d.get('extra_mb', 1024), bool(d.get('whole')),
+    return jsonify({'job': sysclone.start_clone(d.get('disk', ''), d.get('extra_mb', 128), bool(d.get('whole')),
                                                 d.get('confirm', ''), bool(d.get('grow')))})
 
 
@@ -48,7 +48,7 @@ def api_clone():
 @login_required
 def api_image():
     d = _body()
-    return jsonify({'job': sysclone.start_image(d.get('folder', ''), d.get('extra_mb', 1024), d.get('tag', ''),
+    return jsonify({'job': sysclone.start_image(d.get('folder', ''), d.get('extra_mb', 128), d.get('tag', ''),
                                                 d.get('compress', ''), bool(d.get('grow', True)))})
 
 

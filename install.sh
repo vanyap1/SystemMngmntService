@@ -10,6 +10,7 @@
 #                                         build offline bundles (on a machine with internet, no root needed)
 #  sudo ./install.sh service  [--yes]     write/enable the systemd unit, (re)start the panel
 #  sudo ./install.sh uninstall [--yes]    remove the systemd unit (the project and its config stay)
+#  sudo ./install.sh display  [--bundle]  Kivy for the device screen UI (Settings → Display), no panel restart
 #
 #  Options: --components core,git,gpio,devices,video   --bundle DIR|FILE.tar   --yes (no questions)
 #  Dashed forms (--online, --offline, --status, --service, --uninstall) are accepted too.
@@ -31,6 +32,7 @@ declare -A PKGS=(
     [gpio]="python3-libgpiod gpiod python3-serial python3-smbus"
     [devices]="usbutils pciutils i2c-tools can-utils"
     [video]="ffmpeg"
+    [display]="python3-kivy libmtdev1"
 )
 declare -A DESC=(
     [core]="Python 3, Flask 3, pip, sudo (required)"
@@ -38,8 +40,9 @@ declare -A DESC=(
     [gpio]="GPIO and test platform: libgpiod, pyserial, smbus"
     [devices]="Devices popup tools: lsusb, lspci, i2c-tools, can-utils"
     [video]="Video streaming: ffmpeg (large, ~100 MB)"
+    [display]="Device screen UI: Kivy (Settings → Display)"
 )
-ORDER=(core git gpio devices video)
+ORDER=(core git gpio devices video display)
 DEFAULT_COMPONENTS="core,git,gpio,devices"
 WHEELS=("flask>=3" werkzeug jinja2 itsdangerous click blinker)
 
@@ -86,6 +89,7 @@ has_component() {
         gpio)    py -c 'import gpiod, serial, smbus' 2>/dev/null ;;
         devices) command -v lsusb >/dev/null && command -v lspci >/dev/null && command -v i2cdetect >/dev/null ;;
         video)   command -v ffmpeg >/dev/null ;;
+        display) py -c 'import importlib.util as u, sys; sys.exit(u.find_spec("kivy") is None)' 2>/dev/null ;;
         *)       return 1 ;;
     esac
 }
@@ -351,6 +355,7 @@ cmd_service() {
 }
 
 service_step() {   # after an install: set up the unit if wanted
+    [[ ${SKIP_SERVICE_STEP:-0} -eq 1 ]] && return 0          # display: a new package, the panel needs no restart
     if [[ -f "$UNIT_FILE" ]] || ask "Install and start the systemd service now?" y; then cmd_service; fi
 }
 
@@ -363,6 +368,28 @@ cmd_uninstall() {
     ok "Service removed. Reinstall: sudo $0 service"
 }
 
+# ── device screen UI (Settings → Display) ───────────────────────────────────────────────────────────────────────
+cmd_display() {   # Kivy for UI/*.py; the panel picks it up by itself (no restart), then enable it in Settings → Display
+    need_root display
+    COMPONENTS="core,display"
+    if [[ -z "$BUNDLE" ]] && apt-get update -q; then
+        info "Installing:${PKGS[display]}"
+        # shellcheck disable=SC2086
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends ${PKGS[display]} || die "apt-get install failed"
+    else
+        [[ -n "$BUNDLE" ]] || warn "no internet — trying an offline bundle (setup_data/)"
+        find_bundle
+        local comps; comps="$(manifest_list "$BUNDLE/manifest.json" components)"
+        [[ ,$comps, == *,display,* ]] || die "the bundle has no 'display' component (it has: $comps) — rebuild it with --components ...,display"
+        YES=1 SKIP_SERVICE_STEP=1 cmd_offline
+        has_component display || die "Kivy is still not importable"
+        ok "Kivy installed from the bundle — enable the screen UI in Settings → Display"
+        return
+    fi
+    has_component display || die "Kivy is still not importable"
+    ok "Kivy $(py -c 'import importlib.metadata as m; print(m.version("Kivy"))' 2>/dev/null) installed — enable the screen UI in Settings → Display"
+}
+
 # ── menu ─────────────────────────────────────────────────────────────────────────────────────────────────────
 menu() {
     local choice items=(
@@ -370,13 +397,14 @@ menu() {
         online    "Install / update from the internet (apt + pip)"
         offline   "Install / update from an offline bundle (setup_data/)"
         bundle    "Build offline bundles for H3 (armhf) / H5 (arm64)"
+        display   "Install the device screen UI dependencies (Kivy)"
         service   "Install / update the systemd service and restart"
         uninstall "Remove the systemd service"
         quit      "Exit"
     )
     while true; do
         if [[ $UI == whiptail ]]; then
-            choice=$(whiptail --title "SystemMngmntService installer" --menu "$(os_name) · $(deb_arch)\n$DIR" 18 76 7 \
+            choice=$(whiptail --title "SystemMngmntService installer" --menu "$(os_name) · $(deb_arch)\n$DIR" 19 76 8 \
                      "${items[@]}" 3>&1 1>&2 2>&3) || return 0
         else
             echo; echo "${C_B}SystemMngmntService installer${C_0} — $(os_name) · $(deb_arch)"
@@ -407,7 +435,7 @@ main() {
             --bundle=*) BUNDLE="${1#*=}" ;;
             --plain) UI=plain ;;
             -h|--help) sed -n '2,/^# =\{5,\}$/p' "$0" | sed '1d;$d;s/^# \{0,1\}//'; exit 0 ;;
-            status|online|offline|bundle|service|uninstall|menu) cmd="$1" ;;
+            status|online|offline|bundle|service|uninstall|display|menu) cmd="$1" ;;
             --status|--online|--offline|--service|--uninstall) cmd="${1#--}" ;;
             *) [[ $cmd == bundle ]] && rest+=("$1") || die "unknown argument: $1 (see $0 --help)" ;;
         esac

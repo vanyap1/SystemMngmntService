@@ -9,7 +9,7 @@ import hmac
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import jsonify, redirect, request, session, url_for
+from flask import has_request_context, jsonify, redirect, request, session, url_for
 
 from core import config
 
@@ -18,8 +18,20 @@ def auth_enabled():
     return bool(config.auth().get('enabled'))
 
 
+def _display_token():
+    """The device display script (core/display_ui) reads the API with its own token: loopback only, and only
+    while that process runs."""
+    if not has_request_context():
+        return False
+    tok = request.headers.get('X-SMMS-Token')
+    if not tok or request.remote_addr not in ('127.0.0.1', '::1'):
+        return False
+    from core import display_ui
+    return display_ui.check_token(tok)
+
+
 def is_logged_in():
-    return not auth_enabled() or bool(session.get('logged_in'))
+    return not auth_enabled() or bool(session.get('logged_in')) or _display_token()
 
 
 def check_credentials(username, password):

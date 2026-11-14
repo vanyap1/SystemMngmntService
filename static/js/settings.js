@@ -25,7 +25,10 @@ const Settings = {
         if (!document.querySelector(`[data-pane="${tab}"]`)) tab = 'general';
         document.querySelectorAll('.st-pane').forEach(p => { p.hidden = p.dataset.pane !== tab; });
         document.querySelectorAll('#st-nav a').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
-        document.getElementById('st-savebar').hidden = tab === 'git' && !this.changed().length;
+        document.getElementById('st-savebar').hidden = ['git', 'display', 'video'].includes(tab) && !this.changed().length;
+        if (tab === 'video' && typeof VideoSources !== 'undefined') VideoSources.load();
+        if (tab !== 'video' && typeof VideoDevices !== 'undefined') VideoDevices.stop();
+        if (typeof DisplaySettings !== 'undefined') DisplaySettings.visible(tab === 'display');
         if (tab === 'git' && !this._gitMounted) {
             this._gitMounted = true;
             Git.mount(document.getElementById('st-git'), 'project');
@@ -50,7 +53,8 @@ const Settings = {
         d.className = ch.length ? 'text-warn' : 'muted';
         document.getElementById('st-save').disabled = !ch.length;
         document.getElementById('st-revert').disabled = !ch.length;
-        document.getElementById('st-savebar').hidden = !ch.length && !document.getElementById('pane-git').hidden;
+        document.getElementById('st-savebar').hidden = !ch.length &&
+            ['pane-git', 'pane-display', 'pane-video'].some(id => !document.getElementById(id).hidden);
     },
 
     revert() {
@@ -116,6 +120,7 @@ const Settings = {
             service_name: val('service_name'), tests_dir: val('tests_dir'), test_logs_dir: val('test_logs_dir'),
             help_dir: val('help_dir'), host: val('host'), port: parseInt(val('port'), 10) || 80,
             update_check_minutes: Math.max(0, parseInt(val('update_check_minutes'), 10) || 0),
+            show_demo_tests: document.getElementById('show_demo_tests').checked,
             auth: { enabled: document.getElementById('auth_enabled').checked, username: val('auth_username') },
             public_service_actions: [...document.querySelectorAll('.public-action:checked')].map(c => c.value),
         };

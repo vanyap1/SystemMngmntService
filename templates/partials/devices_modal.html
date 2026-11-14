@@ -422,7 +422,7 @@
                                     built on a loop device right on the share. Write it to an SD card / eMMC (balenaEtcher, Win32DiskImager, dd);
                                     with “grow” the partition takes the whole card at the first boot.</p>
                                 <div class="cl-row">
-                                    <div class="field cl-grow2"><label for="smb-share">Share</label><input class="input mono" id="smb-share" placeholder="//192.168.1.5/NAS_drive" autocomplete="off" spellcheck="false"></div>
+                                    <div class="field cl-grow2"><label for="smb-share">Share</label><input class="input mono" id="smb-share" placeholder="smb://192.168.1.5/NAS_drive" autocomplete="off" spellcheck="false" onchange="Devices.tabs.clone.shareInput()" title="smb://server/share — //server/share and \\server\share are converted"></div>
                                     <div class="field"><label for="smb-user">User</label><input class="input" id="smb-user" autocomplete="off" spellcheck="false"></div>
                                     <div class="field"><label for="smb-pass">Password</label><input class="input" id="smb-pass" type="password" autocomplete="new-password"></div>
                                     <div class="field cl-narrow"><label for="smb-vers">SMB</label><select class="input" id="smb-vers"></select></div>
@@ -445,7 +445,7 @@
                                 </div>
                                 <div class="hint cl-target" id="img-target"></div>
                                 <div class="cl-row">
-                                    <div class="field"><label for="img-extra">Extra size, MiB (above the data)</label><input class="input" id="img-extra" type="number" min="0" step="128" value="1024" oninput="Devices.tabs.clone.sizes()"></div>
+                                    <div class="field"><label for="img-extra">Extra size, MiB (above the data)</label><input class="input" id="img-extra" type="number" min="0" step="128" value="128" oninput="Devices.tabs.clone.sizes()"></div>
                                     <div class="field"><label for="img-tag">Tag in the file name (optional)</label><input class="input mono" id="img-tag" placeholder="e.g. release_1.2" oninput="Devices.tabs.clone.sizes()" autocomplete="off" spellcheck="false"></div>
                                     <div class="field cl-narrow"><label for="img-compress">Compression</label><select class="input" id="img-compress" onchange="Devices.tabs.clone.sizes()"><option value="">.img</option><option value="gz">.img.gz</option></select></div>
                                 </div>
@@ -467,7 +467,7 @@
                                     <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.refresh()" title="Read the disks again"><i class="fa-solid fa-rotate"></i> Disks</button></div>
                                 <div class="cl-disks" id="cl-disks"></div>
                                 <div class="cl-row">
-                                    <div class="field"><label for="cl-extra">Extra size, MiB (above the data)</label><input class="input" id="cl-extra" type="number" min="0" step="128" value="1024" oninput="Devices.tabs.clone.sizes()">
+                                    <div class="field"><label for="cl-extra">Extra size, MiB (above the data)</label><input class="input" id="cl-extra" type="number" min="0" step="128" value="128" oninput="Devices.tabs.clone.sizes()">
                                         <label class="check-row small"><input type="checkbox" id="cl-whole" onchange="Devices.tabs.clone.sizes()"> whole disk</label>
                                         <label class="check-row small"><input type="checkbox" id="cl-grow" onchange="Devices.tabs.clone.sizes()"> grow to the whole disk at the first boot</label></div>
                                 </div>

@@ -1,12 +1,10 @@
-"""Runtime configuration backed by config.json.
+"""Runtime configuration: config.base.json (in git) + config.json (local, git-ignored).
 
-config.json layout:
-    {
-        "default": { ...settings used by any machine without its own section... },
-        "hosts":   { "<hostname>": { ...settings of that machine... } }
-    }
-The effective config is BUILTIN_DEFAULTS <- "default" <- "hosts"[<this hostname>] (deep merge).
-Saving from the settings page writes only the section of the current host.
+config.base.json = {"default": {...}} — shared defaults for every machine, edited by hand and committed.
+config.json      = {"default": {...}, "hosts": {"<hostname>": {...}}} — written by the panel, never committed
+                   (host settings, passwords, camera logins).
+The effective config is BUILTIN_DEFAULTS <- base "default" <- local "default" <- local "hosts"[<this hostname>]
+(deep merge). Saving from the settings page writes only the section of the current host into config.json.
 
 Always read values through the accessor functions (or ``CFG``) at request time:
 settings can be changed from the web UI, so never cache them in module-level constants.
@@ -18,7 +16,8 @@ import secrets
 import socket
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
+CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')               # local, git-ignored
+BASE_CONFIG_PATH = os.path.join(BASE_DIR, 'config.base.json')     # shared defaults, in git
 MACROS_PATH = os.path.join(BASE_DIR, 'macros.json')
 SECRET_KEY_PATH = os.path.join(BASE_DIR, '.secret_key')
 
@@ -43,6 +42,10 @@ BUILTIN_DEFAULTS = {
     # Test platform; relative paths are resolved against the project directory.
     'tests_dir':       'testPlatform',
     'test_logs_dir':   'testLogs',
+    # List the demo_*.py test scripts (off = hidden on the Tests page, the device display and the UI designer).
+    'show_demo_tests': True,
+    # Video window of the top bar (Settings → Video): {"device": "/dev/video1" | "net:<name>", "resolution": "640x480"}.
+    'video': {},
     # Documentation (Markdown pages, img/ and docs/ subfolders); relative to the project directory.
     'help_dir':        'help',
     # Check the panel's own git upstream for updates every N minutes while the UI is open (0 = off).
@@ -53,6 +56,10 @@ BUILTIN_DEFAULTS = {
     'modbus': {},
     # HW Utils → Terminal: {"profiles": [{name, conn, eol, commands, view}], "current": name} (core/ttyterm.check_profiles).
     'tty': {},
+    # Network cameras (Settings → Video): [{name, url, username, password, transport}] (core/video_sources.py).
+    'video_sources': [],
+    # Device display (Settings → Display): Kivy script from UI/ on the board's screen (core/display_ui.check).
+    'display': {},
     # Saved Modbus sessions (profile + results + frame log), one JSON file each; relative to the project directory.
     'modbus_sessions_dir': 'modbusSessions',
     # Saved terminal sessions (profile + macros + output + notes); relative to the project directory.
@@ -63,12 +70,13 @@ BUILTIN_DEFAULTS = {
 # public_service_actions are handled separately).
 EDITABLE_KEYS = ('app_title', 'page_title', 'device_name', 'target_dir', 'backup_dir',
                  'archive_name', 'upload_tmp_name', 'service_name', 'host', 'port',
-                 'tests_dir', 'test_logs_dir', 'help_dir', 'update_check_minutes')
+                 'tests_dir', 'test_logs_dir', 'help_dir', 'update_check_minutes', 'show_demo_tests')
 
 INT_KEYS = ('port', 'update_check_minutes')
+BOOL_KEYS = ('show_demo_tests',)
 
 # Keys written to the host section on save.
-HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels', 'modbus', 'tty')
+HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels', 'modbus', 'tty', 'display', 'video_sources', 'video')
 
 CFG = {}        # effective config of this host
 _FILE = {}      # raw config.json content
@@ -98,6 +106,15 @@ def _write():
         json.dump(_FILE, f, indent=4, ensure_ascii=False)
 
 
+def _base_default():
+    try:
+        with open(BASE_CONFIG_PATH, 'r', encoding='utf-8') as f:
+            d = json.load(f)
+        return d.get('default') or {} if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
 def load():
     raw = {}
     if os.path.exists(CONFIG_PATH):
@@ -113,7 +130,7 @@ def load():
     if migrated:
         _write()
     CFG.clear()
-    CFG.update(_merge(_merge(BUILTIN_DEFAULTS, _FILE['default']), host_section() or {}))
+    CFG.update(_merge(_merge(_merge(BUILTIN_DEFAULTS, _base_default()), _FILE['default']), host_section() or {}))
     return CFG
 
 
@@ -126,7 +143,7 @@ def update(data):
     """Apply a settings payload (only whitelisted keys) and save it for this host."""
     for key in EDITABLE_KEYS:
         if key in data:
-            CFG[key] = int(data[key]) if key in INT_KEYS else data[key]
+            CFG[key] = int(data[key]) if key in INT_KEYS else bool(data[key]) if key in BOOL_KEYS else data[key]
     if isinstance(data.get('auth'), dict):
         auth_cfg = CFG.setdefault('auth', {})
         for k in ('enabled', 'username', 'password'):
@@ -181,6 +198,10 @@ def service_name():
 
 def _project_path(path):
     return os.path.normpath(os.path.join(BASE_DIR, os.path.expanduser(path)))
+
+
+def show_demo_tests():
+    return bool(CFG.get('show_demo_tests', True))
 
 
 def tests_dir():

@@ -18,6 +18,9 @@ For what the project is and what it looks like, see the [README](../README.md).
 - [Git (Settings → Git, Git icon in the editor and docs)](#git-settings--git-git-icon-in-the-editor-and-docs)
 - [Documentation (`/help`)](#documentation-help)
 - [Test Platform (`/tests`)](#test-platform-tests)
+- [Device display (Settings → Display)](#device-display-settings--display)
+- [Video (Settings → Video)](#video-settings--video)
+- [UI designer (`/ui`)](#ui-designer-ui)
 - [Installation](#installation)
 - [Testing](#testing)
 - [Authentication](#authentication)
@@ -55,7 +58,7 @@ service, project and backup directories. See [Installation](#installation) and [
 
 The top bar has the work **sections** on the left — **Main**, **Code** (editor), **Docs** (viewer, editor,
 diagrams), **Tests** (sub-pages **Run** and **Logs**, shown while the section is open) — and the global tools on the
-right: **Video**, **Monitor**, **HW Utils**, **Services**, **Settings** (gear), the **Power** menu (reboot, shutdown,
+right: **Video**, **Monitor**, **HW Utils**, **Services**, **Settings** (gear), the **Power** menu (restart the panel service, reboot, shutdown,
 logout). When the panel's git upstream has new commits (checked every `update_check_minutes` while the panel is
 open, only if there is internet), a yellow **⚠** button appears after the power menu: its popup lists the commits,
 updates the panel (`git pull --ff-only`, local changes are kept) and restarts it.
@@ -84,6 +87,9 @@ SystemMngmntService/
 │   ├── js/           # core.js, services.js, sysinfo.js, monitor.js, video.js, power.js, devices*.js (shared), <page>.js
 │   └── img/
 ├── help/            # Documentation (Markdown), help/img images, help/docs attachments, help/examples raw notes
+├── UI/               # Device display: Kivy scripts shown on the board's screen (Settings → Display), smms_ui.py
+│                     #   helper, images/ pictures, backgrounds/ (Settings → Display → Background);
+│                     #   .kivy/ and .run/ are git-ignored runtime files
 ├── testPlatform/     # Test platform: *_test.py sequences, testStrategy.py / testWatch.py (run from the Tests page)
 │   └── instruments/  # Drivers, file = instrument model: psu_custom6020, psu_custom305, siglent_spd1305x,
 │                     #   siglent_sdg1032x, siglent_sdl1020x, rigol_dho804/924, owon_xdm, owon_oel, fs9922, ads1115,
@@ -102,9 +108,13 @@ See `CLAUDE.md` for how to add pages and API endpoints.
 
 ---
 
-## Configuration (`config.json`)
+## Configuration (`config.base.json` + `config.json`)
 
-One config file serves every machine the project is deployed to:
+Two files: **`config.base.json`** (in git) holds `default` — shared defaults for every machine, edited by hand and
+committed; **`config.json`** (git-ignored, written by the panel) holds this machine's own settings, passwords and
+camera logins and never goes into git. The effective config is built-in ← base `default` ← local `default` ←
+local `hosts[<hostname>]`. A fresh clone without `config.json` runs on the base defaults; the first save creates it.
+`config.json`:
 
 ```json
 {
@@ -136,6 +146,8 @@ Fields (same in `default` and in a host section):
 | `tests_dir` / `test_logs_dir` | Test scripts / run logs (relative to the project) |
 | `help_dir` | Documentation folder (default `help`, relative to the project) |
 | `update_check_minutes` | How often the panel checks its git upstream for updates while open (default 60, `0` = off) |
+| `show_demo_tests` | List the `demo*` test scripts (default true; off = hidden everywhere and not startable) |
+| `video` / `video_sources` | Default camera of the Video window / network cameras with logins (Settings → Video; keep them in the local file) |
 
 ---
 
@@ -319,6 +331,9 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET / POST | `/api/git/credentials` | login | HTTPS username + token (write-only: only `token_set` / last 4 chars come back) |
 | GET | `/api/update/status[?force=1]` | login | Panel update check: commits the panel repo is behind its upstream (fetch runs in the background) |
 | POST | `/api/update/apply`, `/api/update/restart` | login | `git pull --ff-only` of the panel / restart the panel's own systemd unit |
+| GET | `/api/display/backgrounds`, `/api/display/background/<name>` | login | Pictures of `UI/backgrounds/` / one picture (preview) |
+| GET | `/api/display/status`, `/api/display/scripts` | login | Device display: process state, settings, Kivy / X detection, log / scripts of `UI/` with their docstrings |
+| POST | `/api/display/settings`, `/api/display/restart` | login | Save the display settings (applied at once: the script is replaced / stopped) / restart the script |
 | POST | `/api/update/plan`, `/api/update/force` | login | Git panel → *Update panel*: fetch and list local changes in the way / update to the upstream whatever is local (`{confirm: true}` when the plan has issues; saved first: backup branch, git stash, copies in `.git/panel-update-backup/`; `config.json` kept), then restart the unit → 409 `{error, plan}` without confirmation |
 | GET | `/help[?doc=<path>]` | login | Documentation viewer / editor |
 | GET | `/help/file/<path>[?dl=1]` | login | Image, attachment or raw page from `help_dir` (sandboxed) |
@@ -450,10 +465,10 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   script runs.
 - **Clone / Image** — move the running system to another disk, or build a bootable `.img` on an SMB share
   (`tools/clone-system.sh`, `core/sysclone.py`). The new partition gets the size of the **used data** + 300 MiB
-  reserve + *Extra* (default 1024 MiB) — or the whole disk — so the target may be smaller than the source; files
+  reserve + *Extra* (default 128 MiB) — or the whole disk — so the target may be smaller than the source; files
   are copied with rsync, fstab / `armbianEnv.txt` get the new UUID, u-boot is written with Armbian's
   `write_uboot_platform` (sunxi and rockchip). The system disk and disks with mounted partitions cannot be chosen;
-  a clone needs the red *all data will be destroyed* box ticked. *Image*: connect a share (`//server/share`, user, password, SMB version —
+  a clone needs the red *all data will be destroyed* box ticked. *Image*: connect a share (`smb://server/share` — `//server/share` / `\\server\share` are converted, user, password, SMB version —
   mounted at `/mnt/smms-share` with mount(2), no cifs-utils; the password is kept only when *remember* is ticked,
   in the host credentials file outside the repository), browse it, pick a folder: the image
   `<host>[_tag]_<date>.img[.gz]` is built there on a loop device with **direct I/O** (buffered reads past 4 GiB of a
@@ -614,6 +629,98 @@ A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar 
   `TEST_RUNNER_ANSWER_FD`. The answer is logged as an `INFO` step (does not affect the verdict); check it with
   the regular test methods. Demo: `demo_operator_test.py`.
 
+## Device display (Settings → Display)
+
+The board's own screen (HDMI, LCD with a touch panel) can show a Kivy script from `UI/` — a status display next to
+the web panel. **Settings → Display**: switch it on, choose the script, output, size, rotation, scale, cursor and
+input; enabling, the script and *Apply* take effect at once (the running script is stopped — SIGTERM, SIGKILL after
+4 s — and the new one started); switching it off closes the script. Kivy comes with `sudo ./install.sh display`.
+
+- **Output** `auto`: into the X server when one runs on the *X display* (`:0`; a window, or the full screen), else
+  directly on the screen through DRM/KMS (`SDL_VIDEODRIVER=kmsdrm`) — e.g. after `systemctl stop lightdm` the
+  script replaces the console login prompt; when it stops, the console comes back. `kmsdrm` / `x11` force one.
+- **GPU check**: the tab shows the render nodes (`/dev/dri/renderD*` with their kernel driver — panfrost, lima,
+  v3d …), the connected screens and, after the first start, the OpenGL renderer Kivy reported. Without a GPU
+  driver, or with a software renderer (llvmpipe / softpipe), a warning says the screen will be slow (lower the
+  frames / s to 10–15).
+- **Background**: a picture of `UI/backgrounds/` (previews on the tab, a click applies it at once) drawn under
+  every script by `smms_ui` (`Window.canvas.before`, panels become translucent), darkened by *Darken* (0–95 %);
+  `none` = the plain theme colour. New pictures: copy `.png` / `.jpg` files into `UI/backgrounds/`.
+- **Size** 0 × 0 = the screen's own resolution; **rotation** 0/90/180/270 (touch coordinates rotate with it);
+  **scale** 0 = automatic (dp / sp × screen height / 720, 1080p → 150 %); **cursor** auto = shown when a mouse is
+  connected when the script starts (on DRM/KMS SDL draws no pointer — Kivy's `cursor` module draws it); **touch screen** = Kivy reads the touch panels itself (`probesysfs` → mtdev / hidinput), **mouse** =
+  the mouse through SDL (ignored while fingers touch).
+- **Process**: `core/display_ui.py` — a supervisor thread of the panel service runs `python3 UI/<script>` as the
+  owner of the project (with its video / render / input groups), restarts it after a crash with a growing delay
+  (2, 5, 10, 30, 60 s; a minute of running resets it), keeps the last 300 lines of its output (shown on the tab).
+  The script dies with the panel.
+- **Data**: the scripts read the panel through its HTTP API (`SMMS_API`, header `X-SMMS-Token` with `SMMS_TOKEN` —
+  accepted only from 127.0.0.1 and only while that process runs).
+
+Scripts in `UI/` (each module docstring is the description shown in the settings):
+
+| Script | What it shows |
+|---|---|
+| `system_monitor.py` | CPU, memory, temperature, network tiles; CPU / RAM and network charts (5 min); disks; a running clone / image job |
+| `test_status.py` | Test platform: pick a test, START / STOP, steps (PASS / FAIL / ERROR), verdict; operator prompts answered on the screen (buttons, choice, number keypad, text with the on-screen keyboard) |
+| `demo_controls.py` | Buttons, toggle, slider, a touch area that draws every finger / click (checks touch and mouse) |
+| `demo_chart.py` | Splash screen (`UI/images/splash.png`, else the chosen background) and a live chart with buttons |
+
+A new script: `UI/<name>.py` with a docstring, starting with `import smms_ui; smms_ui.setup()` before any other Kivy
+import (it applies the settings to Kivy and handles SIGTERM); `smms_ui.api.get('/api/...')`, `smms_ui.poll(path,
+seconds, callback)` (callback on the Kivy thread), `smms_ui.THEME`, `smms_ui.widgets()` → `Card`, `LineChart`,
+`smms_ui.image('x.png')`. By hand on the board: `SDL_VIDEODRIVER=kmsdrm python3 UI/<name>.py` (console) or
+`python3 UI/<name>.py` (X session); `SMMS_SHOT=/tmp/x.png SMMS_SHOT_DELAY=5` saves the screen and quits.
+Development without the service: `python3 tests/devserver.py --display` runs the supervisor (port 5099).
+
+## Video (Settings → Video)
+
+- **Video devices**: every local `/dev/video*` and network camera with *Preview*; the device + resolution chosen
+  here and *Default for the Video window* is what the **Video** button of the top bar opens (`config.json` → `video`).
+- **Network cameras**: RTSP / HTTP streams (name, URL, user, password, transport tcp / udp) kept only in this host's
+  local `config.json` (`video_sources`, not in git). A URL pasted with `user:password@` is split; the password is
+  never returned to the browser (empty field = keep it) and is removed from every message. *Test* opens the stream
+  with ffprobe (≈ 12 s at most) and shows codec and size. A source is `net:<name>` everywhere: the Video window
+  (ffmpeg, scaled to the chosen size or `source`) and the camera widget of the UI designer (OpenCV / ffmpeg on the
+  device; the display script gets the URLs in its environment and restarts when the cameras change).
+
+| Method | URL | Auth | Description |
+|---|---|---|---|
+| GET / POST | `/api/video/sources` | login | Network cameras without passwords / replace the list `{sources: [...]}` |
+| POST | `/api/video/sources/<name>/test` | login | `{ok, video}` or `{ok: false, error}` |
+| GET / POST | `/api/video/default` | login | Camera of the top bar Video window `{device, resolution}` |
+
+## UI designer (`/ui`)
+
+Top bar **UI** (between Code and Docs): screens for the device display without writing Kivy code. A screen is a set
+of widgets placed in design pixels (the size of the device screen by default; the device scales it):
+
+| Widget | Shows / does |
+|---|---|
+| panel | a rounded rectangle (background of a group) |
+| label | static text |
+| value | a value of the panel's API: *source* `monitor` (`/api/monitor`) or `tests` (`/api/tests/status`) + a dotted *path* (`current.cpu.pct`, `current.temp`, `run.state` …; suggestions in the field), *format* (raw, int, 1dp, 2dp, percent, bytes, rate, uptime), prefix / suffix, *warn* / *critical* thresholds colour it |
+| bar | a value as a bar (0 … max) |
+| chart | a value over time (window in s, y max or auto) |
+| image | a picture of `UI/images/` (contain / cover / stretch) |
+| button | an action: another screen, POST to an `/api/...` path with a JSON body, start a test (script) / stop the test |
+| clock | the time (strftime format) |
+| camera | the video of a V4L2 camera in a frame: *video device* (`/dev/videoN`, list with names), *resolution* (the camera's sizes offered), frames / s, fit (cover / contain / stretch), border colour / width / radius, mirror, upside down, a caption over the picture. On the device: OpenCV (MJPG) or, without it, ffmpeg; a missing / busy camera shows a message in the frame and is retried every 3 s. *preview* in the editor streams it through the panel (`/api/video_feed`) — a camera is read by one program at a time, so *On device* stops the preview first |
+
+Drag to move, the corner to resize (10 px grid), arrows nudge (Shift ×10), Del removes, Ctrl+D duplicates, Ctrl+Z
+undo, Ctrl+S saves; front / back order. *live data* previews the real values in the editor. The background: the
+picture of Settings → Display or a colour. **Save** writes `UI/screens/<name>.json` (checked: widget types, numbers,
+colours, paths, actions); a screen shown on the device **reloads by itself** within ~2 s. **On device** makes it the
+display script (`screens/<name>.json`, run by `UI/screen_runner.py`). Delete moves the file to `UI/screens/.trash`.
+`example_dashboard` is a sample screen.
+
+| Method | URL | Auth | Description |
+|---|---|---|---|
+| GET | `/ui` | login | The designer page |
+| GET | `/api/uiscreens`, `/api/uiscreens/<name>` | login | Screens + pictures + display settings + editor metadata (widget props in order, sources, formats, theme colours) / one screen |
+| POST | `/api/uiscreens/<name>`, `/api/uiscreens/<name>/delete`, `/api/uiscreens/<name>/show` | login | Save (validated) / move to `.trash` / show on the device (Settings → Display) |
+| GET | `/api/uiscreens/image/<file>` | login | A picture of `UI/images/` |
+
 ## Installation
 
 ```bash
@@ -628,6 +735,7 @@ sudo ./install.sh                 # interactive menu (whiptail; --plain for text
 | `./install.sh bundle --arch armhf,arm64 --suite bookworm` | build offline bundles on a machine with internet (no root) |
 | `sudo ./install.sh service` | write `/etc/systemd/system/systemmngmntservice.service` if it changed, enable it, (re)start the panel |
 | `sudo ./install.sh uninstall` | stop and remove the unit (project, `config.json` and packages stay) |
+| `sudo ./install.sh display` | Kivy for the device display (component `display`; from the internet, else an offline bundle) — no panel restart |
 
 Options: `--components core,git,gpio,devices,video` (default `core,git,gpio,devices`), `--bundle DIR|FILE.tar`,
 `--yes` (no questions — for scripts). Every step is idempotent; a running panel is restarted only after a confirmation.
@@ -639,6 +747,7 @@ Options: `--components core,git,gpio,devices,video` (default `core,git,gpio,devi
 | `gpio` | python3-libgpiod, gpiod, python3-serial, python3-smbus (GPIO popup, test platform) |
 | `devices` | usbutils, pciutils, i2c-tools, can-utils |
 | `video` | ffmpeg (~100 MB with its libraries) |
+| `display` | python3-kivy, libmtdev1 (device display, Settings → Display) |
 
 ### Offline installation (Allwinner H3 / H5 boards without internet)
 

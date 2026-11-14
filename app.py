@@ -18,4 +18,6 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
+    from core import display_ui
+    display_ui.supervisor.start()           # device display (Settings → Display); only in the real panel process
     app.run(host=config.get('host', '0.0.0.0'), port=config.get('port', 80), threaded=True)

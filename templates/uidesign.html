@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}UI designer — {% endblock %}
+{% block body_class %}page-uidesign{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('css/uidesign.css') }}">{% endblock %}
+
+{% block topbar_tools %}
+<div class="ud-top">
+    <select class="input input-sm" id="ud-screen" onchange="UIDesign.open(this.value)" title="Screen (UI/screens/)"></select>
+    <button class="btn-icon" onclick="UIDesign.newScreen()" title="New screen"><i class="fa-solid fa-plus"></i></button>
+    <button class="btn-icon" onclick="UIDesign.saveAs()" title="Copy as a new screen"><i class="fa-regular fa-copy"></i></button>
+    <button class="btn-icon git-danger" onclick="UIDesign.remove()" title="Delete the screen (moved to UI/screens/.trash)"><i class="fa-regular fa-trash-can"></i></button>
+    <span class="ud-dirty" id="ud-dirty"></span>
+    <button class="btn btn-primary btn-sm" onclick="UIDesign.save()" title="Save (Ctrl+S) — a screen shown on the device reloads by itself"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    <button class="btn btn-success btn-sm" onclick="UIDesign.show()" title="Show this screen on the device (Settings → Display)"><i class="fa-solid fa-display"></i> On device</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="ud-app">
+    <aside id="ud-left">
+        <div class="ud-sec">Add</div>
+        <div class="ud-palette" id="ud-palette"></div>
+        <div class="ud-sec">Widgets <span class="faint" id="ud-count"></span></div>
+        <div class="ud-outline" id="ud-outline"></div>
+    </aside>
+
+    <main id="ud-center">
+        <div class="ud-bar">
+            <input class="input input-sm" id="ud-title" placeholder="Screen title" oninput="UIDesign.docInput()">
+            <label class="mb-lbl" title="Design size in pixels; the device scales it to its screen">
+                <input class="input input-sm ud-num" type="number" id="ud-w" min="160" oninput="UIDesign.docInput()"> ×
+                <input class="input input-sm ud-num" type="number" id="ud-h" min="120" oninput="UIDesign.docInput()"></label>
+            <button class="btn btn-ghost btn-sm" onclick="UIDesign.fitScreen()" title="Take the size of the device screen"><i class="fa-solid fa-display"></i> size</button>
+            <select class="input input-sm" id="ud-bg" onchange="UIDesign.docInput()" title="Background: the picture of Settings → Display, or a colour"></select>
+            <input type="color" id="ud-bgc" class="ud-color" oninput="UIDesign.docInput()" title="Background colour" hidden>
+            <label class="mb-lbl" title="Data refresh of the screen on the device, seconds">every <input class="input input-sm ud-num" type="number" id="ud-int" min="0.5" step="0.5" oninput="UIDesign.docInput()"> s</label>
+            <span class="spacer"></span>
+            <label class="check-row small" title="Snap moves and sizes to a 10 px grid"><input type="checkbox" id="ud-snap" checked> grid</label>
+            <label class="check-row small" title="Show live values from the panel in the editor"><input type="checkbox" id="ud-live" checked onchange="UIDesign.liveToggle()"> live data</label>
+            <button class="btn-icon" onclick="UIDesign.undo()" title="Undo (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+            <span class="faint small" id="ud-zoom"></span>
+        </div>
+        <div id="ud-viewport"><div id="ud-stage"></div></div>
+        <div class="ud-hint faint small">Drag to move · corner to resize · arrows nudge (Shift ×10) · Del removes · Ctrl+D duplicates · Ctrl+Z undo · Ctrl+S saves</div>
+    </main>
+
+    <aside id="ud-right">
+        <div class="ud-sec" id="ud-props-title">Properties</div>
+        <div id="ud-props" class="ud-props"><div class="hint">Select a widget, or add one on the left.</div></div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/uidesign.js') }}"></script>{% endblock %}

@@ -36,6 +36,7 @@ COMPONENTS = {
     'gpio':    ['python3-libgpiod', 'gpiod', 'python3-serial', 'python3-smbus'],
     'devices': ['usbutils', 'pciutils', 'i2c-tools', 'can-utils'],
     'video':   ['ffmpeg'],
+    'display': ['python3-kivy', 'libmtdev1'],
 }
 DEFAULT_COMPONENTS = ['core', 'git', 'gpio', 'devices']
 # Pure-Python wheels installed with pip (MarkupSafe, the only compiled dependency, comes from python3-markupsafe).

@@ -1,0 +1,55 @@
+/* UI designer page (templates/uidesign.html, static/js/uidesign.js) */
+body.page-uidesign { height: 100vh; overflow: hidden; }
+#ud-app { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr) 300px; }
+.ud-top { display: flex; align-items: center; gap: 6px; }
+.ud-top select { width: auto; max-width: 220px; }
+.ud-dirty { font-size: 12px; color: var(--warn); min-width: 60px; text-align: right; }
+
+#ud-left, #ud-right { background: var(--bg-panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 10px; }
+#ud-right { border-right: 0; border-left: 1px solid var(--border); }
+.ud-sec { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--text-dim); margin: 6px 0; }
+.ud-palette { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.ud-palette button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; font-size: 11.5px;
+                     background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); cursor: pointer; }
+.ud-palette button:hover { border-color: var(--accent); }
+.ud-palette i { font-size: 16px; color: var(--accent); }
+.ud-outline { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.ud-outline div { padding: 3px 6px; border-radius: var(--radius); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ud-outline div:hover { background: var(--bg-hover); }
+.ud-outline div.on { background: var(--bg-panel-2); color: var(--accent); }
+.ud-outline i { width: 16px; color: var(--text-dim); }
+
+#ud-center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ud-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.ud-bar #ud-title { width: 200px; }
+.ud-bar select { width: auto; }
+.ud-num { width: 74px !important; }
+.ud-color { width: 34px; height: 28px; padding: 0; border: 1px solid var(--border); background: none; border-radius: var(--radius); }
+#ud-viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; background: var(--bg-deep); }
+#ud-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; outline: 1px solid var(--border);
+            background-size: cover; background-position: center; }
+.ud-hint { padding: 4px 10px; border-top: 1px solid var(--border); }
+
+/* widgets on the stage (sizes in design pixels; the stage is scaled with a CSS transform) */
+.ud-w { position: absolute; box-sizing: border-box; overflow: hidden; cursor: move; user-select: none; }
+.ud-w.sel { outline: 3px solid var(--accent); outline-offset: 0; z-index: 9999; overflow: visible; }
+.ud-w .ud-txt { width: 100%; height: 100%; display: flex; align-items: center; line-height: 1.1; white-space: pre-wrap; overflow: hidden; }
+.ud-w .ud-track { position: absolute; left: 0; right: 0; top: 50%; height: 12%; min-height: 4px; transform: translateY(-50%);
+                  background: var(--border); border-radius: 4px; overflow: hidden; }
+.ud-w .ud-fill { height: 100%; }
+.ud-w svg { width: 100%; height: 100%; display: block; }
+.ud-w img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.ud-w .ud-handle { position: absolute; right: -14px; bottom: -14px; width: 28px; height: 28px; background: var(--accent);
+                   border-radius: 50%; cursor: nwse-resize; display: none; }
+.ud-w.sel .ud-handle { display: block; }
+
+.ud-props { display: flex; flex-direction: column; gap: 8px; }
+.ud-props .field { margin: 0; }
+.ud-props .field label { font-size: 11.5px; }
+.ud-props .ud-xy { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ud-props .ud-colrow { display: flex; gap: 6px; align-items: center; }
+.ud-props .ud-colrow select { flex: 1; }
+.ud-props textarea { min-height: 54px; resize: vertical; }
+.ud-props .row { gap: 6px; flex-wrap: wrap; }
+.ud-w .ud-cap { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; color: var(--text);
+                 text-shadow: 0 0 3px var(--bg-deep), 0 0 3px var(--bg-deep); pointer-events: none; }

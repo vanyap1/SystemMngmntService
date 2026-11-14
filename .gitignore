@@ -252,3 +252,10 @@ modbusSessions/
 ttySessions/
 # Simulated emergency stop button of the demo tests (touch to press)
 testPlatform/ESTOP
+
+# device display (core/display_ui.py): Kivy home and runtime files
+UI/.kivy/
+UI/.run/
+
+# local settings of each host (passwords, cameras); shared defaults: config.base.json
+config.json

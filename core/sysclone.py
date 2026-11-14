@@ -466,7 +466,7 @@ def _target(disk, confirm):
     return d
 
 
-def start_clone(disk, extra_mb=1024, whole=False, confirm='', grow=False):
+def start_clone(disk, extra_mb=128, whole=False, confirm='', grow=False):
     """Copy the system to ``disk`` (a name from disks(), never the system disk); ``confirm`` = the typed name."""
     d = _target(disk, confirm)
     env = {'TARGET_DISK': d['path'], 'GROW_ON_BOOT': 'yes' if grow and not whole else 'no'}
@@ -494,7 +494,7 @@ def image_bytes(extra_mb):
     return start * 512 + (min_partition_mb(used) + extra_mb) * MB + MB
 
 
-def start_image(folder='', extra_mb=1024, tag='', compress='', grow=True):
+def start_image(folder='', extra_mb=128, tag='', compress='', grow=True):
     """Build ``<host>[_tag]_<date>.img[.gz]`` in ``folder`` of the mounted share."""
     if compress not in ('', 'gz'):
         raise CloneError('Compression: none or gz')

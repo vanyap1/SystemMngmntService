@@ -22,6 +22,7 @@ TMP = tempfile.mkdtemp(prefix='smms-tests-')
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
 
 config.CONFIG_PATH = os.path.join(TMP, 'config.json')
+config.BASE_CONFIG_PATH = os.path.join(TMP, 'config.base.json')   # the repository's shared defaults never leak in
 config.CFG['auth'] = {'enabled': True, 'username': 'test', 'password': 'test'}
 config.CFG['public_service_actions'] = ['restart']
 config.CFG['test_logs_dir'] = os.path.join(TMP, 'testLogs')

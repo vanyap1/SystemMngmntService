@@ -1,6 +1,6 @@
 """Flask blueprints. Register every new blueprint in BLUEPRINTS."""
-from routes import (auth, backups, dashboard, devices, editor, git, help, i2c, logs, macros, modbus, net, pyrun, services,
-                    settings, sysclone, system, terminal, tests, ttyterm, udev, updates, video)
+from routes import (auth, backups, dashboard, devices, display, editor, git, help, i2c, logs, macros, modbus, net, pyrun,
+                    services, settings, sysclone, system, terminal, tests, ttyterm, udev, uidesign, updates, video)
 
 BLUEPRINTS = [
     auth.bp,
@@ -16,6 +16,7 @@ BLUEPRINTS = [
     net.bp,
     sysclone.bp,
     editor.bp,
+    uidesign.bp,
     pyrun.bp,
     terminal.bp,
     macros.bp,
@@ -24,6 +25,7 @@ BLUEPRINTS = [
     logs.bp,
     help.bp,
     settings.bp,
+    display.bp,
     git.bp,
     updates.bp,
 ]

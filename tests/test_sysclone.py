@@ -278,6 +278,11 @@ class Share(unittest.TestCase):
             with self.assertRaises(smb.SmbError):
                 smb.build_options('nas', '1.1.1.1', 'd', user, 'p', vers)
 
+    def test_canonical_share_address(self):
+        for text in ('smb://192.168.1.5/NAS_drive', '//192.168.1.5/NAS_drive', '\\\\192.168.1.5\\NAS_drive', ' smb:192.168.1.5/NAS_drive/ '):
+            self.assertEqual(smb.canonical(text), 'smb://192.168.1.5/NAS_drive', text)
+        self.assertEqual(smb.canonical('//nas/data/img/a'), 'smb://nas/data/img/a')
+
     def test_mount_needs_root(self):
         with mock.patch('os.geteuid', return_value=1000), self.assertRaises(smb.SmbError) as cm:
             smb.mount('//nas/data', 'u', 'p')
@@ -289,13 +294,15 @@ class Share(unittest.TestCase):
             smb.mount('//nas/data/img', 'vanya', 'secret', '3.0', remember=False)
             self.assertEqual(m.call_args[0][:3], ('//nas/data', self.root, 'cifs'))
             self.assertIn('ip=10.0.0.9', m.call_args[0][3])
-            self.assertEqual(credentials.smb(), {'share': '//nas/data/img', 'username': 'vanya', 'password': '', 'vers': '3.0'})
+            self.assertEqual(credentials.smb(), {'share': 'smb://nas/data/img', 'username': 'vanya', 'password': '', 'vers': '3.0'})
             smb.mount('//nas/data/img', 'vanya', 'secret', '3.0', remember=True)
             self.assertEqual(credentials.smb()['password'], 'secret')
             self.assertEqual(credentials.smb_public()['password_set'], True)
             self.assertNotIn('password', credentials.smb_public())
-            smb.mount('//nas/data/img', 'vanya', None, '3.0', remember=True)     # empty field = the saved one
+            smb.mount('\\\\nas\\data\\img', 'vanya', None, '3.0', remember=True)   # empty field = the saved one (any spelling)
             self.assertIn('pass=secret,', m.call_args[0][3])
+            credentials.set_smb(share='//nas/data/img')                            # older settings: shown as smb://
+            self.assertEqual(smb._settings()['share'], 'smb://nas/data/img')
             smb.forget()
             self.assertEqual(credentials.smb()['password'], '')
 

@@ -29,7 +29,7 @@ Devices.register({
             const s = d.smb.settings || {};
             if (!this.filled) {
                 this.filled = true;
-                this.$('smb-share').value = s.share || '';
+                this.$('smb-share').value = this.smbUrl(s.share || '');
                 this.$('smb-user').value = s.username || '';
                 this.$('smb-vers').innerHTML = d.smb.versions.map(v => `<option value="${esc(v)}">${v ? esc(v) : 'auto'}</option>`).join('');
                 this.$('smb-vers').value = s.vers || '';
@@ -66,7 +66,15 @@ Devices.register({
         this.$('cl-sum-write').textContent = w ? w.name + (wd ? ' → ' + wd.name : '') : '';
     },
 
-    /** Folder part of the share field (//host/share/sub -> sub). */
+    /** Share address in the one shown form: smb://host/share[/sub] (from //host/share, \\host\share, smb:host/share). */
+    smbUrl(text) {
+        const parts = String(text || '').trim().replace(/\\/g, '/').replace(/^smb:/i, '').split('/').filter(Boolean);
+        return parts.length >= 2 ? 'smb://' + parts.join('/') : String(text || '').trim();
+    },
+
+    shareInput() { const f = this.$('smb-share'); f.value = this.smbUrl(f.value); },
+
+    /** Folder part of the share field (smb://host/share/sub -> sub). */
     _sub() {
         const parts = this.$('smb-share').value.replace(/\\/g, '/').replace(/^smb:/i, '').split('/').filter(Boolean);
         return parts.slice(2).join('/');
@@ -162,7 +170,7 @@ Devices.register({
         const tag = this.$('img-tag').value.trim(), stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
         const file = `${d.hostname}${tag ? '_' + tag : ''}_${stamp}.img${this.$('img-compress').value ? '.gz' : ''}`;
         this.$('img-target').innerHTML = d.smb.mounted && this.path !== null
-            ? `Image goes to <b class="mono">${esc(d.smb.source.replace(/\\/g, '/'))}${this.path ? '/' + esc(this.path) : ''}</b> · file <span class="mono">${esc(file)}</span>`
+            ? `Image goes to <b class="mono">${esc(this.smbUrl(d.smb.source))}${this.path ? '/' + esc(this.path) : ''}</b> · file <span class="mono">${esc(file)}</span>`
             : 'Connect the share and open the folder for the image.';
         this.$('img-start').disabled = busy || !d.root || !d.smb.mounted || this.path === null;
 
@@ -198,7 +206,7 @@ Devices.register({
 
     _renderShare() {
         const s = this.data.smb;
-        this.$('smb-state').innerHTML = s.mounted ? `<span class="text-ok">connected</span> <span class="mono">${esc(s.source)}</span>` : 'not connected';
+        this.$('smb-state').innerHTML = s.mounted ? `<span class="text-ok">connected</span> <span class="mono">${esc(this.smbUrl(s.source))}</span>` : 'not connected';
         this.$('smb-connect').hidden = s.mounted;
         this.$('smb-disconnect').hidden = !s.mounted;
         this.$('smb-forget').hidden = !(s.settings && s.settings.password_set);
@@ -211,6 +219,7 @@ Devices.register({
     connect() {
         const btn = this.$('smb-connect');
         btn.disabled = true;
+        this.shareInput();
         App.api('/api/smb/mount', { json: { share: this.$('smb-share').value, username: this.$('smb-user').value,
             password: this.$('smb-pass').value, vers: this.$('smb-vers').value, remember: this.$('smb-remember').checked } })
             .then(() => {
@@ -256,7 +265,7 @@ Devices.register({
         const el = this.$('smb-list'), crumbs = this.$('smb-crumbs');
         if (!this.listing) { el.innerHTML = ''; crumbs.innerHTML = ''; return; }
         const parts = this.listing.path ? this.listing.path.split('/') : [];
-        crumbs.innerHTML = `<a data-go=""><i class="fa-solid fa-server"></i> ${esc((this.data.smb.source || 'share').replace(/\\/g, '/'))}</a>` +
+        crumbs.innerHTML = `<a data-go=""><i class="fa-solid fa-server"></i> ${esc(this.data.smb.source ? this.smbUrl(this.data.smb.source) : 'share')}</a>` +
             parts.map((p, i) => `<i class="fa-solid fa-chevron-right"></i><a data-go="${esc(parts.slice(0, i + 1).join('/'))}">${esc(p)}</a>`).join('');
         crumbs.onclick = e => { const a = e.target.closest('[data-go]'); if (a) this.browse(a.dataset.go); };
         const up = parts.length ? `<div class="cl-item dir" data-go="${esc(parts.slice(0, -1).join('/'))}"><i class="fa-solid fa-turn-up"></i><span>..</span><span></span><span></span><span></span></div>` : '';

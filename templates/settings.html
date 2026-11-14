@@ -41,6 +41,8 @@
         <a href="#service" data-tab="service"><i class="fa-solid fa-gears"></i> Service</a>
         <a href="#tests" data-tab="tests"><i class="fa-solid fa-vial"></i> Tests &amp; docs</a>
         <a href="#network" data-tab="network"><i class="fa-solid fa-network-wired"></i> Network</a>
+        <a href="#video" data-tab="video"><i class="fa-solid fa-video"></i> Video</a>
+        <a href="#display" data-tab="display"><i class="fa-solid fa-display"></i> Display</a>
         <a href="#access" data-tab="access"><i class="fa-solid fa-lock"></i> Access</a>
         <a href="#git" data-tab="git"><i class="fa-brands fa-git-alt st-git-ico"></i> Git <span class="git-badge st-nav-badge" hidden></span></a>
     </nav>
@@ -106,6 +108,10 @@
                         {{ field('tests_dir', 'Test scripts directory', '<code>*_test.py</code>; relative to the panel directory') }}
                         {{ field('test_logs_dir', 'Test logs directory', 'One log file per run') }}
                     </div>
+                    <label class="st-switch">
+                        <input type="checkbox" id="show_demo_tests" data-cfg="show_demo_tests" {% if cfg.show_demo_tests %}checked{% endif %}>
+                        <span><b>Show demo tests</b><br><span class="hint">Off: scripts starting with <code>demo</code> are hidden (Tests page, device display, UI designer) and cannot be started</span></span>
+                    </label>
                 </div>
             </div>
             <div class="card">
@@ -125,6 +131,121 @@
                 </div>
                 <div class="st-note"><i class="fa-solid fa-circle-info"></i> Takes effect after restarting <code>systemmngmntservice.service</code>.</div>
             </div></div>
+        </section>
+
+        <section class="st-pane st-pane-wide" id="pane-video" data-pane="video" hidden>
+            <h2><i class="fa-solid fa-video"></i> Video</h2>
+            <div class="card">
+                <div class="card-head">Video devices <span class="meta">local <code>/dev/video*</code> and the network cameras below — the <i class="fa-solid fa-video"></i> Video button of the top bar opens the default one</span>
+                    <span class="spacer"></span><button class="btn-icon" type="button" onclick="VideoDevices.load()" title="Scan again"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+                <div class="card-body">
+                    <table class="tbl vd-tbl"><thead><tr><th>Device</th><th>Name</th><th>Kind</th><th></th></tr></thead><tbody id="vd-rows"></tbody></table>
+                    <div class="row vd-ctl">
+                        <select class="input input-sm" id="vd-device" onchange="VideoDevices.pick(this.value)" title="Device"></select>
+                        <select class="input input-sm" id="vd-res" title="Resolution (network: scaled, source = as sent)"></select>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="VideoDevices.preview()" id="vd-prev"><i class="fa-solid fa-play"></i> Preview</button>
+                        <button class="btn btn-primary btn-sm" type="button" onclick="VideoDevices.saveDefault()"><i class="fa-solid fa-star"></i> Default for the Video window</button>
+                        <span class="hint" id="vd-default"></span>
+                    </div>
+                    <div class="vd-view" id="vd-view" hidden><img id="vd-img" alt=""></div>
+                    <div class="st-note"><i class="fa-solid fa-circle-info"></i><span>A camera is read by one program at a time: stop the preview / the Video window
+                        before a device display script (camera widget) uses the same device.</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">Network cameras <span class="meta">RTSP / HTTP streams next to the local <code>/dev/video*</code> — in the Video window and the camera widget of the UI designer (<code>net:&lt;name&gt;</code>)</span></div>
+                <div class="card-body">
+                    <table class="tbl vs-tbl">
+                        <thead><tr><th>Name</th><th>URL (without login)</th><th>User</th><th>Password</th><th>Transport</th><th></th></tr></thead>
+                        <tbody id="vs-rows"></tbody>
+                    </table>
+                    <div class="row">
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="VideoSources.add()"><i class="fa-solid fa-plus"></i> Add camera</button>
+                        <span class="hint" id="vs-dirty"></span><span class="spacer"></span>
+                        <button class="btn btn-primary btn-sm" type="button" onclick="VideoSources.save()" id="vs-save" disabled><i class="fa-solid fa-floppy-disk"></i> Save cameras</button>
+                    </div>
+                    <div class="st-note"><i class="fa-solid fa-shield-halved"></i>
+                        <span>Logins are kept only in this host's <code>config.json</code> (not in git) and never sent back to the browser — leave the password empty to keep it.
+                        A URL pasted with <code>user:password@</code> is split into the fields. Dahua / Amcrest: <code>rtsp://host:554/cam/realmonitor?channel=1&amp;subtype=1</code> (subtype 1 = the small stream).</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="st-pane" id="pane-display" data-pane="display" hidden>
+            <h2><i class="fa-solid fa-display"></i> Display <span class="badge" id="dsp-state"></span></h2>
+            <div class="card">
+                <div class="card-head">Device screen <span class="meta">a Kivy script from <code>UI/</code> on the board's own display — applied at once</span></div>
+                <div class="card-body">
+                    <label class="st-switch">
+                        <input type="checkbox" id="dsp-enabled" onchange="DisplaySettings.apply()">
+                        <span><b>Show a UI on the device screen</b><br><span class="hint">Switching it off closes the running script; another script replaces the old one at once</span></span>
+                    </label>
+                    <div class="field">
+                        <label for="dsp-script">Script</label>
+                        <select class="input" id="dsp-script" onchange="DisplaySettings.apply()"></select>
+                        <span class="hint" id="dsp-script-desc"></span>
+                    </div>
+                    <div class="field">
+                        <label>Background <span class="hint" id="dsp-bg-name"></span></label>
+                        <div class="dsp-bgs" id="dsp-bgs"></div>
+                        <span class="hint">Pictures in <code>UI/backgrounds/</code> — drawn under every script; a click applies it at once</span>
+                    </div>
+                    <div class="field">
+                        <label for="dsp-bgdim">Darken the background <span class="hint" id="dsp-bgdim-val"></span></label>
+                        <input type="range" id="dsp-bgdim" min="0" max="95" step="5" oninput="DisplaySettings.dimInput()">
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label for="dsp-mode">Output</label>
+                            <select class="input" id="dsp-mode" onchange="DisplaySettings.changed()">
+                                <option value="auto">auto — X server if it runs, else the screen directly</option>
+                                <option value="kmsdrm">screen directly (DRM/KMS, no X; replaces the console)</option>
+                                <option value="x11">X server (window / full screen on the X display)</option>
+                            </select></div>
+                        <div class="field"><label for="dsp-xdisplay">X display</label>
+                            <input class="input mono" id="dsp-xdisplay" placeholder=":0" oninput="DisplaySettings.changed()"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label for="dsp-width">Width × height, px</label>
+                            <div class="row"><input class="input" type="number" min="0" id="dsp-width" oninput="DisplaySettings.changed()">
+                                <span>×</span><input class="input" type="number" min="0" id="dsp-height" oninput="DisplaySettings.changed()"></div>
+                            <span class="hint">0 × 0 = the screen's own resolution</span></div>
+                        <div class="field"><label for="dsp-rotation">Rotation</label>
+                            <select class="input" id="dsp-rotation" onchange="DisplaySettings.changed()">
+                                <option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label for="dsp-scale">Scale, %</label>
+                            <input class="input" type="number" min="0" max="400" step="10" id="dsp-scale" oninput="DisplaySettings.changed()">
+                            <span class="hint">0 = automatic from the screen height (720 px = 100 %)</span></div>
+                        <div class="field"><label for="dsp-fps">Max frames / s</label>
+                            <input class="input" type="number" min="1" max="120" id="dsp-fps" oninput="DisplaySettings.changed()"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label for="dsp-cursor">Mouse cursor</label>
+                            <select class="input" id="dsp-cursor" onchange="DisplaySettings.changed()">
+                                <option value="auto">auto — shown when a mouse is connected</option><option value="on">always</option><option value="off">never</option></select></div>
+                        <div class="field"><label>Input</label>
+                            <div class="row">
+                                <label class="check-row"><input type="checkbox" id="dsp-fullscreen" onchange="DisplaySettings.changed()"> full screen (X)</label>
+                                <label class="check-row"><input type="checkbox" id="dsp-touch" onchange="DisplaySettings.changed()"> touch screen</label>
+                                <label class="check-row"><input type="checkbox" id="dsp-mouse" onchange="DisplaySettings.changed()"> mouse</label>
+                            </div></div>
+                    </div>
+                    <div class="row">
+                        <span class="hint" id="dsp-dirty"></span><span class="spacer"></span>
+                        <button class="btn btn-ghost btn-sm" type="button" onclick="DisplaySettings.restart()" id="dsp-restart"><i class="fa-solid fa-rotate-right"></i> Restart script</button>
+                        <button class="btn btn-primary btn-sm" type="button" onclick="DisplaySettings.apply()" id="dsp-apply" disabled><i class="fa-solid fa-check"></i> Apply</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">Process <span class="meta" id="dsp-proc"></span></div>
+                <div class="card-body">
+                    <div class="dsp-gpu" id="dsp-gpu"></div>
+                    <div class="st-note" id="dsp-env"></div>
+                    <pre class="dsp-log" id="dsp-log"></pre>
+                </div>
+            </div>
         </section>
 
         <section class="st-pane" id="pane-access" data-pane="access" hidden>
@@ -203,4 +324,6 @@
 {% block scripts %}
 <script src="{{ asset('js/git.js') }}"></script>
 <script src="{{ asset('js/settings.js') }}"></script>
+<script src="{{ asset('js/settings_display.js') }}"></script>
+<script src="{{ asset('js/settings_video.js') }}"></script>
 {% endblock %}

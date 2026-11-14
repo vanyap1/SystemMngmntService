@@ -3,7 +3,7 @@ import os
 import time
 import unittest
 
-from tests.support import config
+from tests.support import client, config
 from core import test_runner
 from core.test_runner import TestRunner
 
@@ -53,6 +53,17 @@ class Runs(unittest.TestCase):
     def test_scripts_listed(self):
         names = [s['name'] for s in test_runner.list_scripts()]
         self.assertIn('demo_pass_test.py', names)
+
+    def test_demo_tests_can_be_hidden(self):
+        config.CFG['show_demo_tests'] = False
+        try:
+            names = [s['name'] for s in test_runner.list_scripts()]
+            self.assertFalse([n for n in names if n.lower().startswith('demo')])
+            with self.assertRaises(ValueError):                 # hidden = cannot be started either
+                self.r.start('demo_random_test.py')
+            self.assertNotIn('demo_pass_test.py', [s['name'] for s in client(True).get('/api/tests/scripts').get_json()['scripts']])
+        finally:
+            config.CFG['show_demo_tests'] = True
 
     def test_bad_script_name(self):
         for name in ['../app.py', 'app.py', 'missing_test.py']:

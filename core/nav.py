@@ -16,6 +16,9 @@ SECTIONS = [
     Section('code', 'Code', 'fa-solid fa-code', [
         NavItem('editor.editor', 'Code Editor', 'fa-solid fa-code', False),
     ]),
+    Section('ui', 'UI', 'fa-solid fa-object-group', [
+        NavItem('uidesign.page', 'UI designer', 'fa-solid fa-object-group', False),
+    ]),
     Section('docs', 'Docs', 'fa-solid fa-book', [
         NavItem('help.help_page', 'Docs', 'fa-solid fa-book', False),
     ]),

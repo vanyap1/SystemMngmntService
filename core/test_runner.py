@@ -52,6 +52,8 @@ def list_scripts():
         names = sorted(n for n in os.listdir(tests_dir) if SCRIPT_PATTERN.match(n))
     except OSError:
         return []
+    if not config.show_demo_tests():            # Settings → Tests & docs: hide demo_*.py (and refuse to start them)
+        names = [n for n in names if not n.lower().startswith('demo')]
     return [{'name': n, 'description': _script_description(os.path.join(tests_dir, n))}
             for n in names]
 

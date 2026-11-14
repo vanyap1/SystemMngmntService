@@ -113,6 +113,7 @@
     border: none; border-radius: 5px; color: #ccc; cursor: pointer; text-align: left; width: 100%; }
 .power-item:hover { background: #252526; color: #fff; }
 .power-item i { font-size: 15px; width: 18px; text-align: center; }
+.power-restart:hover i  { color: var(--accent); }
 .power-reboot:hover i   { color: #d4a95a; }
 .power-shutdown:hover i { color: var(--danger); }
 .power-item-title { font-size: 12px; font-weight: 600; line-height: 1.2; }

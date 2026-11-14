@@ -9,7 +9,9 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/tree', '/api/macros', '/a
                  '/api/help/tree', '/api/help/search?q=x', '/api/help/assets?kind=img',
                  '/api/help/diagrams', '/api/git/repos', '/api/git/status', '/api/git/summary', '/api/git/credentials',
                  '/api/git/tree_status', '/api/update/status', '/api/i2c/buses', '/api/pyrun/poll',
-                 '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions']
+                 '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions',
+                 '/api/display/status', '/api/display/scripts', '/api/display/backgrounds',
+                 '/api/uiscreens', '/api/uiscreens/example_dashboard', '/api/video/sources', '/api/video/default']
 PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/backups/create', '/api/settings',
                   '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
@@ -17,7 +19,7 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/help/diagram/rename', '/api/help/diagram/delete', '/api/git/commit', '/api/git/push',
                   '/api/git/pull', '/api/git/fetch', '/api/git/branch', '/api/git/checkout', '/api/git/discard',
                   '/api/git/reset', '/api/git/fix', '/api/git/identity', '/api/git/credentials', '/api/git/clone',
-                  '/api/git/init', '/api/update/apply', '/api/update/restart', '/api/update/plan', '/api/update/force',
+                  '/api/git/init', '/api/update/apply', '/api/update/restart', '/api/update/plan', '/api/update/force', '/api/display/settings', '/api/display/restart', '/api/uiscreens/x', '/api/uiscreens/x/delete', '/api/uiscreens/x/show', '/api/video/sources', '/api/video/sources/x/test', '/api/video/default',
                   '/api/i2c/scan', '/api/i2c/read', '/api/i2c/write', '/api/i2c/label',
                   '/api/pyrun/start', '/api/pyrun/cmd', '/api/pyrun/input', '/api/pyrun/stop', '/api/pyrun/eval',
                   '/api/pyrun/vars', '/api/pyrun/breaks', '/api/term/open', '/api/term/input', '/api/term/resize',
@@ -27,7 +29,7 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/tty/lines', '/api/tty/close', '/api/tty/profiles', '/api/tty/oneshot', '/api/tty/session/save',
                   '/api/tty/session/delete',
                   '/api/smb/mount', '/api/smb/umount', '/api/smb/forget', '/api/smb/mkdir']
-PROTECTED_PAGES = ['/editor', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
+PROTECTED_PAGES = ['/editor', '/ui', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
                    '/help/file/img/x.png', '/help?diagram=x']
 
 

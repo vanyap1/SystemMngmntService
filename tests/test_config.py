@@ -34,6 +34,34 @@ class ConfigStore(unittest.TestCase):
         self.assertEqual(raw['default']['device_name'], '')
         self.assertEqual(config.target_dir(), '/srv/app')
 
+    def test_base_config_layers_under_the_local_one(self):
+        base = os.path.join(TMP, 'cfg_base.json')
+        saved = config.BASE_CONFIG_PATH
+        config.BASE_CONFIG_PATH = base
+        try:
+            with open(base, 'w') as f:
+                json.dump({'_comment': 'x', 'default': {'device_name': 'Base', 'port': 8080, 'app_title': 'Shared'}}, f)
+            self._write({'default': {'port': 81}, 'hosts': {'box1': {'device_name': 'Box'}}})
+            config.load()
+            self.assertEqual((config.get('app_title'), config.get('port'), config.get('device_name')), ('Shared', 81, 'Box'))
+            os.remove(config.CONFIG_PATH)                    # a fresh clone: no local config.json yet
+            config.load()
+            self.assertEqual((config.get('port'), config.get('device_name')), (8080, 'Base'))
+            config.save_key('i2c_labels', {})                # the panel writes only the local file
+            with open(base) as f:
+                self.assertNotIn('hosts', json.load(f))
+            self.assertIn('box1', self._raw()['hosts'])
+        finally:
+            config.BASE_CONFIG_PATH = saved
+
+    def test_repository_tracks_only_the_base_config(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, '.gitignore')) as f:
+            self.assertIn('config.json', [ln.strip() for ln in f])
+        with open(os.path.join(root, 'config.base.json')) as f:
+            d = json.load(f)
+        self.assertEqual(sorted(k for k in d if not k.startswith('_')), ['default'])
+
     def test_unknown_host_runs_on_defaults(self):
         self._write({'default': {'target_dir': '/opt/x'}, 'hosts': {'other': {'target_dir': '/nope'}}})
         config.load()

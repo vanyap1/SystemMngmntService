@@ -29,6 +29,8 @@ parser.add_argument('--fake-update', action='store_true',
                     help='pretend the panel upstream has new commits (shows the update button; nothing is fetched)')
 parser.add_argument('--fake-devices', action='store_true',
                     help='simulated Modbus TCP :5502, JSON telemetry :5555 and SCPI PSU :5588 (tests/fake_devices.py)')
+parser.add_argument('--display', action='store_true',
+                    help='run the device display supervisor (Settings → Display draws on the real screen)')
 parser.add_argument('--fake-i2c', action='store_true', help='simulated I²C bus (tests/fake_i2c.py) instead of the real ones')
 args = parser.parse_args()
 
@@ -71,4 +73,8 @@ def inject_js(response):
     return response
 
 
+if args.display:
+    from core import display_ui
+    config.CFG['port'] = args.port          # the display script calls this server (SMMS_API)
+    display_ui.supervisor.start()
 app.run(host='127.0.0.1', port=args.port)
