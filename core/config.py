@@ -44,8 +44,6 @@ BUILTIN_DEFAULTS = {
     'test_logs_dir':   'testLogs',
     # List the demo_*.py test scripts (off = hidden on the Tests page, the device display and the UI designer).
     'show_demo_tests': True,
-    # Video window of the top bar (Settings → Video): {"device": "/dev/video1" | "net:<name>", "resolution": "640x480"}.
-    'video': {},
     # Documentation (Markdown pages, img/ and docs/ subfolders); relative to the project directory.
     'help_dir':        'help',
     # Check the panel's own git upstream for updates every N minutes while the UI is open (0 = off).
@@ -76,7 +74,7 @@ INT_KEYS = ('port', 'update_check_minutes')
 BOOL_KEYS = ('show_demo_tests',)
 
 # Keys written to the host section on save.
-HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels', 'modbus', 'tty', 'display', 'video_sources', 'video')
+HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels', 'modbus', 'tty', 'display', 'video_sources')
 
 CFG = {}        # effective config of this host
 _FILE = {}      # raw config.json content

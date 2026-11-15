@@ -147,7 +147,7 @@ Fields (same in `default` and in a host section):
 | `help_dir` | Documentation folder (default `help`, relative to the project) |
 | `update_check_minutes` | How often the panel checks its git upstream for updates while open (default 60, `0` = off) |
 | `show_demo_tests` | List the `demo*` test scripts (default true; off = hidden everywhere and not startable) |
-| `video` / `video_sources` | Default camera of the Video window / network cameras with logins (Settings → Video; keep them in the local file) |
+| `video_sources` | Network cameras with logins (Settings → Video; kept in the local file only) |
 
 ---
 
@@ -675,8 +675,8 @@ Development without the service: `python3 tests/devserver.py --display` runs the
 
 ## Video (Settings → Video)
 
-- **Video devices**: every local `/dev/video*` and network camera with *Preview*; the device + resolution chosen
-  here and *Default for the Video window* is what the **Video** button of the top bar opens (`config.json` → `video`).
+- **Video devices**: every local `/dev/video*` and network camera with *Preview*. The **Video** menu of the top bar
+  lists the same devices (network cameras as `<name> (network, host)`).
 - **Network cameras**: RTSP / HTTP streams (name, URL, user, password, transport tcp / udp) kept only in this host's
   local `config.json` (`video_sources`, not in git). A URL pasted with `user:password@` is split; the password is
   never returned to the browser (empty field = keep it) and is removed from every message. *Test* opens the stream
@@ -688,7 +688,6 @@ Development without the service: `python3 tests/devserver.py --display` runs the
 |---|---|---|---|
 | GET / POST | `/api/video/sources` | login | Network cameras without passwords / replace the list `{sources: [...]}` |
 | POST | `/api/video/sources/<name>/test` | login | `{ok, video}` or `{ok: false, error}` |
-| GET / POST | `/api/video/default` | login | Camera of the top bar Video window `{device, resolution}` |
 
 ## UI designer (`/ui`)
 

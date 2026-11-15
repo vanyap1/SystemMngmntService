@@ -53,15 +53,6 @@ class Sources(unittest.TestCase):
             self.assertEqual(c.post('/api/video/sources/gate/test').get_json(), {'ok': True, 'video': 'h264 704x576'})
             self.assertIn('-rtsp_transport', run.call_args[0][0])
 
-    def test_default_camera_of_the_video_window(self):
-        c = client(True)
-        self.assertEqual(c.get('/api/video/default').get_json()['device'], '')
-        self.assertEqual(c.post('/api/video/default', json={'device': 'net:gate', 'resolution': 'source'}).status_code, 200)
-        self.assertEqual(c.get('/api/video/default').get_json(), {'device': 'net:gate', 'resolution': 'source'})
-        for bad in ({'device': '/etc/passwd'}, {'device': '/dev/video1', 'resolution': '1x1; rm'}):
-            self.assertEqual(c.post('/api/video/default', json=bad).status_code, 400, bad)
-        config.CFG['video'] = {}
-
     def test_camera_widget_and_display_environment(self):
         video_sources.save([{'name': 'gate', 'url': URL, 'transport': 'udp'}])
         w = ui_screens.check({'widgets': [{'type': 'camera', 'device': 'net:gate'}]})['widgets'][0]

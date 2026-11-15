@@ -91,29 +91,26 @@ const VideoSources = {
 };
 
 
-/* Devices (local + network), default camera of the top bar Video window, inline preview. */
+/* Devices (local + network) with an inline preview. */
 const VideoDevices = {
     list: [],
-    def: { device: '', resolution: '640x480' },
     sid: null,
 
     $(id) { return document.getElementById(id); },
 
     load() {
-        Promise.all([App.api('/api/video_devices'), App.api('/api/video/default')]).then(([d, def]) => {
+        App.api('/api/video_devices').then(d => {
             this.list = d.devices;
-            this.def = def;
-            const cur = this.$('vd-device').value || def.device;
-            this.$('vd-rows').innerHTML = this.list.map(x => `<tr${x.path === def.device ? ' class="vd-def"' : ''}>
-                <td class="mono">${esc(x.path)}${x.path === def.device ? ' <i class="fa-solid fa-star text-warn" title="default"></i>' : ''}</td>
+            const cur = this.$('vd-device').value;
+            this.$('vd-rows').innerHTML = this.list.map(x => `<tr>
+                <td class="mono">${esc(x.path)}</td>
                 <td>${esc(x.name || '')}</td><td>${x.network ? 'network' : 'local'}</td>
                 <td><button class="btn btn-ghost btn-sm" type="button" data-use="${esc(x.path)}"><i class="fa-solid fa-eye"></i> Preview</button></td></tr>`).join('') ||
                 '<tr><td colspan="4" class="tbl-empty">No video devices</td></tr>';
             this.$('vd-rows').onclick = e => { const b = e.target.closest('[data-use]'); if (b) { this.pick(b.dataset.use).then(() => this.preview(true)); } };
             this.$('vd-device').innerHTML = this.list.map(x => `<option value="${esc(x.path)}">${esc(x.label)}</option>`).join('');
             if (this.list.some(x => x.path === cur)) this.$('vd-device').value = cur;
-            this.$('vd-default').textContent = def.device ? `default: ${def.device} · ${def.resolution}` : 'no default yet';
-            if (this.$('vd-device').value) this.pick(this.$('vd-device').value, cur === def.device ? def.resolution : null);
+            if (this.$('vd-device').value) this.pick(this.$('vd-device').value);
         }).catch(e => toast(e.message, true));
     },
 
@@ -145,12 +142,6 @@ const VideoDevices = {
         App.api('/api/video_stop', { json: { stream_id: this.sid } }).catch(() => {});
         this.sid = null;
         this.$('vd-prev').innerHTML = '<i class="fa-solid fa-play"></i> Preview';
-    },
-
-    saveDefault() {
-        const body = { device: this.$('vd-device').value, resolution: this.$('vd-res').value };
-        App.api('/api/video/default', { json: body }).then(() => { toast('Default camera saved'); this.load(); })
-            .catch(e => toast(e.message, true));
     },
 };
 window.addEventListener('pagehide', () => { if (VideoDevices.sid) navigator.sendBeacon('/api/video_stop', new Blob([JSON.stringify({ stream_id: VideoDevices.sid })], { type: 'application/json' })); });

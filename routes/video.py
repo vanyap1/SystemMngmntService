@@ -7,7 +7,7 @@ import subprocess
 
 from flask import Blueprint, Response, jsonify, request
 
-from core import config, video_sources
+from core import video_sources
 from core.auth import login_required
 
 bp = Blueprint('video', __name__)
@@ -177,23 +177,3 @@ def api_source_test(name):
     """Open the stream and read the video format (ffprobe, ~10 s at most)."""
     return jsonify(video_sources.probe(name))
 
-
-@bp.route('/api/video/default')
-@login_required
-def api_default():
-    """Camera of the Video window in the top bar (Settings → Video): {device, resolution, label} or empty."""
-    v = config.get('video') or {}
-    return jsonify({'device': v.get('device', ''), 'resolution': v.get('resolution', '640x480')})
-
-
-@bp.route('/api/video/default', methods=['POST'])
-@login_required
-def api_default_save():
-    d = request.get_json(silent=True) or {}
-    device, res = str(d.get('device') or ''), str(d.get('resolution') or '640x480')
-    if device and not (_DEVICE_RE.match(device) or _NET_RE.match(device)):
-        return jsonify({'error': 'Device: /dev/videoN or net:<name>'}), 400
-    if res != 'source' and not _SIZE_RE.match(res):
-        return jsonify({'error': 'Resolution: WxH or source'}), 400
-    config.save_key('video', {'device': device, 'resolution': res})
-    return jsonify({'ok': True, 'device': device, 'resolution': res})

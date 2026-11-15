@@ -1,7 +1,7 @@
 /* ==========================================================================
-   Video window: the top bar button (partials/video_controls.html) opens the camera chosen in Settings → Video
-   (/api/video/default; local /dev/video* or a network source net:<name>) in a draggable / resizable popup
-   (partials/video_modal.html). Devices are managed on the settings tab (settings_video.js). Logged-in only.
+   Video stream: device menu in the top bar (partials/video_controls.html)
+   and draggable/resizable popup (partials/video_modal.html). Logged-in only.
+   The list holds the local /dev/video* devices and the network cameras of Settings → Video (net:<name>).
    ========================================================================== */
 
 const Video = {
@@ -9,17 +9,34 @@ const Video = {
     device: null,
     res: '640x480',
 
-    toggle() {
-        const ov = document.getElementById('video-overlay');
-        if (ov.classList.contains('open')) return Video.close();
-        App.api('/api/video/default').then(d => {
-            if (!d.device) {
-                toast('Choose the camera in Settings → Video', true);
-                if (location.pathname === '/settings') location.hash = 'video'; else location.href = '/settings#video';
+    _loaded: false,
+
+    toggleMenu(e) {
+        if (e) e.stopPropagation();
+        const m = document.getElementById('video-menu');
+        if (m.classList.toggle('open') && !this._loaded) { this._loaded = true; this.loadDevices(); }
+    },
+
+    closeMenu() {
+        const m = document.getElementById('video-menu');
+        if (m) m.classList.remove('open');
+    },
+
+    loadDevices() {
+        const sel = document.getElementById('video-dev-select');
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">Scanning devices…</option>';
+        App.api('/api/video_devices').then(data => {
+            const list = data.devices || [];
+            if (!list.length) {
+                sel.innerHTML = '<option value="">No video devices</option>';
                 return;
             }
-            Video.open(d.device, d.resolution, d.device);
-        }).catch(e => toast(e.message, true));
+            sel.innerHTML = list.map(d =>
+                `<option value="${esc(d.path)}"${d.path === cur ? ' selected' : ''}>${esc(d.label || d.path)}</option>`
+            ).join('');
+            if (!cur) sel.value = (list.find(d => d.path === '/dev/video1') || list[0]).path;
+        }).catch(() => { sel.innerHTML = '<option value="">Failed to load devices</option>'; });
     },
 
     loadResolutions(device) {
@@ -30,17 +47,22 @@ const Video = {
             .catch(() => ['640x480', '1280x720', '320x240'])
             .then(list => {
                 resSel.innerHTML = list.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
-                const picked = [Video.res, '640x480', '1280x720'].find(r => list.includes(r)) || list[0];
+                const prefer = device.startsWith('net:') ? ['source'] : [Video.res, '640x480', '1280x720'];   // network: as sent
+                const picked = prefer.find(r => list.includes(r)) || list[0];
                 resSel.value = picked;
                 Video.res = picked;
             });
     },
 
-    /** Open the popup on ``device`` (/dev/videoN or net:<name>) at ``res`` (kept when the device offers it). */
-    open(device, res, label) {
-        Video.device = device;
-        if (res) Video.res = res;
-        document.getElementById('video-popup-dev-label').textContent = label || device;
+    open() {
+        const sel = document.getElementById('video-dev-select');
+        if (!sel.value) {
+            toast('Please select a video device', true);
+            return;
+        }
+        Video.device = sel.value;
+        const opt = sel.options[sel.selectedIndex];
+        document.getElementById('video-popup-dev-label').textContent = opt ? opt.textContent : Video.device;
         document.getElementById('video-overlay').classList.add('open');
         Video.loadResolutions(Video.device).then(Video.start);
     },
@@ -143,4 +165,5 @@ const Video = {
 };
 
 document.addEventListener('DOMContentLoaded', () => Video.initDragResize());   // devices are listed when the menu opens
-App.onEscape(() => Video.close());
+document.addEventListener('click', e => { if (!e.target.closest('.video-ctrl-group')) Video.closeMenu(); });
+App.onEscape(() => { Video.closeMenu(); Video.close(); });

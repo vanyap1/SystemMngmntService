@@ -136,7 +136,7 @@
         <section class="st-pane st-pane-wide" id="pane-video" data-pane="video" hidden>
             <h2><i class="fa-solid fa-video"></i> Video</h2>
             <div class="card">
-                <div class="card-head">Video devices <span class="meta">local <code>/dev/video*</code> and the network cameras below — the <i class="fa-solid fa-video"></i> Video button of the top bar opens the default one</span>
+                <div class="card-head">Video devices <span class="meta">local <code>/dev/video*</code> and the network cameras below — all of them are in the <i class="fa-solid fa-video"></i> Video menu of the top bar</span>
                     <span class="spacer"></span><button class="btn-icon" type="button" onclick="VideoDevices.load()" title="Scan again"><i class="fa-solid fa-arrows-rotate"></i></button></div>
                 <div class="card-body">
                     <table class="tbl vd-tbl"><thead><tr><th>Device</th><th>Name</th><th>Kind</th><th></th></tr></thead><tbody id="vd-rows"></tbody></table>
@@ -144,8 +144,6 @@
                         <select class="input input-sm" id="vd-device" onchange="VideoDevices.pick(this.value)" title="Device"></select>
                         <select class="input input-sm" id="vd-res" title="Resolution (network: scaled, source = as sent)"></select>
                         <button class="btn btn-ghost btn-sm" type="button" onclick="VideoDevices.preview()" id="vd-prev"><i class="fa-solid fa-play"></i> Preview</button>
-                        <button class="btn btn-primary btn-sm" type="button" onclick="VideoDevices.saveDefault()"><i class="fa-solid fa-star"></i> Default for the Video window</button>
-                        <span class="hint" id="vd-default"></span>
                     </div>
                     <div class="vd-view" id="vd-view" hidden><img id="vd-img" alt=""></div>
                     <div class="st-note"><i class="fa-solid fa-circle-info"></i><span>A camera is read by one program at a time: stop the preview / the Video window
