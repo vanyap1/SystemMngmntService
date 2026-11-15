@@ -764,9 +764,14 @@ and `pip`):
 needs its own bundle - flavor `rpi` (Debian + the Raspberry Pi repository, needs `raspberrypi-archive-keyring`,
 which every Raspberry Pi OS has). Its tag gets the suffix `-rpi`:
 
+**The Raspberry Pi OS bundle is in the repository** (`setup_data/bookworm-arm64-rpi/`, components
+`core,git,gpio,devices`, ~60 MB, no `video` / `display`): a GitHub archive or clone installs on an offline
+Raspberry Pi with just `sudo ./install.sh offline` (or `sudo ./setup_offline.sh`). To refresh it:
+
 ```bash
-./install.sh bundle --arch arm64 --suite bookworm --flavor rpi --components core,git,gpio,devices,video
-# → setup_data/smms-offline-bookworm-arm64-rpi.tar (~186 MB with video / ffmpeg, without display / Kivy)
+./install.sh bundle --arch arm64 --suite bookworm --flavor rpi --components core,git,gpio,devices
+# → setup_data/bookworm-arm64-rpi/ (commit it) + smms-offline-bookworm-arm64-rpi.tar (local only)
+# with video:  --components core,git,gpio,devices,video  → ~186 MB (too big for the repository; copy the .tar)
 ```
 
 `install.sh offline` recognises Raspberry Pi OS (`/etc/rpi-issue` or the Raspberry Pi apt source) and takes the
@@ -777,7 +782,8 @@ The bundle is a local apt repository with the selected packages and everything t
 system, plus the Flask wheels: apt skips what is already installed in the same or a newer version. The suite must
 match the board's Debian release (`./install.sh status` shows what it needs, e.g. `bookworm-armhf`,
 `bookworm-arm64-rpi`).
-`setup_data/` is git-ignored — bundles are not stored in the repository.
+`setup_data/` is git-ignored except `setup_data/bookworm-arm64-rpi/` — other bundles are not stored in the
+repository (GitHub refuses files over 100 MB, so a bundle goes into git only unpacked).
 
 The old installer set `cap_net_bind_service` on the system `python3`; it is not needed (the service runs as root) —
 `./install.sh status` shows the command to remove it.

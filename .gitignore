@@ -243,7 +243,11 @@ Thumbs.db
 # Claude Code local settings
 .claude/settings.local.json
 # Offline installation bundles (built with ./install.sh bundle)
-setup_data/
+# Offline bundles: only the Raspberry Pi OS bundle (without video / Kivy) is kept in the repository, so a
+# GitHub archive installs offline on a Raspberry Pi; .tar archives and the builder's apt cache stay local.
+setup_data/*
+!setup_data/bookworm-arm64-rpi/
+!setup_data/bookworm-arm64-rpi/wheels/
 setup_data.7z
 # Station data of test scripts (calibration, counters: instruments.param_file.data_path)
 testPlatform/data/

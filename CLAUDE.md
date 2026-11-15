@@ -334,7 +334,10 @@ static/
 - New runtime dependency ⇒ add the Debian package to a component in **both** `PKGS` (install.sh) and
   `COMPONENTS` (tools/offline_bundle.py) — the test checks they match; pure-Python packages go to `WHEELS` (both).
 - The offline path must work without Python (parse `manifest.json` with sed) and without network: apt reads the
-  bundle as `deb [trusted=yes] file:…/debs ./` with private lists/cache. Bundles live in git-ignored `setup_data/`.
+  bundle as `deb [trusted=yes] file:…/debs ./` with private lists/cache. Bundles live in git-ignored `setup_data/`,
+  except `setup_data/bookworm-arm64-rpi/` (Raspberry Pi OS, core,git,gpio,devices, ~60 MB) which is committed so a
+  GitHub archive installs offline; .gitignore un-ignores it and its `wheels/` (a generic `wheels/` rule exists).
+  Never commit `.tar` bundles (GitHub limit 100 MB per file) or bundles with `video` / `display`.
 - Bundle tag = `bundle_tag()` (tools/offline_bundle.py) = `machine_tag()` (install.sh): `<suite>-<arch>` plus
   `-<flavor>` for non-Debian flavors (`rpi`: Raspberry Pi OS, detected by /etc/rpi-issue or its apt source) - tested.
 - Files the bundle builder writes are opened with `encoding='utf-8'` (Packages indexes contain UTF-8 and the
