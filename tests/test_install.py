@@ -135,8 +135,26 @@ class Bundle(unittest.TestCase):
         ok, missing = ob.AptTarget.known(None, self.st, ['git', 'python3-profiler', 'nope'])
         self.assertEqual((ok, missing), (['git', 'python3-profiler'], ['nope']))
 
+    def test_flavor_tag_and_sources(self):
+        self.assertEqual(ob.bundle_tag('bookworm', 'arm64'), 'bookworm-arm64')
+        self.assertEqual(ob.bundle_tag('bookworm', 'arm64', 'rpi'), 'bookworm-arm64-rpi')
+        deb = ob.AptTarget.sources('bookworm', 'arm64', ob.MIRROR, ob.KEYRING)
+        rpi = ob.AptTarget.sources('bookworm', 'arm64', ob.MIRROR, ob.KEYRING, ob.FLAVORS['rpi'])
+        self.assertNotIn('raspberrypi', deb)
+        self.assertIn('archive.raspberrypi.com/debian bookworm main', rpi)
+        self.assertIn('raspberrypi-archive-keyring.gpg', rpi)
+        self.assertEqual(rpi.count('deb '), 4)                    # Debian, -updates, -security + RPi
+
+    def test_machine_tag_matches_bundle_tag(self):
+        """install.sh machine_tag() must name bundles like bundle_tag() of the builder."""
+        funcs = re.search(r'(os_codename\(\).*?\nmachine_tag\(\) \{.*?\n\})', INSTALL_TEXT, re.S).group(1)
+        r = sh(funcs + '\nos_codename() { echo bookworm; }; deb_arch() { echo arm64; }\n'
+               'os_flavor() { echo rpi; }; machine_tag; os_flavor() { echo debian; }; machine_tag')
+        self.assertEqual(r.stdout.split(), [ob.bundle_tag('bookworm', 'arm64', 'rpi'), ob.bundle_tag('bookworm', 'arm64')])
+
     def test_cli_validation(self):
-        for args in (['--arch', 'mips'], ['--components', 'nope'], ['--suite', 'x/../y']):
+        for args in (['--arch', 'mips'], ['--components', 'nope'], ['--suite', 'x/../y'],
+                     ['--flavor', 'nope'], ['--arch', 'amd64', '--flavor', 'rpi']):
             with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
                 ob.main(args)
 

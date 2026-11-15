@@ -70,7 +70,8 @@ UI/                    device display scripts (Kivy): smms_ui.py helper, system_
 help/                  documentation (user content): *.md pages, img/, docs/ attachments, examples/ raw notes
 tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
 install.sh             installer: menu, online/offline install, service unit, `bundle` → tools/offline_bundle.py
-tools/offline_bundle.py  builds offline bundles (local apt repo + Flask wheels) for armhf (H3) / arm64 (H5)
+tools/offline_bundle.py  builds offline bundles (local apt repo + Flask wheels) for armhf (H3) / arm64 (H5),
+                         flavor `rpi` for Raspberry Pi OS (+ archive.raspberrypi.com, tag <suite>-<arch>-rpi)
 docs/MANUAL.md         manual + technical reference (install, config, pages, API tables); README.md = project overview
 docs/img/              README screenshots (tests/docs_screenshots.sh, scenarios in tests/docs_shots/)
 static/
@@ -334,6 +335,10 @@ static/
   `COMPONENTS` (tools/offline_bundle.py) — the test checks they match; pure-Python packages go to `WHEELS` (both).
 - The offline path must work without Python (parse `manifest.json` with sed) and without network: apt reads the
   bundle as `deb [trusted=yes] file:…/debs ./` with private lists/cache. Bundles live in git-ignored `setup_data/`.
+- Bundle tag = `bundle_tag()` (tools/offline_bundle.py) = `machine_tag()` (install.sh): `<suite>-<arch>` plus
+  `-<flavor>` for non-Debian flavors (`rpi`: Raspberry Pi OS, detected by /etc/rpi-issue or its apt source) - tested.
+- Files the bundle builder writes are opened with `encoding='utf-8'` (Packages indexes contain UTF-8 and the
+  boards may run with a non-UTF-8 locale).
 
 ## Top bar
 - Layout: brand · `.tb-sections` (core/nav.py) · `.tb-page` (block `topbar_tools`) · `.tb-tools` (Video, Monitor,

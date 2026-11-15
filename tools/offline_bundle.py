@@ -6,12 +6,17 @@ directory with the target's architecture, so a bundle for an Allwinner H3 (armhf
 built on an aarch64 or x86 PC.
 
     python3 tools/offline_bundle.py --arch armhf,arm64 --suite bookworm [--components core,git,gpio,devices]
+    python3 tools/offline_bundle.py --arch arm64 --suite bookworm --flavor rpi     # Raspberry Pi OS
+
+Flavors: `debian` (Debian / Armbian: deb.debian.org) and `rpi` (Raspberry Pi OS: deb.debian.org +
+archive.raspberrypi.com, whose +rpt builds replace many Debian packages - a plain Debian bundle does not fit it).
+The tag of a bundle is <suite>-<arch>, with "-rpi" for the rpi flavor (bookworm-arm64-rpi).
 
 Result per target, in --out (default setup_data/):
-    <suite>-<arch>/debs/*.deb + Packages   local apt repository (closure of the selected packages)
-    <suite>-<arch>/wheels/*.whl            Flask 3 and its pure-Python dependencies
-    <suite>-<arch>/manifest.json           suite, arch, python, components, packages
-    smms-offline-<suite>-<arch>.tar        the three above, to copy next to the project on the target
+    <tag>/debs/*.deb + Packages   local apt repository (closure of the selected packages)
+    <tag>/wheels/*.whl            Flask 3 and its pure-Python dependencies
+    <tag>/manifest.json           suite, arch, flavor, python, components, packages
+    smms-offline-<tag>.tar        the three above, to copy next to the project on the target
 
 The target is assumed to have Debian's base system (Priority required/important); everything else the
 selected packages need is downloaded. install.sh --offline installs it with apt from the local repository,
@@ -45,6 +50,17 @@ ARCHES = ('armhf', 'arm64', 'amd64', 'i386', 'armel')
 KEYRING = '/usr/share/keyrings/debian-archive-keyring.gpg'
 MIRROR = 'http://deb.debian.org/debian'
 SECURITY = 'http://security.debian.org/debian-security'
+# Extra repositories per flavor (on top of Debian), with their keyring
+FLAVORS = {
+    'debian': [],
+    'rpi': [('http://archive.raspberrypi.com/debian', '/usr/share/keyrings/raspberrypi-archive-keyring.gpg')],
+}
+FLAVOR_ARCHES = {'rpi': ('armhf', 'arm64')}
+
+
+def bundle_tag(suite, arch, flavor='debian'):
+    """Directory / archive tag: bookworm-arm64, bookworm-arm64-rpi (install.sh machine_tag() builds the same)."""
+    return f'{suite}-{arch}' + ('' if flavor == 'debian' else f'-{flavor}')
 
 
 def log(msg):
@@ -130,17 +146,25 @@ def python_version(stanzas):
 class AptTarget:
     """apt confined to a private directory, with the target's architecture and sources."""
 
-    def __init__(self, work, suite, arch, mirror, keyring):
+    def __init__(self, work, suite, arch, mirror, keyring, extra=()):
         self.work, self.suite, self.arch = work, suite, arch
         for d in ('lists/partial', 'archives/partial', 'etc/apt.conf.d', 'etc/preferences.d', 'dpkg'):
             os.makedirs(os.path.join(work, d), exist_ok=True)
-        opt = f'[arch={arch} signed-by={keyring}]'
-        with open(self.p('etc/sources.list'), 'w') as fh:
-            fh.write(f'deb {opt} {mirror} {suite} main\n'
-                     f'deb {opt} {mirror} {suite}-updates main\n'
-                     f'deb {opt} {SECURITY} {suite}-security main\n')
+        with open(self.p('etc/sources.list'), 'w', encoding='utf-8') as fh:
+            fh.write(self.sources(suite, arch, mirror, keyring, extra))
         if not os.path.exists(self.p('dpkg/status')):
-            open(self.p('dpkg/status'), 'w').close()
+            open(self.p('dpkg/status'), 'w', encoding='utf-8').close()
+
+    @staticmethod
+    def sources(suite, arch, mirror, keyring, extra=()):
+        """sources.list text: Debian (+ -updates, -security) and the extra repositories of the flavor."""
+        opt = f'[arch={arch} signed-by={keyring}]'
+        text = (f'deb {opt} {mirror} {suite} main\n'
+                f'deb {opt} {mirror} {suite}-updates main\n'
+                f'deb {opt} {SECURITY} {suite}-security main\n')
+        for url, key in extra:
+            text += f'deb [arch={arch} signed-by={key}] {url} {suite} main\n'
+        return text
 
     def p(self, rel):
         return os.path.join(self.work, rel)
@@ -181,14 +205,14 @@ class AptTarget:
         return [n for n in names if n in have], [n for n in names if n not in have]
 
 
-def build(arch, suite, components, out, mirror, keyring, cache):
-    tag = f'{suite}-{arch}'
+def build(arch, suite, components, out, mirror, keyring, cache, flavor='debian'):
+    tag = bundle_tag(suite, arch, flavor)
     log(f'\n=== {tag}: {", ".join(components)} ===')
-    apt = AptTarget(os.path.join(cache, tag), suite, arch, mirror, keyring)
+    apt = AptTarget(os.path.join(cache, tag), suite, arch, mirror, keyring, FLAVORS[flavor])
     log('[*] Fetching package index...')
     apt.apt('update', '-q', quiet=True)
     stanzas = apt.stanzas()
-    with open(apt.p('dpkg/status'), 'w') as fh:
+    with open(apt.p('dpkg/status'), 'w', encoding='utf-8') as fh:
         fh.write(base_status(stanzas))
     pkgs = [p for c in components for p in COMPONENTS[c]]
     pkgs, missing = apt.known(stanzas, pkgs)
@@ -207,7 +231,7 @@ def build(arch, suite, components, out, mirror, keyring, cache):
     names, index = local_index(stanzas, debs)
     for f in debs:
         shutil.move(apt.p('archives/' + f), os.path.join(dest, 'debs', names[f]))
-    with open(os.path.join(dest, 'debs', 'Packages'), 'w') as fh:
+    with open(os.path.join(dest, 'debs', 'Packages'), 'w', encoding='utf-8') as fh:
         fh.write(index)
 
     py = python_version(stanzas)
@@ -218,10 +242,10 @@ def build(arch, suite, components, out, mirror, keyring, cache):
     if res.returncode:
         raise SystemExit('[ERROR] pip download failed')
 
-    manifest = {'suite': suite, 'arch': arch, 'python': py, 'components': components, 'packages': pkgs,
+    manifest = {'suite': suite, 'arch': arch, 'flavor': flavor, 'python': py, 'components': components, 'packages': pkgs,
                 'debs': len(debs), 'wheels': sorted(os.listdir(os.path.join(dest, 'wheels'))),
                 'created': time.strftime('%Y-%m-%d %H:%M:%S')}
-    with open(os.path.join(dest, 'manifest.json'), 'w') as fh:
+    with open(os.path.join(dest, 'manifest.json'), 'w', encoding='utf-8') as fh:
         json.dump(manifest, fh, indent=2)
     tar = os.path.join(out, f'smms-offline-{tag}.tar')
     with tarfile.open(tar, 'w') as t:                 # .deb/.whl are already compressed
@@ -237,6 +261,8 @@ def main(argv=None):
     ap.add_argument('--suite', default='bookworm', help='Debian release of the target (bookworm, trixie) [bookworm]')
     ap.add_argument('--components', default=','.join(DEFAULT_COMPONENTS),
                     help=f'comma-separated from {", ".join(COMPONENTS)} [{",".join(DEFAULT_COMPONENTS)}]')
+    ap.add_argument('--flavor', default='debian', choices=sorted(FLAVORS),
+                    help='debian (Debian / Armbian boards) or rpi (Raspberry Pi OS) [debian]')
     ap.add_argument('--out', default=os.path.join(ROOT, 'setup_data'))
     ap.add_argument('--mirror', default=MIRROR)
     ap.add_argument('--keyring', default=KEYRING)
@@ -253,13 +279,18 @@ def main(argv=None):
         ap.error('bad suite')
     if not shutil.which('apt-get'):
         raise SystemExit('[ERROR] apt-get not found — build the bundle on a Debian/Ubuntu machine')
+    if a.flavor in FLAVOR_ARCHES and any(x not in FLAVOR_ARCHES[a.flavor] for x in arches):
+        ap.error(f'flavor {a.flavor}: architectures {", ".join(FLAVOR_ARCHES[a.flavor])} only')
     if not os.path.exists(a.keyring):
         raise SystemExit(f'[ERROR] {a.keyring} not found — install debian-archive-keyring or pass --keyring')
+    for _, key in FLAVORS[a.flavor]:
+        if not os.path.exists(key):
+            raise SystemExit(f'[ERROR] {key} not found — install raspberrypi-archive-keyring (flavor {a.flavor})')
     if subprocess.run([sys.executable, '-m', 'pip', '--version'], capture_output=True).returncode:
         raise SystemExit('[ERROR] pip is needed to download wheels (apt install python3-pip)')
     os.makedirs(a.out, exist_ok=True)
     cache = os.path.join(a.out, '.cache')
-    tars = [build(arch, a.suite, comps, a.out, a.mirror, a.keyring, cache) for arch in arches]
+    tars = [build(arch, a.suite, comps, a.out, a.mirror, a.keyring, cache, a.flavor) for arch in arches]
     log('\nCopy the project and ' + ', '.join(os.path.basename(t) for t in tars) +
         ' (into setup_data/) to the target, then run:  sudo ./install.sh --offline')
 

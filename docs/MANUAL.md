@@ -731,7 +731,7 @@ sudo ./install.sh                 # interactive menu (whiptail; --plain for text
 |---|---|
 | `sudo ./install.sh online` | `apt-get install` the packages of the selected components + Flask 3 with pip (PyPI) |
 | `sudo ./install.sh offline` | the same from an offline bundle in `setup_data/` (no network) |
-| `./install.sh bundle --arch armhf,arm64 --suite bookworm` | build offline bundles on a machine with internet (no root) |
+| `./install.sh bundle --arch armhf,arm64 --suite bookworm [--flavor rpi]` | build offline bundles on a machine with internet (no root) |
 | `sudo ./install.sh service` | write `/etc/systemd/system/systemmngmntservice.service` if it changed, enable it, (re)start the panel |
 | `sudo ./install.sh uninstall` | stop and remove the unit (project, `config.json` and packages stay) |
 | `sudo ./install.sh display` | Kivy for the device display (component `display`; from the internet, else an offline bundle) — no panel restart |
@@ -748,21 +748,35 @@ Options: `--components core,git,gpio,devices,video` (default `core,git,gpio,devi
 | `video` | ffmpeg (~100 MB with its libraries) |
 | `display` | python3-kivy, libmtdev1 (device display, Settings → Display) |
 
-### Offline installation (Allwinner H3 / H5 boards without internet)
+### Offline installation (ARM boards without internet)
 
 x86 machines always install online; offline bundles are for the ARM boards: **armhf** = H3 (32-bit),
-**arm64** = H5 (64-bit). Build them on any Debian/Ubuntu machine with internet — apt runs in a private directory
-with the target architecture, the build machine is not changed (needs `debian-archive-keyring` and `pip`):
+**arm64** = H5 (64-bit) or Raspberry Pi. Build them on any Debian/Ubuntu machine with internet — apt runs in a
+private directory with the target architecture, the build machine is not changed (needs `debian-archive-keyring`
+and `pip`):
 
 ```bash
 ./install.sh bundle --arch armhf,arm64 --suite bookworm     # or: ./install.sh → "bundle"
 # → setup_data/smms-offline-bookworm-armhf.tar (~56 MB), smms-offline-bookworm-arm64.tar (~59 MB)
 ```
 
+**Raspberry Pi OS** replaces many Debian packages with its own `+rpt` builds from `archive.raspberrypi.com`, so it
+needs its own bundle - flavor `rpi` (Debian + the Raspberry Pi repository, needs `raspberrypi-archive-keyring`,
+which every Raspberry Pi OS has). Its tag gets the suffix `-rpi`:
+
+```bash
+./install.sh bundle --arch arm64 --suite bookworm --flavor rpi --components core,git,gpio,devices,video
+# → setup_data/smms-offline-bookworm-arm64-rpi.tar (~186 MB with video / ffmpeg, without display / Kivy)
+```
+
+`install.sh offline` recognises Raspberry Pi OS (`/etc/rpi-issue` or the Raspberry Pi apt source) and takes the
+`-rpi` bundle; a plain Debian bundle of the same suite / architecture is used only as a fallback after a warning.
+
 Copy the project and the matching `.tar` (into `setup_data/`) to the board and run `sudo ./install.sh offline`.
 The bundle is a local apt repository with the selected packages and everything they need beyond the Debian base
 system, plus the Flask wheels: apt skips what is already installed in the same or a newer version. The suite must
-match the board's Debian release (`./install.sh status` shows what it needs, e.g. `bookworm-armhf`).
+match the board's Debian release (`./install.sh status` shows what it needs, e.g. `bookworm-armhf`,
+`bookworm-arm64-rpi`).
 `setup_data/` is git-ignored — bundles are not stored in the repository.
 
 The old installer set `cap_net_bind_service` on the system `python3`; it is not needed (the service runs as root) —

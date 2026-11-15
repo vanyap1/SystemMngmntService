@@ -6,8 +6,9 @@
 #  ./install.sh status                    what is installed, service state, available offline bundles
 #  sudo ./install.sh online   [opts]      install / update dependencies from the internet (apt + pip)
 #  sudo ./install.sh offline  [opts]      install / update from an offline bundle in setup_data/
-#  ./install.sh bundle [--arch armhf,arm64] [--suite bookworm] [--components …]
-#                                         build offline bundles (on a machine with internet, no root needed)
+#  ./install.sh bundle [--arch armhf,arm64] [--suite bookworm] [--flavor debian|rpi] [--components …]
+#                                         build offline bundles (on a machine with internet, no root needed);
+#                                         --flavor rpi = Raspberry Pi OS (tag bookworm-arm64-rpi)
 #  sudo ./install.sh service  [--yes]     write/enable the systemd unit, (re)start the panel
 #  sudo ./install.sh uninstall [--yes]    remove the systemd unit (the project and its config stay)
 #  sudo ./install.sh display  [--bundle]  Kivy for the device screen UI (Settings → Display), no panel restart
@@ -78,6 +79,14 @@ os_codename() { (. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-${DEBI
 os_name()     { (. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-unknown}"); }
 deb_arch()    { dpkg --print-architecture 2>/dev/null || uname -m; }
 board()       { tr -d '\0' </proc/device-tree/model 2>/dev/null || echo "-"; }
+os_flavor()   {   # rpi = Raspberry Pi OS (archive.raspberrypi.com packages), debian = Debian / Armbian
+    if [[ -f /etc/rpi-issue ]] || grep -rqs 'archive.raspberrypi.com' /etc/apt/sources.list /etc/apt/sources.list.d/; then
+        echo rpi; else echo debian; fi
+}
+machine_tag() {   # offline bundle this machine needs (= bundle_tag() of tools/offline_bundle.py)
+    local f; f="$(os_flavor)"
+    echo "$(os_codename)-$(deb_arch)$( [[ $f == debian ]] || echo "-$f" )"
+}
 py()          { command -v python3 >/dev/null && python3 "$@"; }
 flask_ver()   { py -c 'import flask, importlib.metadata as m; print(m.version("flask"), flask.__file__.rsplit("/flask/", 1)[0])' 2>/dev/null; }
 panel_port()  { (cd "$DIR" && py -c 'from core import config; print(config.get("port", 80))' 2>/dev/null) || echo 80; }
@@ -183,12 +192,13 @@ cmd_status() {
         py - "$m" <<'EOF' 2>/dev/null || echo "    $(basename "$(dirname "$m")")"
 import json, sys
 m = json.load(open(sys.argv[1]))
-print(f"    {m['suite']}-{m['arch']}: {', '.join(m['components'])} · {m['debs']} debs · Python {m['python']} · {m['created']}")
+tag = f"{m['suite']}-{m['arch']}" + ("" if m.get('flavor', 'debian') == 'debian' else "-" + m['flavor'])
+print(f"    {tag}: {', '.join(m['components'])} · {m['debs']} debs · Python {m['python']} · {m['created']}")
 EOF
     done
     for m in "$DATA"/smms-offline-*.tar; do [[ -f "$m" ]] && { found=1; echo "    $(basename "$m")"; }; done
     [[ $found -eq 1 ]] || echo "    none"
-    echo "  This machine needs: $(os_codename)-$(deb_arch)"
+    echo "  This machine needs: $(machine_tag)"
 }
 
 # ── online install ───────────────────────────────────────────────────────────────────────────────────────────
@@ -211,7 +221,7 @@ cmd_online() {
 
 # ── offline install ──────────────────────────────────────────────────────────────────────────────────────────
 find_bundle() {   # sets BUNDLE to a directory with manifest.json
-    local want; want="$(os_codename)-$(deb_arch)"
+    local want plain; want="$(machine_tag)"; plain="$(os_codename)-$(deb_arch)"
     if [[ -n "$BUNDLE" ]]; then
         [[ -e "$BUNDLE" ]] || die "$BUNDLE not found"
         BUNDLE="$(readlink -f "$BUNDLE")"
@@ -223,15 +233,20 @@ find_bundle() {   # sets BUNDLE to a directory with manifest.json
             BUNDLE="$DATA/$tag"
         fi
     else
-        if [[ ! -f "$DATA/$want/manifest.json" && -f "$DATA/smms-offline-$want.tar" ]]; then
-            info "Unpacking smms-offline-$want.tar..."
-            tar -xf "$DATA/smms-offline-$want.tar" -C "$DATA" || die "cannot unpack the bundle"
-        fi
-        BUNDLE="$DATA/$want"
+        local t
+        for t in "$want" "$plain"; do   # the bundle of this flavor first; a plain Debian one only as a fallback
+            if [[ ! -f "$DATA/$t/manifest.json" && -f "$DATA/smms-offline-$t.tar" ]]; then
+                info "Unpacking smms-offline-$t.tar..."
+                tar -xf "$DATA/smms-offline-$t.tar" -C "$DATA" || die "cannot unpack the bundle"
+            fi
+            [[ -f "$DATA/$t/manifest.json" ]] && { BUNDLE="$DATA/$t"; break; }
+        done
+        [[ -n "$BUNDLE" ]] || BUNDLE="$DATA/$want"
     fi
     if [[ ! -f "$BUNDLE/manifest.json" ]]; then
+        local fl; fl="$(os_flavor)"; [[ $fl == debian ]] && fl="" || fl=" --flavor $fl"
         echo "No offline bundle for this machine ($want) in $DATA." >&2
-        echo "Build one on a PC with internet:  ./install.sh bundle --arch $(deb_arch) --suite $(os_codename)" >&2
+        echo "Build one on a PC with internet:  ./install.sh bundle --arch $(deb_arch) --suite $(os_codename)$fl" >&2
         echo "and copy setup_data/smms-offline-$want.tar here (or pass --bundle FILE)." >&2
         exit 1
     fi
@@ -239,6 +254,11 @@ find_bundle() {   # sets BUNDLE to a directory with manifest.json
     b_arch="$(grep -m1 '"arch"' "$BUNDLE/manifest.json" | cut -d'"' -f4)"
     b_suite="$(grep -m1 '"suite"' "$BUNDLE/manifest.json" | cut -d'"' -f4)"
     [[ "$b_arch" == "$(deb_arch)" ]] || die "bundle is for $b_arch, this machine is $(deb_arch)"
+    local b_flavor; b_flavor="$(grep -m1 '"flavor"' "$BUNDLE/manifest.json" | cut -d'"' -f4)"
+    if [[ "${b_flavor:-debian}" != "$(os_flavor)" ]]; then
+        warn "bundle is for ${b_flavor:-debian} systems, this one is $(os_flavor) — packages may not fit."
+        ask "Use it anyway?" n || exit 1
+    fi
     if [[ "$b_suite" != "$(os_codename)" ]]; then
         warn "bundle is for Debian $b_suite, this system is $(os_codename) — packages may not fit."
         ask "Use it anyway?" n || exit 1
@@ -284,12 +304,14 @@ cmd_offline() {
 cmd_bundle() {
     local args=("$@")
     if [[ ${#args[@]} -eq 0 && -t 0 && $YES -eq 0 ]]; then
-        local arch suite
-        echo "Targets: armhf = Allwinner H3 (32-bit), arm64 = Allwinner H5 (64-bit); x86 machines install online."
+        local arch suite flavor
+        echo "Targets: armhf = Allwinner H3 (32-bit), arm64 = Allwinner H5 (64-bit) or Raspberry Pi; x86 installs online."
+        echo "Flavor: debian = Debian / Armbian boards, rpi = Raspberry Pi OS (this machine: $(machine_tag))."
         read -r -p "Architectures [armhf,arm64]: " arch </dev/tty || arch=""
         read -r -p "Debian release of the targets [bookworm]: " suite </dev/tty || suite=""
+        read -r -p "Flavor [debian]: " flavor </dev/tty || flavor=""
         choose_components
-        args=(--arch "${arch:-armhf,arm64}" --suite "${suite:-bookworm}" --components "$COMPONENTS")
+        args=(--arch "${arch:-armhf,arm64}" --suite "${suite:-bookworm}" --flavor "${flavor:-debian}" --components "$COMPONENTS")
     elif [[ -n "$COMPONENTS" ]]; then
         args+=(--components "$COMPONENTS")
     fi
