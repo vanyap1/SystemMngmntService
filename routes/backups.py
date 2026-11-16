@@ -72,6 +72,18 @@ def preview():
         return _err(exc)
 
 
+@bp.route('/api/backups/tree', methods=['POST'])
+@login_required
+def tree():
+    """Settings → Backups → project browser: one folder with the (unsaved) skip / keep pattern of each entry."""
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(backups.tree(data.get('path', ''), backups.parse_patterns(data.get('skip', '')),
+                                    backups.parse_patterns(data.get('keep', ''))))
+    except backups.BackupError as exc:
+        return _err(exc)
+
+
 @bp.route('/backups/upload', methods=['POST'])
 @login_required
 def upload():

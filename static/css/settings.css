@@ -4,10 +4,9 @@
 .path-input-row { flex-wrap: nowrap; }
 .path-input-row .input { flex: 1; }
 
-.dir-dropdown { position: absolute; left: 0; right: 0; top: calc(100% + 4px);
-    background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 6px;
-    z-index: 200; max-height: 260px; overflow-y: auto; display: none;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, .5); }
+/* In the flow (not absolute): cards clip overflowing content (overflow: hidden), so the list grows the card instead. */
+.dir-dropdown { margin-top: 4px; background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 6px;
+    max-height: 260px; overflow-y: auto; display: none; }
 .dir-dropdown.open { display: block; }
 .dir-header { display: flex; align-items: center; gap: 8px; padding: 7px 10px;
     border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-mute);
@@ -148,3 +147,29 @@ body.page-settings { height: 100vh; overflow: hidden; }
 .nc-h { margin: 6px 0 0; font-size: 12.5px; color: var(--text-2); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
 .nc-warn { padding: 8px 10px; border: 1px solid var(--warn); border-radius: var(--radius); font-size: 12.5px; color: var(--text-2); }
 .nc-warn i { color: var(--warn); margin-right: 4px; }
+
+/* Backups → project tree picker (settings_backups.js) */
+.bt-box { width: min(900px, 96vw); height: min(80vh, 760px); }
+.bt-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 16px; font-size: 12px; color: var(--text-2);
+             border-bottom: 1px solid var(--border-soft); }
+.bt-body { padding: 4px 0; overflow: auto; flex: 1; }
+.bt-row { display: flex; align-items: center; gap: 8px; padding: 3px 12px 3px 8px; font-size: 12.5px; min-height: 28px; }
+.bt-row:hover { background: var(--bg-panel-2); }
+.bt-row.dim .bt-name .mono { color: var(--text-dim); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+.bt-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; cursor: default; }
+.bt-name[onclick] { cursor: pointer; }
+.bt-name .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-chev { width: 10px; font-size: 9px; color: var(--text-dim); flex: none; }
+.bt-ico-dir { color: var(--warn); }
+.bt-ico { color: var(--text-dim); }
+.bt-note, .bt-st { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.bt-st.skip { color: var(--danger); }
+.bt-st.keep { color: var(--accent); }
+.bt-acts { display: flex; gap: 4px; flex: none; }
+.bt-tag { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); background: none;
+          color: var(--text-2); cursor: pointer; font-family: var(--mono); }
+.bt-tag.skip:hover, .bt-tag.skip.on { border-color: var(--danger); color: var(--danger); }
+.bt-tag.keep:hover, .bt-tag.keep.on { border-color: var(--accent); color: var(--accent); }
+.bt-tag.on { font-weight: 700; }
+.bt-tag.other { opacity: .45; cursor: not-allowed; }
+.bt-legend .bt-tag { cursor: default; }

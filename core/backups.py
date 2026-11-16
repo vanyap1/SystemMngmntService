@@ -138,6 +138,44 @@ def walk(root, matcher, exclude=(), budget=None, limit=None):
         stack.extend(reversed(subdirs))
 
 
+TREE_LIMIT = 2000
+
+
+def tree(rel, skip, keep):
+    """One folder of the project for the pattern picker: entries with the skip / keep pattern that matches them.
+    Never walks recursively (target_dir may hold big disks)."""
+    target = os.path.realpath(config.target_dir())
+    if not os.path.isdir(target):
+        raise BackupError(f'Project directory not found: {target}', 404)
+    rel = (rel or '').strip('/')
+    if '..' in rel.split('/') or '\0' in rel:
+        raise BackupError('Invalid path')
+    folder = os.path.join(target, rel) if rel else target
+    if not _inside(folder, target) or os.path.islink(folder) or not os.path.isdir(folder):
+        raise BackupError('Folder not found', 404)
+    dev = os.lstat(target).st_dev
+    excl = set(_auto_excludes(target))
+    ms, mk = Matcher(skip), Matcher(keep)
+    items = []
+    with os.scandir(folder) as it:
+        for e in it:
+            if len(items) >= TREE_LIMIT:
+                break
+            try:
+                st = e.stat(follow_symlinks=False)
+            except OSError:
+                continue
+            is_dir = stat.S_ISDIR(st.st_mode)
+            r = f'{rel}/{e.name}' if rel else e.name
+            note = ('backup folder / panel — never archived' if os.path.realpath(e.path) in excl and is_dir
+                    else 'other filesystem — never archived' if is_dir and st.st_dev != dev else '')
+            items.append({'name': e.name, 'rel': r, 'dir': is_dir, 'link': stat.S_ISLNK(st.st_mode),
+                          'size': st.st_size if stat.S_ISREG(st.st_mode) else None,
+                          'skip': ms.match(r, is_dir), 'keep': mk.match(r, is_dir), 'note': note})
+    items.sort(key=lambda i: (not i['dir'], i['name'].lower()))
+    return {'path': rel, 'target': target, 'items': items, 'truncated': len(items) >= TREE_LIMIT}
+
+
 def preview(skip, keep, max_items=300, budget=5.0):
     """What a backup would skip and a deploy would keep, for the settings page."""
     target = config.target_dir()

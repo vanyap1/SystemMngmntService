@@ -249,6 +249,21 @@ class Routes(Base):
         self.assertEqual(c.post('/api/backups/preview', json={'skip': ['../x']}).status_code, 400)
         self.assertEqual(c.post('/api/settings', json={'backup_skip': ['a/../b']}).status_code, 400)
 
+    def test_tree(self):
+        c = client(logged_in=True)
+        r = c.post('/api/backups/tree', json={'path': '', 'skip': ['.git/', '*.log', '/notes.txt'], 'keep': ['/config.json']}).get_json()
+        items = {i['rel']: i for i in r['items']}
+        self.assertEqual(items['.git']['skip'], '.git/')
+        self.assertEqual(items['notes.txt']['skip'], '/notes.txt')
+        self.assertEqual(items['config.json']['keep'], '/config.json')
+        self.assertTrue(items['logs']['dir'])
+        self.assertEqual(list(items)[0], '.git')                                 # folders first
+        sub = c.post('/api/backups/tree', json={'path': 'logs', 'skip': ['*.log']}).get_json()
+        self.assertEqual({i['rel']: i['skip'] for i in sub['items']}, {'logs/deep': None, 'logs/a.log': '*.log'})
+        for bad in ('../', 'x/../..', 'missing', 'link.py'):
+            with self.subTest(path=bad):
+                self.assertIn(c.post('/api/backups/tree', json={'path': bad}).status_code, (400, 404))
+
     def test_archive_names(self):
         self.assertIsNone(backups.archive_path('../x.tar.gz'))
         self.assertIsNone(backups.archive_path('x.tar.gz' + backups.PARTIAL))

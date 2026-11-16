@@ -199,7 +199,8 @@ is taken as a whole):
 | `/notes.txt` | leading `/` anchors a single name to the project root |
 
 The backup directory and the panel itself (when inside the project) and other mounted filesystems are never archived.
-*Check* on the settings page (`/api/backups/preview`) lists what the unsaved patterns match.
+*Check* on the settings page (`/api/backups/preview`) lists what the unsaved patterns match; *Pick from the project…*
+opens a tree of the project where every row adds / removes `/path` (a folder: `/path/`) or `*.ext` in the Skip / Keep list.
 
 ```mermaid
 sequenceDiagram
@@ -285,6 +286,7 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/backups/job` | login, or public with `public.backups` | Current / last backup job: state, phase, done / total bytes, log, result |
 | POST | `/api/backups/create` | login | Start a backup job → `{job}`; 409 while a job runs |
 | POST | `/api/backups/cancel` | login | Cancel the job (not while the folders are being swapped) |
+| POST | `/api/backups/tree` | login | `{path, skip, keep}` → one project folder with the skip / keep pattern of each entry (Settings → Backups → *Pick from the project…*) |
 | POST | `/api/backups/preview` | login | `{skip, keep}` → what the patterns match in the project directory |
 | POST | `/backups/upload` | login | Upload archive (multipart form) |
 | GET | `/backups/download/<name>` | login, or public with `public.backups` | Download archive |

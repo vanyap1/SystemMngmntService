@@ -13,7 +13,7 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/backups/job', '/api/tree'
                  '/api/display/status', '/api/display/scripts', '/api/display/backgrounds',
                  '/api/uiscreens', '/api/uiscreens/example_dashboard', '/api/video/sources']
 PROTECTED_GET_NOCHECK = ['/api/netcfg', '/api/netcfg/pending', '/api/netcfg/wifi', '/api/netcfg/connection?uuid=x']
-PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/api/backups/create', '/api/backups/cancel', '/api/backups/preview', '/api/settings',
+PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/api/backups/create', '/api/backups/cancel', '/api/backups/preview', '/api/backups/tree', '/api/settings',
                   '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
                   '/api/help/asset_delete', '/api/help/diagram/create', '/api/help/diagram/save',

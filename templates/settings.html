@@ -98,7 +98,8 @@
             </div></div>
 
             <div class="card">
-                <div class="card-head">Skip when archiving</div>
+                <div class="card-head">Skip when archiving<span class="spacer"></span>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="BackupTree.open()"><i class="fa-solid fa-folder-tree"></i> Pick from the project…</button></div>
                 <div class="card-body st-patterns">
                     <textarea class="input mono" id="backup_skip" data-cfg="backup_skip" rows="8" spellcheck="false">{{ cfg.backup_skip|join('\n') }}</textarea>
                     <div class="st-pat-help">
@@ -118,7 +119,8 @@
             </div>
 
             <div class="card">
-                <div class="card-head">Keep on deploy</div>
+                <div class="card-head">Keep on deploy<span class="spacer"></span>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="BackupTree.open()"><i class="fa-solid fa-folder-tree"></i> Pick from the project…</button></div>
                 <div class="card-body st-patterns">
                     <textarea class="input mono" id="deploy_keep" data-cfg="deploy_keep" rows="6" spellcheck="false" placeholder="config.json&#10;data/&#10;*.db">{{ cfg.deploy_keep|join('\n') }}</textarea>
                     <div class="st-pat-help">
@@ -446,6 +448,22 @@
 {% endblock %}
 
 {% block modals %}
+<div id="bt-overlay" class="modal-overlay" onclick="if (event.target === this) BackupTree.close()">
+    <div class="modal-box bt-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-folder-tree"></i> Project <span class="mono muted" id="bt-root"></span></span>
+            <button class="btn-icon" type="button" onclick="BackupTree.reload()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <button class="modal-close" onclick="BackupTree.close()">&#215;</button>
+        </div>
+        <div class="bt-legend">
+            <span><span class="bt-tag skip">Skip</span> not archived</span>
+            <span><span class="bt-tag keep">Keep</span> carried over on deploy</span>
+            <span><span class="bt-tag skip">*.ext</span> skip every file with this extension</span>
+            <span class="muted">Buttons add / remove a line in the lists (unsaved until <b>Save</b>); a dimmed button = matched by another pattern.</span>
+        </div>
+        <div class="modal-body bt-body" id="bt-tree"></div>
+    </div>
+</div>
 <div id="nc-overlay" class="modal-overlay" onclick="if (event.target === this) NetCfg.close()">
     <div class="modal-box nc-box">
         <div class="modal-head">
@@ -469,4 +487,5 @@
 <script src="{{ asset('js/settings_display.js') }}"></script>
 <script src="{{ asset('js/settings_video.js') }}"></script>
 <script src="{{ asset('js/settings_net.js') }}"></script>
+<script src="{{ asset('js/settings_backups.js') }}"></script>
 {% endblock %}
