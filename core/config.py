@@ -37,6 +37,9 @@ BUILTIN_DEFAULTS = {
     'service_name':    'systemmngmntservice.service',
     'auth':            {'enabled': True, 'username': 'admin', 'password': 'admin'},
     'public_service_actions': ['restart'],
+    # What a visitor without login gets (Settings → Access): home = "dashboard" (info panel) or "tests" (test machine:
+    # run tests + view logs, the info panel stays reachable); backups = archive list + download; docs = read-only docs.
+    'public':          {'home': 'dashboard', 'backups': False, 'docs': False},
     'host':            '0.0.0.0',
     'port':            80,
     # Test platform; relative paths are resolved against the project directory.
@@ -62,19 +65,26 @@ BUILTIN_DEFAULTS = {
     'modbus_sessions_dir': 'modbusSessions',
     # Saved terminal sessions (profile + macros + output + notes); relative to the project directory.
     'tty_sessions_dir': 'ttySessions',
+    # Backups (Settings → Backups, syntax in core/backups.py): patterns not archived, patterns kept on deploy.
+    'backup_skip':     ['__pycache__/', '.git/', '.vscode/', '*.pyc'],
+    'deploy_keep':     [],
+    # Stop the target service (when it runs) while an archive is written.
+    'backup_stop_service': True,
 }
 
 # Keys that may be changed through the settings page (auth and
 # public_service_actions are handled separately).
 EDITABLE_KEYS = ('app_title', 'page_title', 'device_name', 'target_dir', 'backup_dir',
                  'archive_name', 'upload_tmp_name', 'service_name', 'host', 'port',
-                 'tests_dir', 'test_logs_dir', 'help_dir', 'update_check_minutes', 'show_demo_tests')
+                 'tests_dir', 'test_logs_dir', 'help_dir', 'update_check_minutes', 'show_demo_tests',
+                 'backup_skip', 'deploy_keep', 'backup_stop_service')
 
 INT_KEYS = ('port', 'update_check_minutes')
-BOOL_KEYS = ('show_demo_tests',)
+BOOL_KEYS = ('show_demo_tests', 'backup_stop_service')
+LIST_KEYS = ('backup_skip', 'deploy_keep')
 
 # Keys written to the host section on save.
-HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'i2c_labels', 'modbus', 'tty', 'display', 'video_sources')
+HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'public', 'i2c_labels', 'modbus', 'tty', 'display', 'video_sources')
 
 CFG = {}        # effective config of this host
 _FILE = {}      # raw config.json content
@@ -141,7 +151,10 @@ def update(data):
     """Apply a settings payload (only whitelisted keys) and save it for this host."""
     for key in EDITABLE_KEYS:
         if key in data:
-            CFG[key] = int(data[key]) if key in INT_KEYS else bool(data[key]) if key in BOOL_KEYS else data[key]
+            v = data[key]
+            if key in LIST_KEYS:
+                v = [str(x).strip() for x in (v if isinstance(v, list) else str(v).splitlines()) if str(x).strip()]
+            CFG[key] = int(v) if key in INT_KEYS else bool(v) if key in BOOL_KEYS else v
     if isinstance(data.get('auth'), dict):
         auth_cfg = CFG.setdefault('auth', {})
         for k in ('enabled', 'username', 'password'):
@@ -150,6 +163,8 @@ def update(data):
     if isinstance(data.get('public_service_actions'), list):
         CFG['public_service_actions'] = [a for a in data['public_service_actions']
                                          if a in SERVICE_ACTIONS]
+    if isinstance(data.get('public'), dict):
+        CFG['public'] = _check_public(data['public'])
     _FILE['hosts'][HOSTNAME] = {k: copy.deepcopy(CFG[k]) for k in HOST_KEYS if k in CFG}
     _write()
 
@@ -192,6 +207,34 @@ def backup_dir():
 
 def service_name():
     return CFG['service_name']
+
+
+PUBLIC_HOMES = ('dashboard', 'tests')
+
+
+def _check_public(p):
+    p = p if isinstance(p, dict) else {}
+    return {'home': p.get('home') if p.get('home') in PUBLIC_HOMES else 'dashboard',
+            'backups': bool(p.get('backups')), 'docs': bool(p.get('docs'))}
+
+
+def public_access():
+    """What anonymous visitors get: {home: dashboard|tests, backups: bool, docs: bool}."""
+    return _check_public(CFG.get('public'))
+
+
+def backup_skip():
+    """Patterns left out of project archives (syntax: core/backups.py)."""
+    return list(CFG.get('backup_skip') or [])
+
+
+def deploy_keep():
+    """Patterns of the current project copied into a deployed one (configs, data)."""
+    return list(CFG.get('deploy_keep') or [])
+
+
+def backup_stop_service():
+    return bool(CFG.get('backup_stop_service', True))
 
 
 def _project_path(path):

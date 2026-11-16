@@ -6,7 +6,7 @@ import mimetypes
 from flask import Blueprint, Response, jsonify, render_template, request, send_file
 
 from core import diagrams, help_docs
-from core.auth import login_required
+from core.auth import login_required, public_or_login
 from core.help_docs import DocError
 
 bp = Blueprint('help', __name__)
@@ -26,13 +26,13 @@ def _doc_error(e):
 
 
 @bp.route('/help')
-@login_required
+@public_or_login('docs')
 def help_page():
     return render_template('help.html', help_dir=help_docs.root())
 
 
 @bp.route('/help/file/<path:rel>')
-@login_required
+@public_or_login('docs')
 def help_file(rel):
     """Images, attachments and raw pages; ``?dl=1`` forces a download."""
     full = help_docs.file_path(rel)
@@ -48,14 +48,14 @@ def help_file(rel):
 
 
 @bp.route('/api/help/tree')
-@login_required
+@public_or_login('docs')
 def api_tree():
     return jsonify({'docs': help_docs.list_docs(), 'root': help_docs.root(),
                     'reserved': sorted(help_docs.RESERVED)})
 
 
 @bp.route('/api/help/doc')
-@login_required
+@public_or_login('docs')
 def api_doc():
     return jsonify(help_docs.read_doc(request.args.get('path', '')))
 
@@ -89,7 +89,7 @@ def api_delete():
 
 
 @bp.route('/api/help/search')
-@login_required
+@public_or_login('docs')
 def api_search():
     return jsonify({'results': help_docs.search(request.args.get('q', ''))})
 

@@ -37,11 +37,28 @@
         {% if logged_in %}
         <div class="stack">
             <section class="card">
-                <div class="card-head">Create Backup</div>
-                <form class="card-body row" method="post" action="{{ url_for('backups.create') }}">
-                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-box-archive"></i> Create archive</button>
-                    <span class="hint">Service is stopped while archiving. Excludes __pycache__, .git, .vscode</span>
-                </form>
+                <div class="card-head">
+                    <span>Backup</span>
+                    <span class="spacer"></span>
+                    <a class="btn-icon" href="{{ url_for('settings.settings') }}#backups" title="Skip / keep patterns (Settings → Backups)"><i class="fa-solid fa-sliders"></i></a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <button type="button" id="bk-create" class="btn btn-primary" onclick="Dashboard.createArchive()"><i class="fa-solid fa-box-archive"></i> Create archive</button>
+                        <span class="hint" id="bk-hint">Archives the project directory without the skip patterns of Settings → Backups</span>
+                    </div>
+                    <div id="bk-job" class="bk-job" hidden>
+                        <div class="row bk-job-head">
+                            <i id="bk-job-ico" class="fa-solid fa-spinner fa-spin"></i>
+                            <b id="bk-job-title" class="mono"></b>
+                            <span class="spacer"></span>
+                            <button type="button" id="bk-cancel" class="btn btn-sm btn-ghost" onclick="Dashboard.cancelJob()"><i class="fa-solid fa-ban"></i> Cancel</button>
+                            <button type="button" id="bk-close" class="btn-icon" onclick="Dashboard.hideJob()" title="Hide"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="cl-progress"><div class="cl-bar" id="bk-bar"></div><span id="bk-phase"></span></div>
+                        <pre class="cl-log bk-log" id="bk-log"></pre>
+                    </div>
+                </div>
             </section>
 
             <section class="card">
@@ -71,7 +88,7 @@
         <div class="card-body" id="mon-card"></div>
     </section>
 
-    {% if logged_in %}
+    {% if show_archives %}
     <section class="card">
         <div class="card-head">
             <span>Archives</span>
@@ -88,6 +105,37 @@
     {% endif %}
 
 </main>
+{% endblock %}
+
+{% block modals %}
+{% if logged_in %}
+<div id="dep-overlay" class="modal-overlay" onclick="if (event.target === this) Dashboard.closeDeploy()">
+    <div class="modal-box dep-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-play text-ok"></i> Deploy archive</span>
+            <button class="modal-close" onclick="Dashboard.closeDeploy()">&#215;</button>
+        </div>
+        <div class="modal-body stack">
+            <div class="dep-grid">
+                <span class="muted">Archive</span><b class="mono" id="dep-name"></b>
+                <span class="muted">Replaces</span><b class="mono" id="dep-target"></b>
+                <span class="muted">Kept files</span><span class="mono" id="dep-keep"></span>
+                <span class="muted">Service</span><span id="dep-service"></span>
+            </div>
+            <label class="check-row"><input type="checkbox" id="dep-backup" checked> Full backup of the current project first (<code>…_pre_deploy_….tar.gz</code>, everything incl. <code>.git</code>)</label>
+            <div class="dep-warn"><i class="fa-solid fa-triangle-exclamation"></i>
+                The project directory is <b>deleted</b> and the archive's contents take its place. Only the files of
+                <a href="{{ url_for('settings.settings') }}#backups">Settings → Backups → Keep on deploy</a> are carried over.</div>
+            <div class="text-error" id="dep-block" hidden></div>
+        </div>
+        <div class="modal-foot">
+            <span class="spacer"></span>
+            <button class="btn btn-ghost" onclick="Dashboard.closeDeploy()">Cancel</button>
+            <button class="btn btn-success" id="dep-go" onclick="Dashboard.runDeploy()"><i class="fa-solid fa-play"></i> Deploy</button>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}<script src="{{ asset('js/dashboard.js') }}"></script>{% endblock %}

@@ -15,6 +15,7 @@ const Settings = {
         window.addEventListener('beforeunload', e => { if (this.changed().length) { e.preventDefault(); e.returnValue = ''; } });
         this.show(location.hash.slice(1) || 'general');
         this.loadGitCred();
+        this.loadServices();
         App.api('/api/git/summary?repo=project').then(s => {
             const b = document.querySelector('.st-nav-badge');
             if (s.errors || s.warnings) { b.hidden = false; b.textContent = '!'; b.className = 'git-badge st-nav-badge ' + (s.errors ? 'err' : 'warn'); }
@@ -27,6 +28,7 @@ const Settings = {
         document.querySelectorAll('#st-nav a').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
         document.getElementById('st-savebar').hidden = ['git', 'display', 'video'].includes(tab) && !this.changed().length;
         if (tab === 'video' && typeof VideoSources !== 'undefined') VideoSources.load();
+        if (typeof NetCfg !== 'undefined') NetCfg.visible(tab === 'network');
         if (tab !== 'video' && typeof VideoDevices !== 'undefined') VideoDevices.stop();
         if (typeof DisplaySettings !== 'undefined') DisplaySettings.visible(tab === 'display');
         if (tab === 'git' && !this._gitMounted) {
@@ -36,7 +38,7 @@ const Settings = {
         if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab);
     },
 
-    _val(el) { return el.type === 'checkbox' ? el.checked : el.value; },
+    _val(el) { return el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value; },
 
     changed() {
         return [...document.querySelectorAll('[data-cfg]')].filter(el => this._val(el) !== this.initial[el.dataset.cfg]);
@@ -45,7 +47,7 @@ const Settings = {
     track() {
         const ch = this.changed();
         document.querySelectorAll('.st-changed').forEach(f => f.classList.remove('st-changed'));
-        ch.forEach(el => (el.closest('.field, .st-switch, .check-row') || el).classList.add('st-changed'));
+        ch.forEach(el => (el.closest('.field, .st-switch, .check-row, .st-home-opt') || el).classList.add('st-changed'));
         const panes = new Set(ch.map(el => el.closest('.st-pane').dataset.pane));
         document.querySelectorAll('#st-nav a').forEach(a => a.classList.toggle('dirty', panes.has(a.dataset.tab)));
         const d = document.getElementById('st-dirty');
@@ -60,9 +62,53 @@ const Settings = {
     revert() {
         document.querySelectorAll('[data-cfg]').forEach(el => {
             const v = this.initial[el.dataset.cfg];
-            if (el.type === 'checkbox') el.checked = v; else el.value = v;
+            if (el.type === 'checkbox' || el.type === 'radio') el.checked = v; else el.value = v;
         });
         this.track();
+    },
+
+    // ── Target service list ────────────────────────────────────
+
+    /** Fill the service <select>: "none" first, then every service of this host (the current value kept). */
+    loadServices() {
+        const sel = document.getElementById('service_name');
+        App.api('/api/services').then(d => {
+            const cur = sel.value;
+            const names = d.services.map(s => s.name);
+            if (cur !== 'none' && !names.includes(cur)) names.unshift(cur);   // configured but not loaded
+            const desc = Object.fromEntries(d.services.map(s => [s.name, s]));
+            sel.innerHTML = '<option value="none">none</option>' + names.map(n => {
+                const s = desc[n];
+                const note = s ? ` — ${s.active}${s.desc ? ' · ' + s.desc : ''}` : ' — not found';
+                return `<option value="${esc(n)}">${esc(n + note)}</option>`;
+            }).join('');
+            sel.value = cur;
+        }).catch(e => toast(e.message, true));
+    },
+
+    // ── Backup patterns ────────────────────────────────────────
+
+    _lines(id) { return document.getElementById(id).value.split('\n').map(l => l.trim()).filter(Boolean); },
+
+    previewPatterns() {
+        const box = document.getElementById('st-pat-preview');
+        box.innerHTML = '<span class="muted">Checking…</span>';
+        App.api('/api/backups/preview', { json: { skip: this._lines('backup_skip'), keep: this._lines('deploy_keep') } })
+            .then(r => {
+                const list = (items, empty) => items.length
+                    ? '<ul class="st-pat-list">' + items.map(i => `<li><span class="mono">${esc(i.path)}</span> <span class="muted">← ${esc(i.pattern)}</span></li>`).join('') + '</ul>'
+                    : `<div class="muted">${empty}</div>`;
+                const unused = (arr, what) => arr.length
+                    ? `<div class="text-warn small">${what} that match nothing: ${arr.map(p => `<code>${esc(p)}</code>`).join(' ')}</div>` : '';
+                box.innerHTML =
+                    `<div class="small">Archived: <b>${r.files}</b> files, <b>${App.fmtBytes(r.bytes)}</b> (before compression).
+                     Skipped: <b>${r.skipped_count}</b> entries.${r.truncated ? ' <span class="text-warn">Stopped early — the folder is very large.</span>' : ''}</div>
+                     <div class="st-pat-cols">
+                        <div><h4>Skipped when archiving</h4>${list(r.skipped, 'nothing')}${unused(r.unused_skip, 'Skip patterns')}</div>
+                        <div><h4>Kept on deploy</h4>${list(r.kept, 'nothing — the whole project is replaced')}${unused(r.unused_keep, 'Keep patterns')}</div>
+                     </div>`;
+            })
+            .catch(e => { box.innerHTML = `<span class="text-error">✗ ${esc(e.message)}</span>`; });
     },
 
     // ── Directory picker ───────────────────────────────────────
@@ -116,13 +162,19 @@ const Settings = {
         const payload = {
             app_title: val('app_title'), page_title: val('page_title'), device_name: val('device_name'),
             target_dir: val('target_dir'), backup_dir: val('backup_dir'),
-            archive_name: val('archive_name'), upload_tmp_name: val('upload_tmp_name'),
             service_name: val('service_name'), tests_dir: val('tests_dir'), test_logs_dir: val('test_logs_dir'),
             help_dir: val('help_dir'), host: val('host'), port: parseInt(val('port'), 10) || 80,
             update_check_minutes: Math.max(0, parseInt(val('update_check_minutes'), 10) || 0),
             show_demo_tests: document.getElementById('show_demo_tests').checked,
+            backup_stop_service: document.getElementById('backup_stop_service').checked,
+            backup_skip: Settings._lines('backup_skip'), deploy_keep: Settings._lines('deploy_keep'),
             auth: { enabled: document.getElementById('auth_enabled').checked, username: val('auth_username') },
             public_service_actions: [...document.querySelectorAll('.public-action:checked')].map(c => c.value),
+            public: {
+                home: (document.querySelector('input[name="public_home"]:checked') || {}).value || 'dashboard',
+                backups: document.getElementById('public_backups').checked,
+                docs: document.getElementById('public_docs').checked,
+            },
         };
         const pw = document.getElementById('auth_password').value;
         if (pw) payload.auth.password = pw;

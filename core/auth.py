@@ -1,7 +1,9 @@
 """Authentication helpers.
 
 Access model:
-  * anonymous  - may view services/status and run ``public_service_actions``;
+  * anonymous  - may view services/status and run ``public_service_actions``; plus what Settings → Access opens
+                 (``config.public_access()``, checked by ``can()`` / ``public_or_login``): ``tests`` (home = test
+                 machine: run tests, view logs), ``backups`` (archive list + download), ``docs`` (read-only);
   * logged in  - everything else.
 When ``auth.enabled`` is false every visitor is treated as logged in.
 """
@@ -44,6 +46,22 @@ def can_service_action(action):
     return is_logged_in() or action in config.public_service_actions()
 
 
+FEATURES = ('tests', 'backups', 'docs')
+
+
+def can(feature):
+    """Logged in, or ``feature`` opened to anonymous visitors in Settings → Access."""
+    return is_logged_in() or public_can(feature)
+
+
+def public_can(feature):
+    """``feature`` is opened to anonymous visitors in Settings → Access."""
+    p = config.public_access()
+    if feature == 'tests':
+        return p['home'] == 'tests'
+    return bool(p.get(feature)) if feature in FEATURES else False
+
+
 def _wants_json():
     return request.path.startswith('/api/') or request.method != 'GET'
 
@@ -63,6 +81,18 @@ def login_required(f):
             return unauthorized()
         return f(*args, **kwargs)
     return wrapper
+
+
+def public_or_login(feature):
+    """Like ``login_required``, but also open to anonymous visitors when ``can(feature)``."""
+    def deco(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not can(feature):
+                return unauthorized()
+            return f(*args, **kwargs)
+        return wrapper
+    return deco
 
 
 def safe_next(url, default='/'):

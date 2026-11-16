@@ -1,7 +1,7 @@
 """Settings page: edits this host's section of config.json."""
 from flask import Blueprint, jsonify, render_template, request
 
-from core import config
+from core import backups, config
 from core.auth import login_required
 
 bp = Blueprint('settings', __name__)
@@ -14,7 +14,8 @@ def settings():
                            hostname=config.HOSTNAME,
                            has_host_config=config.host_section() is not None,
                            service_actions=config.SERVICE_ACTIONS,
-                           public_actions=config.public_service_actions())
+                           public_actions=config.public_service_actions(),
+                           public=config.public_access())
 
 
 @bp.route('/api/settings', methods=['POST'])
@@ -23,6 +24,12 @@ def save():
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'error': 'No data'}), 400
+    try:
+        for key in ('backup_skip', 'deploy_keep'):
+            if key in data:
+                backups.parse_patterns(data[key])
+    except backups.BackupError as exc:
+        return jsonify({'error': f'{key}: {exc}'}), 400
     try:
         config.update(data)
         return jsonify({'success': True})

@@ -37,7 +37,8 @@
             </div>
         </div>
         <a href="#general" data-tab="general"><i class="fa-solid fa-sliders"></i> General</a>
-        <a href="#paths" data-tab="paths"><i class="fa-regular fa-folder"></i> Paths &amp; backups</a>
+        <a href="#paths" data-tab="paths"><i class="fa-regular fa-folder"></i> Paths</a>
+        <a href="#backups" data-tab="backups"><i class="fa-solid fa-box-archive"></i> Backups</a>
         <a href="#service" data-tab="service"><i class="fa-solid fa-gears"></i> Service</a>
         <a href="#tests" data-tab="tests"><i class="fa-solid fa-vial"></i> Tests &amp; docs</a>
         <a href="#network" data-tab="network"><i class="fa-solid fa-network-wired"></i> Network</a>
@@ -81,21 +82,84 @@
         </section>
 
         <section class="st-pane" id="pane-paths" data-pane="paths" hidden>
-            <h2>Paths &amp; backups</h2>
+            <h2>Paths</h2>
             <div class="card"><div class="card-body">
-                {{ path_field('target_dir', 'Project directory', 'Managed project: code editor root, archived by Backups, <b>Git</b> repository “Project”') }}
-                {{ path_field('backup_dir', 'Backup directory', 'Where backup archives are stored') }}
-                <div class="field-row">
-                    {{ field('archive_name', 'Archive name', 'e.g. myproject-backup.tar.gz') }}
-                    {{ field('upload_tmp_name', 'Upload temp name', 'Temporary file name of uploaded archives') }}
-                </div>
+                {{ path_field('target_dir', 'Project directory', 'Managed project: code editor root, archived and replaced by Backups, <b>Git</b> repository “Project”') }}
             </div></div>
+        </section>
+
+        <section class="st-pane" id="pane-backups" data-pane="backups" hidden>
+            <h2>Backups</h2>
+            <div class="card"><div class="card-body">
+                {{ path_field('backup_dir', 'Backup directory', 'Where archives are stored (main page → Archives). Must not be inside the project directory — a deploy replaces that folder') }}
+                <label class="check-row"><input type="checkbox" id="backup_stop_service" data-cfg="backup_stop_service" {% if cfg.backup_stop_service %}checked{% endif %}>
+                    Stop the target service while an archive is written</label>
+                <span class="hint">Only if it is running; it is started again afterwards. A deploy always stops it while the folder is replaced.</span>
+            </div></div>
+
+            <div class="card">
+                <div class="card-head">Skip when archiving</div>
+                <div class="card-body st-patterns">
+                    <textarea class="input mono" id="backup_skip" data-cfg="backup_skip" rows="8" spellcheck="false">{{ cfg.backup_skip|join('\n') }}</textarea>
+                    <div class="st-pat-help">
+                        <p>One pattern per line, paths relative to the project directory. <code>#</code> starts a comment.</p>
+                        <table class="tbl st-pat-tbl">
+                            <tr><td><code>.git/</code></td><td>folder <code>.git</code> at any depth, with everything inside</td></tr>
+                            <tr><td><code>logs/*</code></td><td>everything inside <code>logs</code> of the project root — the empty folder stays</td></tr>
+                            <tr><td><code>data/cache/</code></td><td>exactly this folder (a <code>/</code> inside = from the project root)</td></tr>
+                            <tr><td><code>flash_dump.bin</code></td><td>a file (or folder) of this name at any depth</td></tr>
+                            <tr><td><code>/notes.txt</code></td><td>only <code>notes.txt</code> in the project root</td></tr>
+                            <tr><td><code>*.log</code></td><td>by extension at any depth</td></tr>
+                            <tr><td><code>images/*.png</code></td><td>by extension inside one folder (and its sub-folders)</td></tr>
+                        </table>
+                        <p class="hint">Always left out: the backup directory and the panel itself if they lie inside the project, other mounted filesystems.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Keep on deploy</div>
+                <div class="card-body st-patterns">
+                    <textarea class="input mono" id="deploy_keep" data-cfg="deploy_keep" rows="6" spellcheck="false" placeholder="config.json&#10;data/&#10;*.db">{{ cfg.deploy_keep|join('\n') }}</textarea>
+                    <div class="st-pat-help">
+                        <p>A deploy <b>deletes the project directory</b> and puts the archive's contents in its place. Files matching
+                            these patterns are copied from the current project into the new one first (they replace the archive's version) —
+                            local configs, credentials, databases, calibration data.</p>
+                        <table class="tbl st-pat-tbl">
+                            <tr><td><code>/config.json</code></td><td>the config file in the project root</td></tr>
+                            <tr><td><code>settings/*.ini</code></td><td>all <code>.ini</code> files of <code>settings</code></td></tr>
+                            <tr><td><code>data/</code></td><td>the whole <code>data</code> folder</td></tr>
+                            <tr><td><code>.git/</code></td><td>keep the git history of the current project (otherwise a deploy replaces it with the archive's)</td></tr>
+                            <tr><td><code>*.db</code></td><td>every database file at any depth</td></tr>
+                        </table>
+                        <p class="hint">Same syntax as above. Order of a deploy: optional <b>full</b> backup (skip patterns not applied) → extract to a temporary folder next to the
+                            project → stop the service → copy the kept files → swap the folders → start the service → delete the old folder.
+                            Any failure before the swap leaves the project untouched.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <span>Check the patterns</span>
+                    <span class="spacer"></span>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="Settings.previewPatterns()"><i class="fa-solid fa-magnifying-glass"></i> Check</button>
+                </div>
+                <div class="card-body" id="st-pat-preview"><span class="muted">Shows what the patterns above (also unsaved) match in <code class="mono">{{ cfg.target_dir }}</code>.</span></div>
+            </div>
         </section>
 
         <section class="st-pane" id="pane-service" data-pane="service" hidden>
             <h2>Service</h2>
             <div class="card"><div class="card-body">
-                {{ field('service_name', 'Target service (systemd)', 'Exact name as in <code>systemctl status</code>; anonymous visitors can control only this one', placeholder='myservice.service') }}
+                <div class="field">
+                    <label for="service_name">Target service (systemd)</label>
+                    <select class="input select-mono" id="service_name" data-cfg="service_name">
+                        <option value="none">none</option>
+                        {% if cfg.service_name and cfg.service_name != 'none' %}<option value="{{ cfg.service_name }}" selected>{{ cfg.service_name }}</option>{% endif %}
+                    </select>
+                    <span class="hint" id="service_name_hint">Services of this host (<code>systemctl list-units</code>); anonymous visitors can control only this one</span>
+                </div>
             </div></div>
         </section>
 
@@ -122,9 +186,43 @@
             </div>
         </section>
 
-        <section class="st-pane" id="pane-network" data-pane="network" hidden>
+        <section class="st-pane st-pane-wide" id="pane-network" data-pane="network" hidden>
             <h2>Network</h2>
-            <div class="card"><div class="card-body">
+
+            <div class="nc-pending" id="nc-pending" hidden></div>
+
+            <div class="card">
+                <div class="card-head">Interfaces <span class="meta mono" id="nc-host"></span>
+                    <span class="spacer"></span>
+                    <button class="btn-icon" type="button" onclick="NetCfg.load()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+                <div class="card-body nc-devs" id="nc-devs"><div class="muted">Loading…</div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Wi-Fi
+                    <label class="check-row nc-radio"><input type="checkbox" id="nc-radio" onchange="NetCfg.radio(this.checked)"> enabled</label>
+                    <span class="spacer"></span>
+                    <select class="input input-sm nc-wdev" id="nc-wdev" title="Wi-Fi adapter"></select>
+                    <button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.openJoin(null)" title="Network that does not broadcast its name"><i class="fa-solid fa-eye-slash"></i> Hidden…</button>
+                    <button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.openHotspot()" title="Make this board an access point"><i class="fa-solid fa-tower-broadcast"></i> Hotspot…</button>
+                    <button class="btn btn-primary btn-sm" type="button" onclick="NetCfg.scan(true)" id="nc-scan"><i class="fa-solid fa-magnifying-glass"></i> Scan</button>
+                </div>
+                <div class="card-body flush"><table class="tbl nc-tbl"><thead><tr><th>Network</th><th>Signal</th><th>Security</th><th>Band / ch.</th><th></th></tr></thead>
+                    <tbody id="nc-wifi"><tr><td colspan="5" class="tbl-empty">Loading…</td></tr></tbody></table></div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Saved connections <span class="meta">NetworkManager profiles; the highest priority of the available ones connects first</span></div>
+                <div class="card-body flush"><table class="tbl nc-tbl"><thead><tr><th>Name</th><th>Type</th><th>Device</th><th>Auto</th><th>Priority</th><th></th></tr></thead>
+                    <tbody id="nc-conns"></tbody></table></div>
+            </div>
+
+            <div class="st-note"><i class="fa-solid fa-shield-halved"></i><span>Every change is applied with a safety net: it is kept only when
+                this page still reaches the panel afterwards (confirmed automatically) or you press <b>Keep</b> — otherwise NetworkManager
+                restores the previous settings after <span id="nc-rb-sec">120</span> s. Changing the address of the interface you are
+                connected through: open the new address within that time and confirm there.</span></div>
+
+            <div class="card"><div class="card-head">Panel web server</div><div class="card-body">
                 <div class="field-row">
                     {{ field('host', 'Listen address', '<code>0.0.0.0</code> = all interfaces', placeholder='0.0.0.0') }}
                     {{ field('port', 'Port', '', type='number') }}
@@ -251,7 +349,7 @@
             <div class="card"><div class="card-body">
                 <label class="st-switch">
                     <input type="checkbox" id="auth_enabled" data-cfg="auth.enabled" {% if cfg.auth and cfg.auth.enabled %}checked{% endif %}>
-                    <span><b>Require login</b><br><span class="hint">Anonymous visitors see only the target service and the monitor</span></span>
+                    <span><b>Require login</b><br><span class="hint">Off = every visitor is treated as logged in. On = visitors without login get only what <i>Without login</i> below opens</span></span>
                 </label>
                 <div class="field-row">
                     {{ field('auth_username', 'Username', value=(cfg.auth.username if cfg.auth else '')) }}
@@ -261,15 +359,43 @@
                         <span class="hint">Leave empty to keep the current password</span>
                     </div>
                 </div>
-                <div class="field">
-                    <label>Service actions allowed without login</label>
-                    <div class="row">
-                        {% for action in service_actions %}
-                        <label class="check-row"><input type="checkbox" class="public-action" data-cfg="public:{{ action }}" value="{{ action }}" {% if action in public_actions %}checked{% endif %}> {{ action }}</label>
-                        {% endfor %}
-                    </div>
-                </div>
             </div></div>
+
+            <div class="card">
+                <div class="card-head">Without login</div>
+                <div class="card-body">
+                    <label>Start page</label>
+                    <div class="st-home">
+                        <label class="st-home-opt">
+                            <input type="radio" name="public_home" value="dashboard" data-cfg="public.home:dashboard" {% if public.home == 'dashboard' %}checked{% endif %}>
+                            <span><b><i class="fa-solid fa-house"></i> Info panel</b>
+                                <span class="hint">Target service and system monitor; the options below decide what else is open</span></span>
+                        </label>
+                        <label class="st-home-opt">
+                            <input type="radio" name="public_home" value="tests" data-cfg="public.home:tests" {% if public.home == 'tests' %}checked{% endif %}>
+                            <span><b><i class="fa-solid fa-vial"></i> Test machine</b>
+                                <span class="hint">An operator runs tests (script, serial number, Start / Stop, prompts) and views the logs —
+                                    deleting logs, scripts and settings need login. The info panel stays reachable as <i>Main</i></span></span>
+                        </label>
+                    </div>
+
+                    <div class="field">
+                        <label>Info panel: service actions</label>
+                        <div class="row">
+                            {% for action in service_actions %}
+                            <label class="check-row"><input type="checkbox" class="public-action" data-cfg="public:{{ action }}" value="{{ action }}" {% if action in public_actions %}checked{% endif %}> {{ action }}</label>
+                            {% endfor %}
+                        </div>
+                        <span class="hint">For the target service (Settings → Service) only; the list of all services needs login</span>
+                    </div>
+                    <label class="check-row"><input type="checkbox" id="public_backups" data-cfg="public.backups" {% if public.backups %}checked{% endif %}>
+                        Info panel: show archives (list and download)</label>
+                    <span class="hint">Creating, uploading, deploying and deleting archives always need login</span>
+                    <label class="check-row"><input type="checkbox" id="public_docs" data-cfg="public.docs" {% if public.docs %}checked{% endif %}>
+                        Documentation (read only)</label>
+                    <span class="hint">The Docs section without the editor, the diagram editor, images / files management and Git</span>
+                </div>
+            </div>
         </section>
 
         <section class="st-pane st-pane-wide" id="pane-git" data-pane="git" hidden>
@@ -319,9 +445,28 @@
 </div>
 {% endblock %}
 
+{% block modals %}
+<div id="nc-overlay" class="modal-overlay" onclick="if (event.target === this) NetCfg.close()">
+    <div class="modal-box nc-box">
+        <div class="modal-head">
+            <span class="modal-title" id="nc-m-title"></span>
+            <button class="modal-close" onclick="NetCfg.close()">&#215;</button>
+        </div>
+        <div class="modal-body stack" id="nc-m-body"></div>
+        <div class="modal-foot">
+            <span class="text-error small" id="nc-m-err"></span>
+            <span class="spacer"></span>
+            <button class="btn btn-ghost" onclick="NetCfg.close()">Cancel</button>
+            <button class="btn btn-primary" id="nc-m-ok" onclick="NetCfg.submit()"></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
 {% block scripts %}
 <script src="{{ asset('js/git.js') }}"></script>
 <script src="{{ asset('js/settings.js') }}"></script>
 <script src="{{ asset('js/settings_display.js') }}"></script>
 <script src="{{ asset('js/settings_video.js') }}"></script>
+<script src="{{ asset('js/settings_net.js') }}"></script>
 {% endblock %}

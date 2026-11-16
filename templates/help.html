@@ -16,14 +16,16 @@
                 <input id="hp-q" class="input input-sm" placeholder="Search docs…  ( / )" autocomplete="off" spellcheck="false">
                 <button class="btn-icon" id="hp-q-clear" onclick="Help.clearSearch()" title="Clear" hidden><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <button class="btn btn-success btn-sm" onclick="Help.openNew()" title="New document"><i class="fa-solid fa-plus"></i></button>
+{% if logged_in %}<button class="btn btn-success btn-sm" onclick="Help.openNew()" title="New document"><i class="fa-solid fa-plus"></i></button>{% endif %}
         </div>
         <div id="hp-tree" class="hp-tree"><div class="tbl-empty">Loading…</div></div>
         <div class="hp-side-foot">
+            {% if logged_in %}
             <button class="btn btn-ghost btn-sm" onclick="Help.openAssets('img')" title="Images in img/"><i class="fa-regular fa-image"></i> Images</button>
             <button class="btn btn-ghost btn-sm" onclick="Help.openAssets('docs')" title="Attached files in docs/"><i class="fa-solid fa-paperclip"></i> Files</button>
+            {% endif %}
             <span class="spacer"></span>
-            <button class="btn-icon git-btn" data-git-badge="help" onclick="Git.openModal('help')" title="Git"><i class="fa-brands fa-git-alt"></i><span class="git-badge" hidden></span></button>
+            {% if logged_in %}<button class="btn-icon git-btn" data-git-badge="help" onclick="Git.openModal('help')" title="Git"><i class="fa-brands fa-git-alt"></i><span class="git-badge" hidden></span></button>{% endif %}
             <button class="btn-icon" onclick="Help.loadTree()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
         </div>
     </aside>
@@ -37,11 +39,13 @@
             <span id="hp-meta" class="meta small faint"></span>
 
             <div class="hp-actions" id="hp-view-actions" hidden>
+                {% if logged_in %}
                 <button class="btn btn-primary btn-sm" onclick="Help.edit()" title="Edit (E)"><i class="fa-solid fa-pen"></i> Edit</button>
                 <button class="btn-icon" onclick="Help.openRename()" title="Rename / move"><i class="fa-solid fa-i-cursor"></i></button>
+                {% endif %}
                 <a class="btn-icon" id="hp-download" href="#" title="Download .md"><i class="fa-solid fa-download"></i></a>
                 <button class="btn-icon" onclick="window.print()" title="Print"><i class="fa-solid fa-print"></i></button>
-                <button class="btn-icon hp-del" onclick="Help.remove()" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+                {% if logged_in %}<button class="btn-icon hp-del" onclick="Help.remove()" title="Delete"><i class="fa-regular fa-trash-can"></i></button>{% endif %}
             </div>
 
             <div class="hp-actions" id="hp-edit-actions" hidden>
@@ -354,5 +358,5 @@
 <script src="{{ asset('js/diagram_render.js') }}"></script>
 <script src="{{ asset('js/diagrams.js') }}"></script>
 <script src="{{ asset('js/help.js') }}"></script>
-<script src="{{ asset('js/git.js') }}"></script>
+{% if logged_in %}<script src="{{ asset('js/git.js') }}"></script>{% endif %}
 {% endblock %}

@@ -67,6 +67,7 @@ const Diagrams = {
     R: DiagramRender,
 
     init() {
+        if (!App.config.loggedIn) return;                 // read-only docs (anonymous): no diagram editor
         const svg = this.$('dg-svg');
         svg.addEventListener('mousedown', e => this._down(e));
         window.addEventListener('mousemove', e => this._move(e));

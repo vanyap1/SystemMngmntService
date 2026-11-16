@@ -1,74 +1,75 @@
-"""Backup archives of target_dir: create, upload, deploy, download, delete."""
+"""Backup archives of target_dir: create / deploy as a background job (core/backups.py), upload, download, delete."""
 import os
 import re
-from datetime import datetime
 
 from flask import Blueprint, flash, jsonify, redirect, request, send_file, url_for
 
-from core import config
-from core.auth import login_required
-from core.shell import quote, resolve_inside, run_command
+from core import backups, config
+from core.auth import login_required, public_or_login
 
 bp = Blueprint('backups', __name__)
 
-TAR_EXCLUDES = "--exclude='__pycache__' --exclude='.git' --exclude='.vscode'"
-ARCHIVE_EXTS = ('.tar.gz', '.tar')
 
-
-def _make_archive(dest_path):
-    """Create tar.gz of target_dir with standard excludes. Returns (success, output)."""
-    target = config.target_dir()
-    out = run_command(f"sudo tar -czf {quote(dest_path)} {TAR_EXCLUDES}"
-                      f" -C {quote(os.path.dirname(target))} {quote(os.path.basename(target))}")
-    return not out.startswith('Error!'), out
-
-
-def _with_service_stopped(fn):
-    service = quote(config.service_name())
-    run_command(f"sudo systemctl stop {service}")
-    try:
-        return fn()
-    finally:
-        run_command(f"sudo systemctl start {service}")
-
-
-def _archive_path(filename):
-    """Resolve an archive name inside backup_dir or return None."""
-    return resolve_inside(os.path.join(config.backup_dir(), os.path.basename(filename or '')),
-                          config.backup_dir())
-
-
-def _timestamped_name(suffix=''):
-    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-    return f"{os.path.basename(config.target_dir())}{suffix}_{ts}.tar.gz"
+def _err(exc):
+    return jsonify({'error': str(exc)}), getattr(exc, 'status', 400)
 
 
 @bp.route('/api/backups')
-@login_required
+@public_or_login('backups')
 def api_backups():
     try:
-        files = []
-        for e in os.scandir(config.backup_dir()):
-            if e.is_file() and e.name.endswith(ARCHIVE_EXTS):
-                st = e.stat()
-                files.append({'name': e.name, 'size': st.st_size, 'mtime': st.st_mtime})
-        files.sort(key=lambda x: x['mtime'], reverse=True)
-        return jsonify(files)
-    except Exception as exc:
+        return jsonify({'archives': backups.list_archives(), 'job': backups.job_status(),
+                        'deploy_block': backups.check_deploy_target(config.target_dir()),
+                        'target': config.target_dir(), 'keep': backups.parse_patterns(config.deploy_keep()),
+                        'stop_service': config.backup_stop_service(), 'service': config.service_name()})
+    except (OSError, backups.BackupError) as exc:
         return jsonify({'error': str(exc)}), 500
 
 
-@bp.route('/backups/create', methods=['POST'])
+@bp.route('/api/backups/job')
+@public_or_login('backups')
+def api_job():
+    return jsonify({'job': backups.job_status()})
+
+
+@bp.route('/api/backups/create', methods=['POST'])
 @login_required
 def create():
-    name = _timestamped_name()
-    ok, out = _with_service_stopped(
-        lambda: _make_archive(os.path.join(config.backup_dir(), name)))
-    if ok:
-        flash(f"Archive created: {name}", 'success')
-    else:
-        flash(f"Error creating archive: {out}", 'danger')
-    return redirect(url_for('dashboard.index'))
+    try:
+        return jsonify({'job': backups.start_create()})
+    except backups.BackupError as exc:
+        return _err(exc)
+
+
+@bp.route('/api/backups/deploy', methods=['POST'])
+@login_required
+def deploy():
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify({'job': backups.start_deploy(data.get('filename'), data.get('backup', True))})
+    except backups.BackupError as exc:
+        return _err(exc)
+
+
+@bp.route('/api/backups/cancel', methods=['POST'])
+@login_required
+def cancel():
+    try:
+        return jsonify({'job': backups.cancel()})
+    except backups.BackupError as exc:
+        return _err(exc)
+
+
+@bp.route('/api/backups/preview', methods=['POST'])
+@login_required
+def preview():
+    """Settings → Backups: what the (unsaved) patterns would skip / keep in the project directory."""
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(backups.preview(backups.parse_patterns(data.get('skip', '')),
+                                       backups.parse_patterns(data.get('keep', ''))))
+    except backups.BackupError as exc:
+        return _err(exc)
 
 
 @bp.route('/backups/upload', methods=['POST'])
@@ -78,56 +79,36 @@ def upload():
     if not file or not file.filename:
         flash('No file selected', 'danger')
         return redirect(url_for('dashboard.index'))
-    fname = re.sub(r'[^\w.\-]', '_', os.path.basename(file.filename))
-    if not fname.endswith(ARCHIVE_EXTS):
-        flash('Only .tar.gz / .tar files are supported', 'danger')
+    fname = re.sub(r'[^\w.\-]', '_', os.path.basename(file.filename)).lstrip('.')
+    path = backups.archive_path(fname)
+    if not path:
+        flash('Only .tar.gz / .tgz / .tar files are supported', 'danger')
         return redirect(url_for('dashboard.index'))
-    file.save(os.path.join(config.backup_dir(), fname))
+    if fname in backups.busy_files():
+        flash(f'"{fname}" is in use by the running job', 'danger')
+        return redirect(url_for('dashboard.index'))
+    file.save(path + backups.PARTIAL)
+    os.replace(path + backups.PARTIAL, path)
     flash(f'File "{fname}" uploaded. Select it from the archive list to deploy.', 'success')
     return redirect(url_for('dashboard.index'))
 
 
 @bp.route('/backups/download/<path:filename>')
-@login_required
+@public_or_login('backups')
 def download(filename):
-    path = _archive_path(filename)
-    if not path or not os.path.isfile(path):
-        flash('File not found', 'danger')
+    path = backups.archive_path(filename)
+    if not path or not os.path.isfile(path) or filename in backups.busy_files():
+        flash('File not found' if filename not in backups.busy_files() else 'The archive is not ready yet', 'danger')
         return redirect(url_for('dashboard.index'))
     return send_file(path, as_attachment=True)
-
-
-@bp.route('/api/backups/deploy', methods=['POST'])
-@login_required
-def deploy():
-    data = request.get_json(silent=True) or {}
-    src = _archive_path(data.get('filename'))
-    if not src:
-        return jsonify({'error': 'Invalid filename'}), 400
-    if not os.path.isfile(src):
-        return jsonify({'error': 'File not found'}), 404
-    auto_name = _timestamped_name('_pre_deploy')
-
-    def _deploy():
-        # Auto-backup current project state before extracting the archive.
-        _make_archive(os.path.join(config.backup_dir(), auto_name))
-        return run_command(f"sudo tar -xzf {quote(src)} "
-                           f"-C {quote(os.path.dirname(config.target_dir()))}")
-
-    out = _with_service_stopped(_deploy)
-    if out.startswith('Error!'):
-        return jsonify({'error': out}), 500
-    return jsonify({'success': True, 'auto_backup': auto_name})
 
 
 @bp.route('/api/backups/delete', methods=['POST'])
 @login_required
 def delete():
     data = request.get_json(silent=True) or {}
-    path = _archive_path(data.get('filename'))
-    if not path:
-        return jsonify({'error': 'Invalid filename'}), 400
-    if not os.path.isfile(path):
-        return jsonify({'error': 'File not found'}), 404
-    os.remove(path)
-    return jsonify({'success': True})
+    try:
+        backups.delete_archive(data.get('filename'))
+        return jsonify({'success': True})
+    except backups.BackupError as exc:
+        return _err(exc)

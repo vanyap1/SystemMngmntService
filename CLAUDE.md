@@ -39,9 +39,11 @@ core/
   web.py               template context for every page, asset() cache-busting helper
   test_runner.py       runs test-platform scripts, verdicts, per-run log files
   test_logs.py         test log viewer: parse testLogs/*.log (cached), filters, yield/FPY, step stats, CSV
+  backups.py           project archives: skip / keep patterns, create + deploy as one background job (progress, cancel)
   gpio_ctl.py          manual GPIO control for the HW Utils popup: per-client claimed lines under a lease
   i2c.py               I²C tools for HW Utils: scan (i2cdetect), register read/write (i2ctransfer), labels
   net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
+  netcfg.py            Settings → Network: NetworkManager (nmcli) connections, Wi-Fi, hotspot — every change under a checkpoint
   udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
   monitor.py           system monitor sampler (CPU/RAM/temp/active iface/disk I/O, 15 min history, lease)
   terminal.py          interactive shell in a pty for the editor's Terminal tab (SSE output, POST keys, lease)
@@ -99,15 +101,40 @@ static/
   (default `["restart"]`). Below it the read-only *System Monitor* card (`/api/monitor` is public);
   the floating Monitor window on other pages is logged-in only.
 - **Logged in**: everything else (backups, sysinfo, editor, terminal, settings, video, devices/GPIO, power, macros).
+- Settings → Access → *Without login* (`config.public_access()` = `public: {home, backups, docs}`) opens more, checked by
+  `auth.can(feature)` / the decorator `@public_or_login('tests'|'backups'|'docs')` (nav: `NavItem.public` = feature):
+  `home: tests` = test machine — `/` redirects anonymous visitors to `/tests` (info panel at `/main`), tests run /
+  stop / answer and the log viewer are open (deleting logs is not); `backups` = archive list + job + download (no
+  create / upload / deploy / delete); `docs` = Docs read only (`Help.readonly`, no Diagrams editor, no git.js).
+  Anonymous pages must never call a closed API (App.api turns 401 into a login redirect) — render the controls only
+  for `logged_in` / `App.config.loggedIn`. Tests: `tests/test_access.py` `PublicAccess`.
 - `auth.enabled = false` ⇒ every visitor is treated as logged in.
 - The device display script (core/display_ui) counts as logged in with its `X-SMMS-Token` — only from 127.0.0.1 and
   only while that process runs (`auth._display_token`). Nothing else may bypass the login.
 - Backend is the source of truth: **every route is `@login_required` unless it is intentionally public**.
-  Public routes are only the ones listed above plus `/login`, `/logout`, `/favicon.ico`, static files.
+  Public routes are only the ones listed above plus `/login`, `/logout`, `/favicon.ico`, `/main`, static files, and the
+  `public_or_login` routes while their feature is opened.
   Hiding a button in a template is never a substitute for the decorator.
 - `login_required` returns JSON 401 for `/api/*` and non-GET requests, otherwise redirects to `/login?next=…`.
 - Templates use `logged_in` and `can_service('restart')`; JS uses `App.config.loggedIn` and `Services.canAct()`.
   Scripts/markup for logged-in widgets are not rendered for anonymous users at all.
+
+## Backups (main page + Settings → Backups)
+- `core/backups.py` + `routes/backups.py` + `static/js/dashboard.js`, tests `tests/test_backups.py` (temp project and
+  backup dir, service `none` / mocked systemctl — never stop a real service, never deploy over a real folder in tests).
+- One job at a time; archives are written as `.partial` and renamed; the job's archives can't be downloaded / deleted.
+- Deploy never touches the project before the new tree is fully extracted next to it; then keep → rename swap
+  (rolled back if the second rename fails) → delete old. `check_deploy_target` refuses system / home dirs, mount points,
+  a project containing the backup dir or the panel. The service is stopped only if running, never the panel's own unit.
+
+## Network (Settings → Network)
+- `core/netcfg.py` + `routes/netcfg.py` + `static/js/settings_net.js`, tests `tests/test_netcfg.py` (fake nmcli / busctl
+  via `netcfg._run` — **never change the board's real network in tests or by hand**; reading with nmcli is fine).
+- The only place that reconfigures Ethernet / Wi-Fi. Every change goes through `_guarded()`: NM checkpoint (rollback
+  ROLLBACK_SECONDS) → command → pending; the browser confirms once it still reaches the panel, else NM rolls back.
+  A failing command rolls back at once; one pending change at a time. Never apply a network change outside `_guarded`.
+- Wi-Fi passwords only through keyfiles (0600, `KEYFILE_DIR`, `nmcli connection load`) — never as nmcli arguments,
+  never returned. Arguments are validated (`_check_uuid`, `_check_ifname`, `_check_ipv4`, `check_ssid`, `check_psk`).
 
 ## GPIO control (HW Utils popup)
 - Lines are requested **only** on explicit Claim and only while the GPIO tab is open; every exit path
@@ -126,7 +153,7 @@ static/
 ## HW Utils popup (formerly "Devices"; the JS object and ids are still `Devices` / `devices_*`)
 - Routes: `routes/devices.py` (devices, buses, GPIO), `routes/udev.py` (service, events, rules, udevadm tools),
   `routes/net.py` (interfaces, CAN), `routes/i2c.py` (I²C tools, `core/i2c.py`), `routes/sysclone.py` (Clone / Image,
-  `core/sysclone.py` + `core/smb.py` + `tools/clone-system.sh`, tab `devices_clone.js`). Only CAN links may be reconfigured — never touch other interfaces (SSH/web).
+  `core/sysclone.py` + `core/smb.py` + `tools/clone-system.sh`, tab `devices_clone.js`). Only CAN links may be reconfigured there — never touch other interfaces (SSH/web) from HW Utils.
 - CAN without hardware: test in a user+net namespace with vcan:
   `unshare -rnm sh -c 'mount -t sysfs sysfs /sys; ip link set lo up; ip link add vcan0 type vcan; ip link set vcan0 up; …'`.
 - New tab: a button in `partials/devices_modal.html` (`data-tab`), a `<section class="dev-pane" id="devpane-<id>">`

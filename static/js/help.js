@@ -27,6 +27,9 @@ const Help = {
 
     // ── Start ──────────────────────────────────────────────────
 
+    /** Anonymous visitor (Settings → Access → docs): read-only — no editor, no diagram editor, no assets. */
+    readonly: !App.config.loggedIn,
+
     init() {
         marked.use({ gfm: true, breaks: false });
         this.mode = this._load('help.mode', 'split');
@@ -78,7 +81,7 @@ const Help = {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && this.editing) { e.preventDefault(); this.save(); return; }
         if (inField || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-overlay.open') || Diagrams.isOpen()) return;
         if (e.key === '/') { e.preventDefault(); document.getElementById('hp-q').focus(); }
-        else if (e.key === 'e' && this.current && !this.editing) { e.preventDefault(); this.edit(); }
+        else if (e.key === 'e' && this.current && !this.editing && !this.readonly) { e.preventDefault(); this.edit(); }
     },
 
     // ── Tree / search ──────────────────────────────────────────
@@ -126,7 +129,7 @@ const Help = {
             }
             return html;
         };
-        el.innerHTML = renderNode(root) + this._diagramGroup();
+        el.innerHTML = renderNode(root) + (this.readonly ? '' : this._diagramGroup());
     },
 
     _diagramGroup() {
@@ -168,6 +171,7 @@ const Help = {
     },
 
     _treeClick(e) {
+        if (this.readonly && e.target.closest('[data-clone-diagram], [data-new-diagram], [data-diagram]')) return;
         const cl = e.target.closest('[data-clone-diagram]');
         if (cl) { e.stopPropagation(); return Diagrams.duplicate(cl.dataset.cloneDiagram); }
         const nd = e.target.closest('[data-new-diagram]');
@@ -231,7 +235,7 @@ const Help = {
 
     _fromUrl(initial) {
         const p = new URLSearchParams(location.search);
-        if (p.get('diagram')) { Diagrams.open(p.get('diagram'), false); return; }
+        if (p.get('diagram') && !this.readonly) { Diagrams.open(p.get('diagram'), false); return; }
         if (Diagrams.isOpen() && !Diagrams.close(false)) return;
         let doc = p.get('doc');
         if (!doc && initial) {
@@ -370,7 +374,7 @@ const Help = {
                 const b = document.createElement('button');
                 b.type = 'button'; b.className = 'hp-dg-edit'; b.dataset.editDiagram = dm[1];
                 b.innerHTML = '<i class="fa-solid fa-pen-ruler"></i> Edit diagram';
-                wrap.append(b);
+                if (!this.readonly) wrap.append(b);
             }
         });
 
@@ -499,7 +503,7 @@ const Help = {
 
     _articleClick(e) {
         const ed = e.target.closest('[data-edit-diagram]');
-        if (ed) return this.openDiagram(ed.dataset.editDiagram);
+        if (ed) return this.readonly ? undefined : this.openDiagram(ed.dataset.editDiagram);
         const copy = e.target.closest('.hp-copy');
         if (copy) {
             const code = copy.closest('.hp-pre').querySelector('code');

@@ -6,6 +6,7 @@ Global tools (Monitor, Devices, Services, Settings, power menu) are not sections
 """
 from collections import namedtuple
 
+# public: True = everyone, False = login only, or a feature of auth.can() ('tests', 'docs', 'backups').
 NavItem = namedtuple('NavItem', 'endpoint label icon public')
 Section = namedtuple('Section', 'id label icon items')
 
@@ -20,23 +21,41 @@ SECTIONS = [
         NavItem('uidesign.page', 'UI designer', 'fa-solid fa-object-group', False),
     ]),
     Section('docs', 'Docs', 'fa-solid fa-book', [
-        NavItem('help.help_page', 'Docs', 'fa-solid fa-book', False),
+        NavItem('help.help_page', 'Docs', 'fa-solid fa-book', 'docs'),
     ]),
     Section('tests', 'Tests', 'fa-solid fa-vial', [
-        NavItem('tests.tests', 'Run', 'fa-solid fa-play', False),
-        NavItem('logs.logs', 'Logs', 'fa-solid fa-file-lines', False),
+        NavItem('tests.tests', 'Run', 'fa-solid fa-play', 'tests'),
+        NavItem('logs.logs', 'Logs', 'fa-solid fa-file-lines', 'tests'),
     ]),
 ]
 
 SETTINGS = NavItem('settings.settings', 'Settings', 'fa-solid fa-gear', False)
 
 
+def _visible(item, logged_in):
+    if logged_in or item.public is True:
+        return True
+    if not item.public:
+        return False
+    from core import auth
+    return auth.public_can(item.public)
+
+
 def sections(logged_in, current_endpoint):
     """Sections visible to this visitor: [{id, label, icon, endpoint, active, pages: [{endpoint, label, icon, active}]}]."""
+    from core import config
+    tests_home = not logged_in and config.public_access()['home'] == 'tests'
     out = []
     for s in SECTIONS:
-        items = [{'endpoint': i.endpoint, 'label': i.label, 'icon': i.icon, 'active': i.endpoint == current_endpoint}
-                 for i in s.items if logged_in or i.public]
+        items = []
+        for i in s.items:
+            if not _visible(i, logged_in):
+                continue
+            ep = i.endpoint
+            if ep == 'dashboard.index' and tests_home:
+                ep = 'dashboard.main'                  # "/" leads to the Tests page for this visitor
+            items.append({'endpoint': ep, 'label': i.label, 'icon': i.icon,
+                          'active': current_endpoint in (i.endpoint, ep)})
         if items:
             out.append({'id': s.id, 'label': s.label, 'icon': s.icon, 'endpoint': items[0]['endpoint'],
                         'active': any(i['active'] for i in items), 'pages': items})

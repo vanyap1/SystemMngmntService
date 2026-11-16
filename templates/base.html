@@ -40,12 +40,12 @@
     {% if logged_in %}
     <div class="tb-tools">
         {% include 'partials/video_controls.html' %}
-        {% if request.endpoint != 'dashboard.index' %}
+        {% if request.endpoint not in ('dashboard.index', 'dashboard.main') %}
         <button class="btn btn-nav" onclick="MonitorFloat.toggle()" title="System monitor window"><i class="fa-solid fa-chart-line"></i><span class="tb-label">Monitor</span></button>
         {% endif %}
         <button class="btn btn-nav" onclick="Devices.open()" title="HW Utils: devices, buses, network, GPIO, I²C, udev"><i class="fa-solid fa-screwdriver-wrench"></i><span class="tb-label">HW Utils</span></button>
         <button class="btn btn-nav" onclick="Services.openModal()" title="All services"><i class="fa-solid fa-list-check"></i><span class="tb-label">Services</span></button>
-        <a href="{{ url_for(settings_nav.endpoint) }}" class="btn btn-nav{% if request.endpoint == settings_nav.endpoint %} active{% endif %}" title="Settings"><i class="{{ settings_nav.icon }}"></i></a>
+        <a href="{{ url_for(settings_nav.endpoint) }}" class="btn btn-nav{% if request.endpoint == settings_nav.endpoint %} active{% endif %}" title="Settings"><i class="{{ settings_nav.icon }}"></i><span class="tb-label">{{ settings_nav.label }}</span></a>
     </div>
     {% include 'partials/power_menu.html' %}
     {% include 'partials/update_button.html' %}
@@ -62,7 +62,7 @@
     {% include 'partials/services_modal.html' %}
     {% include 'partials/video_modal.html' %}
     {% include 'partials/devices_modal.html' %}
-    {% if request.endpoint != 'dashboard.index' %}{% include 'partials/monitor_float.html' %}{% endif %}
+    {% if request.endpoint not in ('dashboard.index', 'dashboard.main') %}{% include 'partials/monitor_float.html' %}{% endif %}
 {% endif %}
 
 <script>window.APP_CONFIG = {{ app_js | tojson }};</script>

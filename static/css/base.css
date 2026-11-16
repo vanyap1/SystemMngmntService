@@ -83,7 +83,7 @@ code { font-family: var(--mono); color: var(--code); }
 /* Page tools (block topbar_tools) take the free space, global tools sit on the right */
 .tb-page { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
 .tb-tools { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.tb-tools .btn-nav.active { background: #0d3a6e; color: #fff; }
+.tb-tools .btn-nav.active { border-color: var(--info); color: #fff; }
 .tb-label { margin-left: 5px; }
 .tb-sec .tb-label, .tb-sec-name .tb-label { margin-left: 0; }
 .tb-caret { font-size: 9px; opacity: .7; }

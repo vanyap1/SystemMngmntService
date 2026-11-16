@@ -271,7 +271,7 @@ const Tests = {
                         <td><div class="h-acts">
                             <button class="btn btn-sm btn-ghost" onclick="Tests.openLog(${n})" title="View"><i class="fa-solid fa-eye"></i></button>
                             <a class="btn btn-sm btn-info" href="/api/tests/logs/${encodeURIComponent(l.name)}?download=1" title="Download"><i class="fa-solid fa-download"></i></a>
-                            <button class="btn btn-sm btn-danger" onclick="Tests.deleteLog(${n})" title="Delete"><i class="fa-solid fa-xmark"></i></button>
+                            ${App.config.loggedIn ? `<button class="btn btn-sm btn-danger" onclick="Tests.deleteLog(${n})" title="Delete"><i class="fa-solid fa-xmark"></i></button>` : ''}
                         </div></td></tr>`;
                 }).join('') + '</tbody></table>';
         }).catch(e => toast(e.message, true));

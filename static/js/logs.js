@@ -129,7 +129,7 @@ const Logs = {
                     <td class="small lg-ff">${ff ? `<b>${esc(ff.name)}</b> <span class="mono faint">${esc(ff.condition)}</span>` : ''}</td>
                     <td class="nowrap" onclick="event.stopPropagation()">
                         <a class="btn-icon" href="/api/tests/logs/${encodeURIComponent(l.name)}?download=1" title="Download"><i class="fa-solid fa-download"></i></a>
-                        <button class="btn-icon" onclick="Logs.remove(${n})" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        ${App.config.loggedIn ? `<button class="btn-icon" onclick="Logs.remove(${n})" title="Delete"><i class="fa-solid fa-trash-can"></i></button>` : ''}
                     </td></tr>`;
             }).join('') + '</tbody></table>';
     },

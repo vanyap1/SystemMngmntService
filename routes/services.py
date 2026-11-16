@@ -10,6 +10,7 @@ from core.shell import quote, run_command, sh
 bp = Blueprint('services', __name__)
 
 _SERVICE_RE = re.compile(r'^[a-zA-Z0-9_.@:%\-]+\.service$')
+NO_TARGET = 'No target service (Settings → Service: none)'
 
 
 def _service_arg():
@@ -47,6 +48,8 @@ def api_status():
     name = _service_arg()
     if not _SERVICE_RE.match(name):
         name = config.service_name()
+    if not _SERVICE_RE.match(name):
+        return NO_TARGET, 200, {'Content-Type': 'text/plain; charset=utf-8'}
     status = run_command(f"sudo systemctl status {quote(name)}")
     return status, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 

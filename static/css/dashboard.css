@@ -8,3 +8,17 @@
 .arc-tbl .arc-size { color: var(--accent); white-space: nowrap; font-size: 11px; text-align: right; }
 .arc-tbl .arc-date { color: #666; white-space: nowrap; font-size: 11px; }
 .arc-tbl .arc-actions { display: flex; gap: 5px; justify-content: flex-end; white-space: nowrap; }
+.arc-tbl tr.arc-busy td { opacity: .6; }
+
+/* Backup job (core/backups.py) */
+.bk-job { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.bk-job-head { gap: 8px; }
+.bk-log { max-height: 180px; margin: 0; }
+
+/* Deploy modal */
+.dep-box { width: min(620px, 94vw); }
+.dep-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 13px; }
+.dep-grid > * { word-break: break-all; }
+.dep-warn { padding: 8px 10px; border: 1px solid var(--warn); border-radius: var(--radius);
+            color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
+.dep-warn i { color: var(--danger); margin-right: 4px; }

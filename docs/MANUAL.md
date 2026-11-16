@@ -40,7 +40,7 @@ For what the project is and what it looks like, see the [README](../README.md).
 | **HW Utils** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **I²C** scan + register read/write, **udev** events / rules editor / tools, **Modbus** master (RTU / TCP / UDP, macros, timers, scan, sessions), **Terminal** (serial / TCP / UDP, JSON plot), **Clone / Image** of the system (to a disk or an SMB share) |
 | **Video** | preview of V4L2 cameras |
 | **Per-host config** | one repository deployed to several machines, each with its own section in `config.json` |
-| **Simple access model** | anonymous operators see only the target service (restart) and the read-only monitor; everything else needs a login |
+| **Simple access model** | anonymous operators see the target service (restart) and the read-only monitor — or, as a test machine, the Tests page; archives (download) and docs (read only) can be opened; everything else needs a login |
 
 ---
 
@@ -137,12 +137,15 @@ Fields (same in `default` and in a host section):
 |---|---|
 | `target_dir` | Target application directory |
 | `backup_dir` | Directory for archive storage |
-| `archive_name` | Default archive filename |
-| `service_name` | Name of the systemd service to monitor |
+| `service_name` | Name of the systemd service to monitor (`none` = no target service) |
+| `backup_skip` | Patterns left out of project archives (Settings → Backups, syntax below) |
+| `deploy_keep` | Patterns of the current project copied into a deployed one (configs, data); default none — everything else is replaced |
+| `backup_stop_service` | Stop the target service (if running) while an archive is written (default `true`) |
 | `host` / `port` | Panel listen address |
 | `auth.enabled` | Enable / disable login |
 | `auth.username` / `auth.password` | Credentials |
 | `public_service_actions` | Service actions allowed without login (default `["restart"]`) |
+| `public` | Without login: `{home: "dashboard"\|"tests", backups: bool, docs: bool}` (Settings → Access) |
 | `tests_dir` / `test_logs_dir` | Test scripts / run logs (relative to the project) |
 | `help_dir` | Documentation folder (default `help`, relative to the project) |
 | `update_check_minutes` | How often the panel checks its git upstream for updates while open (default 60, `0` = off) |
@@ -179,26 +182,53 @@ flowchart LR
 
 ### Backup and Deploy
 
+Both run as **one background job** (`core/backups.py`) with a progress bar, log and *Cancel* in the *Backup* card;
+the page polls `/api/backups/job`. While a job runs a second one is refused, and the archive it reads or writes
+cannot be downloaded, deployed or deleted. An archive is written as `<name>.partial` and renamed when complete —
+unfinished files are never listed.
+
+**Patterns** (Settings → Backups; one per line, `#` = comment, relative to the project directory; a matching folder
+is taken as a whole):
+
+| Pattern | Matches |
+|---|---|
+| `.git/` | folder `.git` at any depth (trailing `/` = folders only) |
+| `flash.bin` | file or folder of that name at any depth |
+| `*.log` | by mask at any depth |
+| `logs/*` | everything inside `logs` of the project root (the empty folder stays); a `/` inside anchors to the root, `*` also crosses sub-folders |
+| `/notes.txt` | leading `/` anchors a single name to the project root |
+
+The backup directory and the panel itself (when inside the project) and other mounted filesystems are never archived.
+*Check* on the settings page (`/api/backups/preview`) lists what the unsaved patterns match.
+
 ```mermaid
 sequenceDiagram
     participant User
-    participant Panel
+    participant Job as Panel job
     participant Service as Target service
     participant FS as File system
 
-    User->>Panel: POST /deploy {filename}
-    Panel->>Service: systemctl stop
-    Panel->>FS: tar -czf pre_deploy_*.tar.gz (auto-backup)
-    Panel->>FS: tar -xzf <filename>
-    Panel->>Service: systemctl start
-    Panel-->>User: {success, auto_backup}
+    User->>Job: POST /api/backups/create
+    Job->>Service: stop (only if running and backup_stop_service)
+    Job->>FS: <project>_<ts>.tar.gz.partial → rename
+    Job->>Service: start (only if it was running)
 
-    User->>Panel: POST /backups/create
-    Panel->>Service: systemctl stop
-    Panel->>FS: tar -czf <archive>
-    Panel->>Service: systemctl start
-    Panel-->>User: redirect /
+    User->>Job: POST /api/backups/deploy {filename, backup}
+    Job->>FS: optional full backup <project>_pre_deploy_<ts>.tar.gz (no skip patterns, .git included)
+    Job->>FS: extract into .<project>.deploy-<ts> (project untouched; failure = staging deleted)
+    Job->>Service: stop (only if running)
+    Job->>FS: copy deploy_keep matches from the project into the new tree
+    Job->>FS: rename project → .<project>.old-<ts>, new tree → project
+    Job->>Service: start (only if it was running)
+    Job->>FS: delete the old tree
 ```
+
+- An archive with a single top folder deploys that folder's contents; otherwise its top level becomes the project.
+- Unsafe members (absolute paths, `..`, paths through an archived symlink, devices) fail the deploy before anything
+  changes. Running as root, the new files get the owner of the old project folder; kept files keep their owner.
+- Refused targets: `/`, system folders, home directories, mount points, a project that contains the backup
+  directory or the panel itself.
+- The target service is never stopped when it is the panel's own unit.
 
 ### Code Editor (`/editor`)
 
@@ -244,18 +274,22 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 
 | Method | Route | Access | Description |
 |---|---|---|---|
+| GET | `/`, `/main` | public | Info panel; with `public.home = tests` `/` sends anonymous visitors to `/tests` (`/main` stays the info panel) |
 | GET | `/api/services` | public | systemd services (JSON); anonymous: only the target service |
 | GET | `/api/status?name=` | public | `systemctl status` output; anonymous: target service only |
 | POST | `/api/service/<start\|stop\|restart>?name=` | public for `public_service_actions`, else login | Service action |
 | GET | `/api/sysinfo` | login | CPU, RAM, network, disks (JSON; editor side panel) |
 | GET | `/api/monitor?since=` | public | System monitor: current CPU/RAM/temperature/active interface/disk I/O, block devices, chart history newer than `since`; logged in: `job` = running clone / image job (no log) or null |
 | POST | `/api/power/<reboot\|poweroff>` | login | Reboot / shut down |
-| GET | `/api/backups` | login | Archive list (JSON) |
-| POST | `/backups/create` | login | Create archive (form) |
+| GET | `/api/backups` | login, or public with `public.backups` | `{archives [{name, size, mtime, busy}], job, deploy_block, target, keep, service}` |
+| GET | `/api/backups/job` | login, or public with `public.backups` | Current / last backup job: state, phase, done / total bytes, log, result |
+| POST | `/api/backups/create` | login | Start a backup job → `{job}`; 409 while a job runs |
+| POST | `/api/backups/cancel` | login | Cancel the job (not while the folders are being swapped) |
+| POST | `/api/backups/preview` | login | `{skip, keep}` → what the patterns match in the project directory |
 | POST | `/backups/upload` | login | Upload archive (multipart form) |
-| GET | `/backups/download/<name>` | login | Download archive |
-| POST | `/api/backups/deploy` | login | Deploy archive (with auto-backup) |
-| POST | `/api/backups/delete` | login | Delete archive |
+| GET | `/backups/download/<name>` | login, or public with `public.backups` | Download archive |
+| POST | `/api/backups/deploy` | login | `{filename, backup}` → start a deploy job (replaces the project directory) |
+| POST | `/api/backups/delete` | login | Delete archive (409 while the job uses it) |
 | GET | `/api/tree[?path=]` | login | One folder of the target directory (the editor loads folders when they are opened) |
 | GET/POST | `/api/file` | login | Read / write file |
 | POST | `/api/file_create`, `/api/file_rename`, `/api/file_delete` | login | File operations; `file_create` {dir, name, kind: file / dir} — a new `*_test.py` gets a test script skeleton, new entries belong to the folder's owner |
@@ -298,6 +332,11 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/devices/gpio` | login | GPIO chips and lines like `gpioinfo` (read-only, libgpiod v1/v2) |
 | GET | `/api/devices/gpio/ctl?client=` | login | Lines held by a popup client with live values (also renews its lease) |
 | POST | `/api/devices/gpio/ctl` | login | `{client, action: claim\|input\|output\|set\|release\|release_all, chip, offset, value}` |
+| GET | `/api/netcfg` | login | Settings → Network: Ethernet / Wi-Fi devices, NetworkManager connections, Wi-Fi radio, the interface this visitor comes through, pending change |
+| GET | `/api/netcfg/connection?uuid=`, `/api/netcfg/wifi?ifname=&rescan=1`, `/api/netcfg/pending` | login | One connection (no secrets) / Wi-Fi scan / pending change |
+| POST | `/api/netcfg/connection` | login | Change a connection `{uuid, name, interface, autoconnect, priority, ipv4 {method, addresses, gateway, dns, ignore_auto_dns}, ipv6 {method}, wifi {hidden}, password}` (an active one is re-applied) |
+| POST | `/api/netcfg/activate`, `/deactivate`, `/delete`, `/radio`, `/join`, `/hotspot` | login | `{uuid}` / `{on}` / `{ssid, password, ifname, security, hidden}` / `{ssid, password, ifname}`; each answer is the pending change |
+| POST | `/api/netcfg/confirm`, `/api/netcfg/revert` | login | Keep / roll back the pending change (NetworkManager checkpoint) |
 | GET | `/api/net/interfaces` | login | Interfaces (state, addresses, counters, CAN bit timing), routes, DNS |
 | POST | `/api/net/can/link` | login | `{iface, action: open\|close, bitrate, sample_point, restart_ms, listen_only}` |
 | GET | `/api/net/can/frames?iface=&since=` | login | New CAN frames + cyclic jobs; polling keeps the socket open |
@@ -312,18 +351,18 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | POST | `/api/udev/rule/check` | login | Syntax check `{text}` → `{problems: [{line, message}]}` |
 | POST | `/api/udev/rule/delete` | login | Delete `{name}` from `/etc/udev/rules.d` |
 | POST | `/api/settings` | login | Save settings |
-| GET | `/api/tests/scripts` | login | Test scripts (`*_test.py` in `tests_dir`) |
-| POST | `/api/tests/start` / `/api/tests/stop` | login | Start `{script, serial, stop_on_fail}` / stop the running one |
-| GET | `/api/tests/status?run_id=&results_from=&output_from=` | login | Current run, incremental results, output and pending operator prompt |
-| POST | `/api/tests/answer` | login | Answer the pending operator prompt `{run_id, prompt_id, value}` |
-| GET | `/api/tests/logs`, `/api/tests/logs/<name>[?download=1]` | login | Run history / log file |
+| GET | `/api/tests/scripts` | login, or public with `public.home = tests` | Test scripts (`*_test.py` in `tests_dir`) |
+| POST | `/api/tests/start` / `/api/tests/stop` | login, or public with `public.home = tests` | Start `{script, serial, stop_on_fail}` / stop the running one |
+| GET | `/api/tests/status?run_id=&results_from=&output_from=` | login, or public with `public.home = tests` | Current run, incremental results, output and pending operator prompt |
+| POST | `/api/tests/answer` | login, or public with `public.home = tests` | Answer the pending operator prompt `{run_id, prompt_id, value}` |
+| GET | `/api/tests/logs`, `/api/tests/logs/<name>[?download=1]` | login, or public with `public.home = tests` | Run history / log file |
 | POST | `/api/tests/logs/delete` | login | Delete `{name}` or `{all: true}` |
-| GET | `/logs` | login | Test log viewer page |
-| GET | `/api/logs?script&verdict&q&from&to&step&offset&limit` | login | Filtered runs (newest first) + statistics (yield, first-pass yield, top failing steps) |
-| GET | `/api/logs/view/<name>` | login | One log parsed into header, steps, sections, output, operator Q/A, footer |
-| GET | `/api/logs/step?name=&…filters` | login | One step across the filtered runs: values, min/mean/max/σ, Cpk |
-| GET | `/api/logs/export.csv?…filters` | login | Filtered runs as CSV (one row per run) |
-| GET | `/api/tests/stats?script=` | login | Board counts per verdict for a script |
+| GET | `/logs` | login, or public with `public.home = tests` | Test log viewer page |
+| GET | `/api/logs?script&verdict&q&from&to&step&offset&limit` | login, or public with `public.home = tests` | Filtered runs (newest first) + statistics (yield, first-pass yield, top failing steps) |
+| GET | `/api/logs/view/<name>` | login, or public with `public.home = tests` | One log parsed into header, steps, sections, output, operator Q/A, footer |
+| GET | `/api/logs/step?name=&…filters` | login, or public with `public.home = tests` | One step across the filtered runs: values, min/mean/max/σ, Cpk |
+| GET | `/api/logs/export.csv?…filters` | login, or public with `public.home = tests` | Filtered runs as CSV (one row per run) |
+| GET | `/api/tests/stats?script=` | login, or public with `public.home = tests` | Board counts per verdict for a script |
 | GET | `/api/git/repos`, `/api/git/status?repo=`, `/api/git/summary?repo=`, `/api/git/diff?repo=&path=` | login | Repositories (project, panel, docs), full status + problems, badge counts, diff of a changed file |
 | POST | `/api/git/commit`, `/branch`, `/checkout`, `/branch_delete`, `/fetch`, `/pull`, `/push`, `/discard`, `/reset`, `/fix`, `/identity` | login | Git actions `{repo, …}`; every answer carries the new status |
 | GET | `/api/git/tree_status` | login | Changed files of target_dir's repositories (editor tree marks) |
@@ -335,12 +374,12 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/display/status`, `/api/display/scripts` | login | Device display: process state, settings, Kivy / X detection, log / scripts of `UI/` with their docstrings |
 | POST | `/api/display/settings`, `/api/display/restart` | login | Save the display settings (applied at once: the script is replaced / stopped) / restart the script |
 | POST | `/api/update/plan`, `/api/update/force` | login | Git panel → *Update panel*: fetch and list local changes in the way / update to the upstream whatever is local (`{confirm: true}` when the plan has issues; saved first: backup branch, git stash, copies in `.git/panel-update-backup/`; `config.json` kept), then restart the unit → 409 `{error, plan}` without confirmation |
-| GET | `/help[?doc=<path>]` | login | Documentation viewer / editor |
-| GET | `/help/file/<path>[?dl=1]` | login | Image, attachment or raw page from `help_dir` (sandboxed) |
-| GET | `/api/help/tree` | login | All pages `{path, title, mtime, size}` |
-| GET / POST | `/api/help/doc` | login | Read `?path=` / save `{path, content, mtime, force}` (409 if changed since `mtime`) |
+| GET | `/help[?doc=<path>]` | login, or public with `public.docs` (read only) | Documentation viewer / editor |
+| GET | `/help/file/<path>[?dl=1]` | login, or public with `public.docs` | Image, attachment or raw page from `help_dir` (sandboxed) |
+| GET | `/api/help/tree` | login, or public with `public.docs` | All pages `{path, title, mtime, size}` |
+| GET / POST | `/api/help/doc` | GET: login or `public.docs`; POST: login | Read `?path=` / save `{path, content, mtime, force}` (409 if changed since `mtime`) |
 | POST | `/api/help/create`, `/api/help/rename`, `/api/help/delete` | login | `{path, title}` / `{path, new_path}` (fixes img/docs links) / `{path}` (moved to `.trash/`) |
-| GET | `/api/help/search?q=` | login | Pages containing every word, with matching lines |
+| GET | `/api/help/search?q=` | login, or public with `public.docs` | Pages containing every word, with matching lines |
 | GET | `/api/help/assets?kind=img\|docs` | login | Images / attachments with the pages that use them |
 | POST | `/api/help/upload` | login | Multipart `kind` + `file`(s); returns the stored names |
 | POST | `/api/help/asset_delete` | login | `{kind, name}` (moved to `.trash/`) |
@@ -511,6 +550,24 @@ Browses the run logs in `test_logs_dir` (`testLogs/`), written for every run sta
 and caches parsed files by mtime/size.
 
 ---
+
+## Network (Settings → Network)
+
+`core/netcfg.py` drives NetworkManager (`nmcli`): interfaces with their addresses, saved connections (edit name,
+interface, auto-connect + priority, IPv4 DHCP / static / shared / disabled with addresses, gateway, DNS, IPv6 method,
+Wi-Fi hidden flag and password; connect, disconnect, forget), Wi-Fi radio on / off, scan and join (also hidden
+networks, WPA2 / WPA3 / open) and a hotspot (access point in shared mode, clients get 10.42.0.x).
+
+**Safety net.** Every change runs inside a NetworkManager *checkpoint* (D-Bus `CheckpointCreate` via `busctl`, all
+devices, rollback after 120 s). The page that made the change checks that it still reaches the panel a few seconds
+later and then confirms (`CheckpointDestroy`); *Keep* / *Revert* buttons do it by hand. If the change cut the
+connection, NetworkManager restores the previous settings by itself when the timeout ends. Changing the address of the
+interface you are connected through: open the new address within the timeout (the banner links it) and press *Keep*.
+A failing command rolls back at once; one change can be pending at a time.
+
+**Secrets.** Wi-Fi passwords never appear on a command line or in an answer: new networks / hotspots are written as
+keyfiles (0600) into `/etc/NetworkManager/system-connections/smms-*.nmconnection` and loaded with
+`nmcli connection load`; a new password of a saved network is written into its keyfile the same way.
 
 ## Git (Settings → Git, Git icon in the editor and docs)
 
@@ -810,7 +867,9 @@ python3 -m unittest tests.test_access -q               # one module
 
 | Module | Covers |
 |---|---|
-| `test_access.py` | access matrix: anonymous / logged in / auth disabled |
+| `test_access.py` | access matrix: anonymous / logged in / auth disabled, public test machine / archives / docs |
+| `test_netcfg.py` | Settings → Network with a fake nmcli / busctl: parsing, checkpoint confirm / revert / rollback, validation, keyfiles (password never on a command line) |
+| `test_backups.py` | backup patterns, create / deploy job, safety checks |
 | `test_config.py` | legacy migration, per-host sections, save / reset |
 | `test_monitor.py` | `/api/monitor` payload, sampler lease, active interface detection |
 | `test_logs.py` | log parsing, filters, yield/FPY, step statistics, CSV, `/api/logs*` |
@@ -832,6 +891,12 @@ When `auth.enabled = true`:
 - **anonymous visitors** see only the *Service Control* block for the target service (`service_name`) — no
   service selector and no *All Services* list — and may run the actions listed in `public_service_actions` on it;
   below it they see the read-only *System Monitor* dashboard;
+- **Settings → Access → Without login** (`public` in config.json) opens more for them:
+  - `home`: `dashboard` (info panel at `/`) or `tests` — *test machine*: `/` leads to the Tests page; they choose a
+    script, enter the serial number, Start / Stop, answer prompts and view the logs (Run history, Logs page, CSV);
+    deleting logs needs login. The info panel stays at `/main` (*Main* in the top bar);
+  - `backups`: the *Archives* list on the info panel with *Download* (create / upload / deploy / delete need login);
+  - `docs`: the Docs section read only (no editor, diagram editor, images / files management, Git);
 - **logged-in users** get everything else (backups, system info, code editor, terminal, settings, video, power).
 
 When `auth.enabled = false`, every visitor has full access.

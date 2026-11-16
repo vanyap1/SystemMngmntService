@@ -3,7 +3,7 @@ import unittest
 
 from tests.support import client, config
 
-PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/tree', '/api/macros', '/api/video_devices',
+PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/backups/job', '/api/tree', '/api/macros', '/api/video_devices',
                  '/api/browse', '/api/devices/gpio', '/api/devices/list', '/api/udev/rules',
                  '/api/net/interfaces', '/api/tests/scripts', '/api/logs', '/api/logs/export.csv',
                  '/api/help/tree', '/api/help/search?q=x', '/api/help/assets?kind=img',
@@ -12,7 +12,8 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/tree', '/api/macros', '/a
                  '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions',
                  '/api/display/status', '/api/display/scripts', '/api/display/backgrounds',
                  '/api/uiscreens', '/api/uiscreens/example_dashboard', '/api/video/sources']
-PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/backups/create', '/api/settings',
+PROTECTED_GET_NOCHECK = ['/api/netcfg', '/api/netcfg/pending', '/api/netcfg/wifi', '/api/netcfg/connection?uuid=x']
+PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/api/backups/create', '/api/backups/cancel', '/api/backups/preview', '/api/settings',
                   '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
                   '/api/help/asset_delete', '/api/help/diagram/create', '/api/help/diagram/save',
@@ -28,6 +29,8 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/b
                   '/api/modbus/session/save', '/api/modbus/session/delete', '/api/tty/open', '/api/tty/send',
                   '/api/tty/lines', '/api/tty/close', '/api/tty/profiles', '/api/tty/oneshot', '/api/tty/session/save',
                   '/api/tty/session/delete',
+                  '/api/netcfg/connection', '/api/netcfg/activate', '/api/netcfg/deactivate', '/api/netcfg/delete',
+                  '/api/netcfg/radio', '/api/netcfg/join', '/api/netcfg/hotspot', '/api/netcfg/confirm', '/api/netcfg/revert',
                   '/api/smb/mount', '/api/smb/umount', '/api/smb/forget', '/api/smb/mkdir']
 PROTECTED_PAGES = ['/editor', '/ui', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
                    '/help/file/img/x.png', '/help?diagram=x']
@@ -69,7 +72,7 @@ class Anonymous(unittest.TestCase):
         self.assertEqual(self.c.get('/api/service/restart').status_code, 405)
 
     def test_protected_api_returns_401(self):
-        for url in PROTECTED_GET:
+        for url in PROTECTED_GET + PROTECTED_GET_NOCHECK:
             with self.subTest(url=url):
                 self.assertEqual(self.c.get(url).status_code, 401)
         for url in PROTECTED_POST:
@@ -126,6 +129,91 @@ class LoggedIn(unittest.TestCase):
     def test_logout(self):
         self.assertEqual(self.c.get('/logout').status_code, 302)
         self.assertEqual(self.c.get('/api/tree').status_code, 401)
+
+
+class PublicAccess(unittest.TestCase):
+    """Settings → Access → Without login: config.public = {home, backups, docs}."""
+    TESTS_OPEN = ['/tests', '/logs', '/api/tests/scripts', '/api/tests/status', '/api/tests/logs', '/api/tests/stats',
+                  '/api/logs', '/api/logs/export.csv']
+    DOCS_OPEN = ['/help', '/api/help/tree', '/api/help/search?q=x']
+    BACKUPS_OPEN = ['/api/backups', '/api/backups/job']
+    STILL_CLOSED_GET = ['/api/help/assets?kind=img', '/api/help/diagrams', '/api/tree', '/api/git/status', '/settings', '/editor']
+    STILL_CLOSED_POST = ['/api/tests/logs/delete', '/api/help/doc', '/api/help/create', '/api/help/diagram/save',
+                         '/api/backups/create', '/api/backups/deploy', '/api/backups/delete', '/api/backups/cancel',
+                         '/api/settings', '/api/exec']
+
+    def setUp(self):
+        self.saved = config.CFG.get('public')
+        self.c = client()
+
+    def tearDown(self):
+        config.CFG['public'] = self.saved
+
+    def set(self, **kw):
+        config.CFG['public'] = dict({'home': 'dashboard', 'backups': False, 'docs': False}, **kw)
+
+    def test_default_everything_closed(self):
+        self.set()
+        for url in self.TESTS_OPEN + self.DOCS_OPEN + self.BACKUPS_OPEN:
+            with self.subTest(url=url):
+                self.assertIn(self.c.get(url).status_code, (302, 401))
+        self.assertEqual(self.c.post('/api/tests/start', json={}).status_code, 401)
+
+    def test_test_machine(self):
+        self.set(home='tests')
+        r = self.c.get('/')
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r.headers['Location'].endswith('/tests'))
+        self.assertEqual(self.c.get('/main').status_code, 200)              # the info panel stays reachable
+        for url in self.TESTS_OPEN:
+            with self.subTest(url=url):
+                self.assertEqual(self.c.get(url).status_code, 200)
+        for url in ('/api/tests/start', '/api/tests/stop', '/api/tests/answer'):
+            with self.subTest(url=url):
+                self.assertNotEqual(self.c.post(url, json={}).status_code, 401)
+        html = self.c.get('/tests').get_data(as_text=True)
+        self.assertNotIn('Tests.clearLogs()', html)
+        self.assertIn('href="/main"', html)
+        self.assertIn('href="/logs"', html)
+        self.assertEqual(client(logged_in=True).get('/').status_code, 200)     # logged in: "/" is the info panel
+        self.check_closed()
+
+    def test_backups_read_only(self):
+        self.set(backups=True)
+        for url in self.BACKUPS_OPEN:
+            with self.subTest(url=url):
+                self.assertEqual(self.c.get(url).status_code, 200)
+        self.assertEqual(self.c.get('/backups/download/none.tar.gz').status_code, 302)   # allowed, file not found
+        html = self.c.get('/').get_data(as_text=True)
+        self.assertIn('id="arc-card"', html)
+        self.assertNotIn('Create archive', html)
+        self.assertNotIn('dep-overlay', html)
+        self.check_closed()
+
+    def test_docs_read_only(self):
+        self.set(docs=True)
+        for url in self.DOCS_OPEN:
+            with self.subTest(url=url):
+                self.assertEqual(self.c.get(url).status_code, 200)
+        html = self.c.get('/help').get_data(as_text=True)
+        for needle in ('Help.openNew()', 'Help.edit()', 'Help.remove()', 'git.js', "Help.openAssets('img')"):
+            with self.subTest(needle=needle):
+                self.assertNotIn(needle, html)
+        self.assertIn('href="/help"', self.c.get('/').get_data(as_text=True))
+        self.check_closed()
+
+    def check_closed(self):
+        for url in self.STILL_CLOSED_GET:
+            with self.subTest(url=url):
+                self.assertIn(self.c.get(url).status_code, (302, 401))
+        for url in self.STILL_CLOSED_POST:
+            with self.subTest(url=url):
+                self.assertEqual(self.c.post(url, json={}).status_code, 401)
+
+    def test_settings_saved_and_sanitised(self):
+        lc = client(logged_in=True)
+        self.assertEqual(lc.post('/api/settings', json={'public': {'home': 'evil', 'docs': 1}}).status_code, 200)
+        self.assertEqual(config.public_access(), {'home': 'dashboard', 'backups': False, 'docs': True})
 
 
 class AuthDisabled(unittest.TestCase):
