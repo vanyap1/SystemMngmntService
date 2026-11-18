@@ -126,7 +126,7 @@ const Diagrams = {
             this.doc = this._normalize(d.data);
             this.stale = new Set(); this.missing = new Set(); this.unitPick = null;
             this.closeLib();
-            this.dirty = false; this.sel = []; this.undoStack = []; this.redoStack = []; this.tool = 'select';
+            this.dirty = false; this.sel = []; this.undoStack = []; this.redoStack = []; this.tool = 'select'; this.poly = null;
             if (push) history.pushState(null, '', '/help?diagram=' + encodeURIComponent(d.name));
             this._show(true);
             requestAnimationFrame(() => { this.fit(); this.render(); this.renderProps(); });
@@ -320,6 +320,14 @@ const Diagrams = {
                     const a = pts[0], b = pts[pts.length - 1];
                     out.push(`<circle cx="${a.x}" cy="${a.y}" r="${hs * 0.6}" class="dg-h dg-h-end${this._attached(it.from) ? ' on' : ''}" data-h="from"/>`);
                     out.push(`<circle cx="${b.x}" cy="${b.y}" r="${hs * 0.6}" class="dg-h dg-h-end${this._attached(it.to) ? ' on' : ''}" data-h="to"/>`);
+                    for (let i = 0; i < pts.length - 1; i++) {          // segment grips: drag a run across itself
+                        const p = pts[i], q = pts[i + 1], len = Math.hypot(q.x - p.x, q.y - p.y);
+                        if (len < hs * 3) continue;
+                        const hz = Math.abs(p.y - q.y) < 0.5, vt = Math.abs(p.x - q.x) < 0.5;
+                        const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, gw = hz ? hs * 1.8 : hs * 0.8, gh = vt ? hs * 1.8 : hs * 0.8;
+                        out.push(`<rect x="${mx - gw / 2}" y="${my - gh / 2}" width="${gw}" height="${gh}" rx="${hs * 0.3}"` +
+                                 ` class="dg-h dg-h-seg ${hz ? 'hz' : vt ? 'vt' : ''}" data-h="seg:${i}"/>`);
+                    }
                     (it.via || []).forEach(([x, y], i) =>
                         out.push(`<rect x="${x - hs / 2}" y="${y - hs / 2}" width="${hs}" height="${hs}" class="dg-h dg-h-via" data-h="via:${i}"/>`));
                 }
@@ -349,11 +357,14 @@ const Diagrams = {
             const r = this._rectOf(dr);
             out.push(`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" class="dg-marquee"/>`);
         }
-        if (dr && dr.hover) {
-            const b = dr.hover;
+        const hv = dr || this.poly;
+        if (hv && hv.hover) {
+            const b = hv.hover;
             out.push(`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" class="dg-hover"/>`);
-            if (dr.hoverPt) out.push(`<circle cx="${dr.hoverPt.x}" cy="${dr.hoverPt.y}" r="${hs * 0.7}" class="dg-anchor"/>`);
         }
+        const hl = hv && hv.hoverLine && this.R.byId(this.doc, hv.hoverLine);
+        if (hl) out.push(`<path d="M${this.R.wirePoints(this.doc, hl).map(q => `${q.x},${q.y}`).join(' L')}" class="dg-hover-line"/>`);
+        if (hv && hv.hoverPt) out.push(`<circle cx="${hv.hoverPt.x}" cy="${hv.hoverPt.y}" r="${hs * 0.7}" class="dg-anchor"/>`);
         ov.innerHTML = out.join('');
     },
 
@@ -366,6 +377,7 @@ const Diagrams = {
     // ── Tools / creation ───────────────────────────────────────
 
     setTool(t) {
+        if (this.poly) this._polyEnd('here');
         if (t === 'unit' && !this.unitPick) return this.openLib();
         this.tool = t;
         this._bar();
@@ -423,30 +435,81 @@ const Diagrams = {
     /** Wire end attached to something (block / chip / unit port, or a bus line) — moves with it. */
     _attached(end) { return !!(end && (end.id || end.wire)); },
 
-    /** Bus line under point p (for tapping a signal wire into it): {bus, t}. */
-    _busAt(p, self) {
-        if (self && self.line === 'bus') return null;
-        let best = null, bd = 8 / this.view.k + 4;
-        for (const b of this.doc.items) {
-            if (b.type !== 'wire' || b.line !== 'bus' || b === self || b.from.wire || b.to.wire) continue;
-            const pts = this.R.wirePoints(this.doc, b), len = this.R._length(pts) || 1;
-            let acc = 0;
-            for (let i = 0; i < pts.length - 1; i++) {
-                const a = pts[i], c = pts[i + 1], sl = Math.hypot(c.x - a.x, c.y - a.y);
-                const dx = c.x - a.x, dy = c.y - a.y, l2 = dx * dx + dy * dy;
-                const k = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
-                const dd = Math.hypot(p.x - a.x - k * dx, p.y - a.y - k * dy);
-                if (dd < bd) { bd = dd; best = { bus: b, t: Math.round((acc + k * sl) / len * 1000) / 1000 }; }
-                acc += sl;
+    /** Ids of `self` and of every wire whose tap chain reaches it (tapping one of them would make a loop). */
+    _dependents(self) {
+        const dep = new Set([self.id]), wires = this.doc.items.filter(i => i.type === 'wire');
+        for (let grew = true; grew;) {
+            grew = false;
+            for (const w of wires) {
+                if (!dep.has(w.id) && [w.from, w.to].some(e => e && e.wire && dep.has(e.wire))) { dep.add(w.id); grew = true; }
             }
+        }
+        return dep;
+    },
+
+    /** Nearest point of a polyline to p: {d (distance), s (length along), t (fraction of the length)}. */
+    _nearestOn(pts, p) {
+        const len = this.R._length(pts) || 1;
+        let best = { d: Infinity, s: 0, t: 0 }, acc = 0;
+        for (let i = 0; i < pts.length - 1; i++) {
+            const a = pts[i], c = pts[i + 1], dx = c.x - a.x, dy = c.y - a.y, l2 = dx * dx + dy * dy, sl = Math.sqrt(l2);
+            const k = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
+            const d = Math.hypot(p.x - a.x - k * dx, p.y - a.y - k * dy);
+            if (d < best.d) best = { d, s: acc + k * sl, t: 0 };
+            acc += sl;
+        }
+        best.t = Math.round(best.s / len * 10000) / 10000;
+        return best;
+    },
+
+    /** Line under point p that a wire end of `kind` (signal|bus) may tap: {line, t}. Signals tap any line, buses only
+     *  buses; never `self` or a wire depending on it; never the attached end of a line (attach to its target instead). */
+    _lineAt(p, self, kind) {
+        const dep = self ? this._dependents(self) : new Set(), k = this.view.k;
+        let best = null, bd = 8 / k + 4;
+        for (const b of this.doc.items) {
+            if (b.type !== 'wire' || dep.has(b.id) || (kind === 'bus' && b.line !== 'bus')) continue;
+            const pts = this.R.wirePoints(this.doc, b), r = this._nearestOn(pts, p);
+            if (r.d >= bd) continue;
+            const L = this.R._length(pts);
+            if ((r.s < 6 / k && this._attached(b.from)) || (L - r.s < 6 / k && this._attached(b.to))) continue;
+            bd = r.d; best = { line: b, t: r.t };
         }
         return best;
     },
 
-    _endAt(p, e, skip, self) {
-        const tap = !(e && e.altKey) && this.tool !== 'bus' ? this._busAt(p, self) : null;
+    /** Wires tapped into `w` with their current points (to keep them in place while `w` changes shape). */
+    _tapRec(w) {
+        const out = [];
+        for (const c of this.doc.items) {
+            if (c.type !== 'wire' || c === w) continue;
+            for (const end of ['from', 'to']) if (c[end] && c[end].wire === w.id) out.push({ c, end, pt: this.R.anchor(this.doc, c[end]) });
+        }
+        return out;
+    },
+
+    /** Re-attach recorded taps to the nearest point of `w`'s new route (`shift` may move a point first). */
+    _tapFollow(w, rec, shift) {
+        if (!rec || !rec.length) return;
+        const pts = this.R.wirePoints(this.doc, w);
+        for (const r of rec) r.c[r.end] = { wire: w.id, t: this._nearestOn(pts, shift ? shift(r.pt) : r.pt).t };
+    },
+
+    /** Bus ends may tap buses only: detach the ones that tap a signal line (after a line type change). */
+    _fixTaps() {
+        for (const w of this.doc.items.filter(i => i.type === 'wire' && i.line === 'bus')) {
+            for (const end of ['from', 'to']) {
+                const par = w[end] && w[end].wire && this.R.byId(this.doc, w[end].wire);
+                if (par && par.line !== 'bus') { const a = this.R.anchor(this.doc, w[end]); w[end] = { x: Math.round(a.x), y: Math.round(a.y) }; }
+            }
+        }
+    },
+
+    _endAt(p, e, skip, self, kind) {
+        kind = kind || (self ? (self.line === 'bus' ? 'bus' : 'signal') : this.tool === 'bus' ? 'bus' : 'signal');
+        const tap = !(e && e.altKey) ? this._lineAt(p, self, kind) : null;
         const box = this._boxAt(p, skip);
-        if (tap && !(box && box.type === 'unit')) return { end: { wire: tap.bus.id, t: tap.t }, box: null, bus: tap.bus };
+        if (tap && !(box && box.type === 'unit')) return { end: { wire: tap.line.id, t: tap.t }, box: null, line: tap.line };
         if (box && box.type === 'unit' && (box.ports || []).length && !(e && e.altKey)) {
             let best = null, bd = Infinity;
             for (const q of this.R.portPositions(box)) {
@@ -480,6 +543,7 @@ const Diagrams = {
         }
         if (e.button !== 0) return;
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        if (this.poly) return this._polyClick(p, e);
         const h = e.target.closest('[data-h]');
         const hitEl = e.target.closest('#dg-content [data-id]');
         const hit = hitEl ? this.R.byId(this.doc, hitEl.dataset.id) : null;
@@ -489,20 +553,17 @@ const Diagrams = {
             const [kind, arg] = h.dataset.h.split(':');
             this.snapshot();
             if (kind === 'resize') this.drag = { type: 'resize', id: it.id, dir: arg, orig: { x: it.x, y: it.y, w: it.w, h: it.h }, p0: p };
-            else if (kind === 'via') this.drag = { type: 'via', id: it.id, i: +arg };
-            else this.drag = { type: 'end', id: it.id, which: kind };
+            else if (kind === 'via') this.drag = { type: 'via', id: it.id, i: +arg, taps: this._tapRec(it) };
+            else if (kind === 'seg') this._segStart(it, +arg, p);
+            else this.drag = { type: 'end', id: it.id, which: kind, taps: this._tapRec(it) };
             return;
         }
 
         if (this.tool === 'wire' || this.tool === 'bus') {
             this.snapshot();
             this.sel = [];
-            const { end } = this._endAt(p, e, []);
-            const w = this._add({ type: 'wire', from: end, to: { x: end.x != null ? end.x : p.x, y: end.y != null ? end.y : p.y },
-                                  route: 'ortho', arrow: this.tool === 'bus' ? 'none' : 'end', label: '' });
-            if (this.tool === 'bus') w.line = 'bus';
-            this.drag = { type: 'end', id: w.id, which: 'to', creating: true, p0: p };
-            this.render();
+            const { end, line } = this._endAt(p, e, []);
+            this._startWire(end, this.tool === 'bus' ? 'bus' : 'signal', line, p);
             return;
         }
         if (this.tool === 'block') {
@@ -529,6 +590,25 @@ const Diagrams = {
         }
 
         // select tool
+        if (hit && hit.type === 'wire' && (e.ctrlKey || e.metaKey)) {     // Ctrl+drag from a line = branch of it
+            this.snapshot();
+            this.sel = [];
+            const t = this._nearestOn(this.R.wirePoints(this.doc, hit), p).t;
+            this._startWire({ wire: hit.id, t }, hit.line === 'bus' ? 'bus' : 'signal', hit, p);
+            return;
+        }
+        if (hit && hit.type === 'wire' && !e.shiftKey && this.sel.length === 1 && this.sel[0] === hit.id
+                && !e.target.closest('.dg-wire-label')) {                 // drag a selected wire = move the run under the cursor
+            const pts = this.R.wirePoints(this.doc, hit);
+            let best = 0, bd = Infinity;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const d = this._segDist(p, pts[i], pts[i + 1]);
+                if (d < bd) { bd = d; best = i; }
+            }
+            this.snapshot();
+            this._segStart(hit, best, p);
+            return;
+        }
         if (hit) {
             if (e.shiftKey) {
                 this.sel = this.sel.includes(hit.id) ? this.sel.filter(i => i !== hit.id) : [...this.sel, hit.id];
@@ -549,6 +629,146 @@ const Diagrams = {
         this.renderOverlay();
     },
 
+    /** New wire from `end`; a tap into a line of the same kind is a branch (it shows that line's style). */
+    _startWire(end, kind, parent, p) {
+        const branch = parent && (parent.line === 'bus') === (kind === 'bus');
+        const arrow = kind === 'bus' || (branch && (parent.arrow || 'end') === 'none') ? 'none' : 'end';
+        const a = this.R.anchor(this.doc, end);
+        const w = this._add({ type: 'wire', from: end, to: { x: Math.round(a.x), y: Math.round(a.y) }, route: 'ortho', arrow, label: '' });
+        if (kind === 'bus') w.line = 'bus';
+        this.drag = { type: 'end', id: w.id, which: 'to', creating: true, p0: p };
+        this.render();
+        return w;
+    },
+
+    /** Start dragging segment i of a wire across itself (horizontal runs move up/down, vertical left/right).
+     *  An attached end stays where it is: a new corner is inserted next to it. */
+    _segStart(w, i, p) {
+        const pts = this.R.wirePoints(this.doc, w).map(q => ({ x: q.x, y: q.y }));
+        if (i < 0 || i >= pts.length - 1) return;
+        // an attached end keeps a short lead out of its side (when the run leaves the side straight), then a new corner
+        const lead = (end, q) => {
+            const d = Math.hypot(q.x - end.x, q.y - end.y), L = Math.min(20, d / 2);
+            const out = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] }[end.side];
+            if (!out || !d || Math.abs((q.x - end.x) / d - out[0]) > 0.01 || Math.abs((q.y - end.y) / d - out[1]) > 0.01) return [Object.assign({}, end)];
+            const m = { x: end.x + out[0] * L, y: end.y + out[1] * L };
+            return [m, Object.assign({}, m)];
+        };
+        const A = this.R.anchor(this.doc, w.from), B = this.R.anchor(this.doc, w.to);
+        if (i === 0 && this._attached(w.from)) { const ins = lead(Object.assign({}, pts[0], { side: A.side }), pts[1]); pts.splice(1, 0, ...ins); i = ins.length; }
+        if (i === pts.length - 2 && this._attached(w.to)) {
+            const ins = lead(Object.assign({}, pts[pts.length - 1], { side: B.side }), pts[pts.length - 2]);
+            pts.splice(pts.length - 1, 0, ...ins.reverse());
+        }
+        const a = pts[i], b = pts[i + 1];
+        const hz = Math.abs(a.y - b.y) < 0.5 && Math.abs(a.x - b.x) >= 0.5, vt = Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) >= 0.5;
+        this.sel = [w.id];
+        this.drag = { type: 'seg', id: w.id, pts, i, hz, vt, p0: p, moved: false, taps: this._tapRec(w) };
+    },
+
+    _segMove(dr, p, e) {
+        const w = this.R.byId(this.doc, dr.id), a = dr.pts[dr.i], b = dr.pts[dr.i + 1];
+        if (!dr.moved) {
+            if (Math.hypot(p.x - dr.p0.x, p.y - dr.p0.y) * this.view.k < 3) return;
+            dr.moved = true;
+        }
+        const dx = dr.hz ? 0 : this._snap(a.x + p.x - dr.p0.x, e) - a.x;
+        const dy = dr.vt ? 0 : this._snap(a.y + p.y - dr.p0.y, e) - a.y;
+        const pts = dr.pts.map(q => ({ x: q.x, y: q.y }));
+        for (const k of [dr.i, dr.i + 1]) { pts[k].x += dx; pts[k].y += dy; }
+        const last = pts.length - 1;
+        if (dr.i === 0) w.from = { x: Math.round(pts[0].x), y: Math.round(pts[0].y) };
+        if (dr.i + 1 === last) w.to = { x: Math.round(pts[last].x), y: Math.round(pts[last].y) };
+        w.via = pts.slice(1, -1).map(q => [Math.round(q.x), Math.round(q.y)]);
+        const onSeg = q => this._segDist(q, a, b) < 1;                 // taps on the moved run go with it
+        this._tapFollow(w, dr.taps, q => onSeg(q) ? { x: q.x + dx, y: q.y + dy } : q);
+        this._schedule();
+    },
+
+    /** Drop corners that are not corners any more (duplicates, points in the middle of a straight run). */
+    _cleanVia(w) {
+        if (!w.via || !w.via.length) return;
+        if (w.route === 'straight') return;
+        const rec = this._tapRec(w);
+        w.via = this.R.wirePoints(this.doc, w).slice(1, -1).map(q => [Math.round(q.x), Math.round(q.y)]);
+        if (!w.via.length) {                       // a straight run: keep it straight (auto route could add corners)
+            const a = this.R.anchor(this.doc, w.from), b = this.R.anchor(this.doc, w.to);
+            if (Math.abs(a.x - b.x) >= 0.5 && Math.abs(a.y - b.y) >= 0.5) w.via = [[Math.round(b.x), Math.round(a.y)]];
+        }
+        this._tapFollow(w, rec);
+    },
+
+    // ── Drawing a wire by clicks: every click adds a corner, a click on a target / double-click / Enter ends it ──
+
+    _polyMove(p, e) {
+        const w = this.R.byId(this.doc, this.poly.id);
+        if (!w) { this.poly = null; return; }
+        const { end, box, line } = this._endAt(p, e, [], w);
+        if (!this._attached(end) && !e.shiftKey && w.route !== 'straight') {   // free end: straight run from the last corner
+            const l = this._polyLast(w);
+            if (Math.abs(end.x - l.x) >= Math.abs(end.y - l.y)) end.y = Math.round(l.y); else end.x = Math.round(l.x);
+        }
+        w.to = end;
+        this.poly.hover = box ? { x: box.x, y: box.y, w: box.w, h: box.h } : null;
+        this.poly.hoverLine = line ? line.id : null;
+        this.poly.hoverPt = box || end.wire ? this.R.anchor(this.doc, end) : null;
+        this._schedule();
+    },
+
+    _polyLast(w) {
+        const v = w.via && w.via.length ? w.via[w.via.length - 1] : null;
+        if (v) return { x: v[0], y: v[1] };
+        const a = this.R.anchor(this.doc, w.from);
+        return { x: a.x, y: a.y };
+    },
+
+    _polyClick(p, e) {
+        const w = this.R.byId(this.doc, this.poly.id);
+        if (!w) { this.poly = null; return; }
+        const { end } = this._endAt(p, e, [], w);
+        if (this._attached(end)) { w.to = end; return this._polyEnd('attach'); }
+        const l = this._polyLast(w), q = { x: this._snap(p.x, e), y: this._snap(p.y, e) };
+        if (!e.shiftKey && w.route !== 'straight') {
+            if (Math.abs(q.x - l.x) >= Math.abs(q.y - l.y)) q.y = Math.round(l.y); else q.x = Math.round(l.x);
+        }
+        if (Math.hypot(q.x - l.x, q.y - l.y) < 2) return this._polyEnd('here');      // same point twice = done
+        w.via = [...(w.via || []), [q.x, q.y]];
+        w.to = { x: q.x, y: q.y };
+        this._schedule();
+    },
+
+    /** Leave click drawing: 'attach' (to is set), 'here' (end at the last corner), 'cancel' (drop the wire). */
+    _polyEnd(mode) {
+        const w = this.poly && this.R.byId(this.doc, this.poly.id);
+        this.poly = null;
+        this._polyDone = Date.now();
+        if (!w) return;
+        if (mode === 'here') {
+            if (w.via && w.via.length) { const [x, y] = w.via.pop(); w.to = { x, y }; } else mode = 'cancel';
+        }
+        const a = this.R.anchor(this.doc, w.from), b = this.R.anchor(this.doc, w.to);
+        if (mode === 'cancel' || (!(w.via && w.via.length) && Math.hypot(a.x - b.x, a.y - b.y) < 10)) {
+            this.doc.items = this.doc.items.filter(i => i.id !== w.id);
+            this.undoStack.pop();
+            this.sel = [];
+            this.render(); this.renderProps();
+            return;
+        }
+        this._wireDone(w);
+    },
+
+    /** A new wire is finished: bus port ⇒ bus line, tidy the corners, select it. */
+    _wireDone(w) {
+        if (w.line !== 'bus' && [w.from, w.to].some(en => this._portType(en) === 'bus')) {   // drawn from a bus port
+            w.line = 'bus'; w.arrow = 'none';
+            this._fixTaps();
+        }
+        if (w.via && !w.via.length) delete w.via;
+        this._cleanVia(w);
+        this.sel = [w.id];
+        this.markDirty(); this.render(); this.renderProps();
+    },
+
     _origOf(ids) {
         const o = {};
         for (const id of ids) {
@@ -563,6 +783,7 @@ const Diagrams = {
 
     _move(e) {
         const dr = this.drag;
+        if (!dr && this.poly && this.doc) return this._polyMove(this._pt(e), e);
         if (!dr || !this.doc) return;
         if (dr.type === 'pan') {
             this.view.x = dr.vx - (e.clientX - dr.sx) / this.view.k;
@@ -619,21 +840,23 @@ const Diagrams = {
         }
         if (dr.type === 'end') {
             const w = this.R.byId(this.doc, dr.id);
-            const other = dr.which === 'from' ? w.to : w.from;
-            const { end, box } = this._endAt(p, e, [], w);
+            const { end, box, line } = this._endAt(p, e, [], w);
             w[dr.which] = end;
             dr.hover = box ? { x: box.x, y: box.y, w: box.w, h: box.h } : null;
+            dr.hoverLine = line ? line.id : null;
             dr.hoverPt = box || end.wire ? this.R.anchor(this.doc, end) : null;
-            if (other && other.id && box && box.id === other.id && dr.creating) { /* same box: allowed */ }
+            this._tapFollow(w, dr.taps);
             this._schedule();
             return;
         }
         if (dr.type === 'via') {
             const w = this.R.byId(this.doc, dr.id);
             w.via[dr.i] = [this._snap(p.x, e), this._snap(p.y, e)];
+            this._tapFollow(w, dr.taps);
             this._schedule();
             return;
         }
+        if (dr.type === 'seg') return this._segMove(dr, p, e);
         if (dr.type === 'label') {
             const w = this.R.byId(this.doc, dr.id);
             if (!dr.moved) { this.snapshot(); dr.moved = true; }
@@ -661,19 +884,21 @@ const Diagrams = {
         if (dr.type === 'end' && dr.creating) {
             const w = this.R.byId(this.doc, dr.id);
             const a = this.R.anchor(this.doc, w.from), b = this.R.anchor(this.doc, w.to);
-            if (Math.hypot(a.x - b.x, a.y - b.y) < 10) {   // just a click: no wire
-                this.doc.items = this.doc.items.filter(i => i.id !== w.id);
-                this.undoStack.pop();
-                this.sel = [];
-                this.render(); this.renderProps();
+            if (Math.hypot(a.x - b.x, a.y - b.y) < 10) {   // just a click: draw by clicks, corner by corner
+                w.to = { x: Math.round(a.x), y: Math.round(a.y) };
+                this.poly = { id: w.id };
+                this.sel = [w.id];
+                this.render();
                 return;
             }
-            if (w.line !== 'bus' && [w.from, w.to].some(en => this._portType(en) === 'bus')) {   // drawn from a bus port
-                w.line = 'bus'; w.arrow = 'none';
-            }
+            return this._wireDone(w);
         }
         if (dr.type === 'marquee') { this.renderOverlay(); this.renderProps(); return; }
-        if ((dr.type === 'move' || dr.type === 'label') && !dr.moved) return;
+        if ((dr.type === 'move' || dr.type === 'label' || dr.type === 'seg') && !dr.moved) {
+            if (dr.type === 'seg') this.undoStack.pop();
+            return;
+        }
+        if (dr.type === 'seg' || dr.type === 'via') this._cleanVia(this.R.byId(this.doc, dr.id));
         this.markDirty();
         this.render();
         this.renderProps();
@@ -692,7 +917,7 @@ const Diagrams = {
     },
 
     _dbl(e) {
-        if (!this.doc) return;
+        if (!this.doc || this.poly || Date.now() - (this._polyDone || 0) < 600) return;
         const p = this._pt(e);
         const h = e.target.closest('[data-h^="via"]');
         const it = this.R.byId(this.doc, this.sel[0]);
@@ -742,6 +967,15 @@ const Diagrams = {
         const key = /^Key[A-Z]$/.test(e.code) ? e.code.slice(3).toLowerCase() : e.key.toLowerCase();
         if (ctrl && key === 's') { e.preventDefault(); return this.save(); }
         if (inField) return;
+        if (this.poly && !ctrl) {
+            if (key === 'escape' || key === 'enter') { e.preventDefault(); return this._polyEnd('here'); }
+            if (key === 'backspace' || key === 'delete') {
+                e.preventDefault();
+                const w = this.R.byId(this.doc, this.poly.id);
+                if (w && w.via && w.via.length) { w.via.pop(); return this._schedule(); }
+                return this._polyEnd('cancel');
+            }
+        }
         if (e.code === 'Space') { this._space = true; this._cursor(); e.preventDefault(); return; }
         if (ctrl && key === 'z') { e.preventDefault(); return e.shiftKey ? this.redo() : this.undo(); }
         if (ctrl && key === 'y') { e.preventDefault(); return this.redo(); }
@@ -924,8 +1158,11 @@ const Diagrams = {
                 sel('Route', 'route', [['ortho', 'Orthogonal'], ['straight', 'Straight']]),
                 { label: 'Dashed', p: 'dashed', t: 'check' }, colorRow('Colour', 'color'), num('Width', 'width'), num('Label size', 'labelSize'),
                 { t: 'button', label: 'Reset route & label', act: 'resetWire' }, { t: 'button', label: 'Reverse direction', act: 'reverseWire' },
-                { t: 'info', text: 'Double-click the wire to add a bend point, double-click a bend point to remove it. Drag an end onto a block / port to attach it, ' +
-                  'onto a bus line to add the signal to the bus (Alt = free). Without an own colour the wire takes the colour of its port type.' }];
+                ...(this.R.isBranch(this.doc, it) ? [{ t: 'info', text: 'Branch of line ' + (this.R.styleRoot(this.doc, it).label || this.R.styleRoot(this.doc, it).id).split('\n')[0] +
+                    ': colour, width and dash are shared with the whole line (changing them here changes all of it).' }] : []),
+                { t: 'info', text: 'Drag a run of the selected wire (or its grip) to move it across — attached ends stay put. Double-click the wire to add ' +
+                  'a bend point, double-click a bend point to remove it. Drag an end onto a block / port to attach it, onto another line to join it ' +
+                  '(Alt = free). Ctrl+drag from a line = a branch. Without an own colour the wire takes the colour of its port type.' }];
             case 'chip': return [{ t: 'button', label: 'Edit pins…', act: 'openPins', cls: 'btn-primary' },
                 { t: 'info', text: this.R.SIDES.map(s => `${s}: ${(it.pins[s] || []).length}`).join(' · ') },
                 sel('Pin style', 'pinStyle', [['tags', 'Tags (port · function · dir · note)'], ['simple', 'Simple (coloured text)']]),
@@ -955,6 +1192,11 @@ const Diagrams = {
             }
         }
         return [];
+    },
+
+    /** Branch wires share colour / width / dash with the root of their chain: those fields edit the root. */
+    _propTarget(it, p) {
+        return it && it.type === 'wire' && ['color', 'width', 'dashed'].includes(p) ? this.R.styleRoot(this.doc, it) : it;
     },
 
     _get(obj, path) { return path.split('.').reduce((o, k) => o == null ? undefined : o[k], obj); },
@@ -993,7 +1235,7 @@ const Diagrams = {
                     `<label class="check-row small"><input type="checkbox" data-legend-kind="${esc(k)}"${on.has(k) ? ' checked' : ''}> ${esc(kd.label || k)}</label>`).join('') +
                 '</div></div>';
         }
-        let v = this._get(it, f.p);
+        let v = this._get(this._propTarget(it, f.p), f.p);
         if (f.p === 'lines' && Array.isArray(v)) v = v.join('\n');
         const p = esc(f.p);
         let input;
@@ -1011,7 +1253,7 @@ const Diagrams = {
                 break;
             }
             case 'color': {
-                const def = this._defaultOf(it, f.p), shown = v || (def && def !== 'none' ? def : '#ffffff');
+                const def = this._defaultOf(this._propTarget(it, f.p), f.p), shown = v || (def && def !== 'none' ? def : '#ffffff');
                 input = `<div class="dg-color"><input type="color" data-p="${p}" value="${esc(shown)}">` +
                         `<span class="mono small ${v ? '' : 'faint'}">${esc(v || 'default')}</span>` +
                         (v ? `<button class="btn-icon" data-clear="${p}" title="Use the default"><i class="fa-solid fa-xmark"></i></button>` : '') + '</div>';
@@ -1069,7 +1311,9 @@ const Diagrams = {
             comp +
             `<div class="dg-ptitle dg-sub">Pin kinds <button class="btn-icon" data-act="addKind" title="Add kind"><i class="fa-solid fa-plus"></i></button></div>` +
             '<div class="dg-kinds">' + Object.entries(d.kinds).map(([k, kd]) => this._kindHtml(k, kd)).join('') + '</div>' +
-            '<div class="hint dg-pinfo">Tools: V select · B block · C chip · U unit (library) · T text · W wire · S bus line · L legend. Space/right-drag = pan, wheel = zoom, ' +
+            '<div class="hint dg-pinfo">Tools: V select · B block · C chip · U unit (library) · T text · W wire · S bus line · L legend. ' +
+            'Wire / bus: drag, or click corner by corner (Enter / double-click ends, Backspace undoes a corner, Shift = any angle); ' +
+            'start on a line = a branch. Space/right-drag = pan, wheel = zoom, ' +
             'F = fit, Alt = no snapping, Ctrl+C / Ctrl+V copy (also into another diagram), Ctrl+D duplicate, Delete, Ctrl+Z / Ctrl+Y. ' +
             'Shortcuts work in any keyboard layout.</div>';
     },
@@ -1148,18 +1392,12 @@ const Diagrams = {
             if (p === 'source' && isChange) setTimeout(() => this.renderProps());
             if (p === 'detail' && v === 'pins') v = undefined;
             if (p === 'line') {
-                if (v === 'signal') {
-                    v = undefined;
-                    for (const w of this.doc.items.filter(i => i.type === 'wire')) {      // signal lines carry no taps
-                        for (const end of ['from', 'to']) {
-                            if (w[end].wire === it.id) { const a = this.R.anchor(this.doc, w[end]); w[end] = { x: Math.round(a.x), y: Math.round(a.y) }; }
-                        }
-                    }
-                }
+                if (v === 'signal') v = undefined;
                 if (isChange) setTimeout(() => this.renderProps());
             }
             if (['x', 'y', 'w', 'h'].includes(p) && v == null) return;
-            this._set(it, p, v);
+            this._set(this._propTarget(it, p), p, v);
+            if (p === 'line') this._fixTaps();                // bus ends tap buses only
             if (t.type === 'color' && isChange) this.renderProps();
         }
         this.markDirty();
@@ -1170,7 +1408,7 @@ const Diagrams = {
         const clr = e.target.closest('[data-clear]');
         if (clr) {
             this.snapshot();
-            this._set(this.R.byId(this.doc, this.sel[0]), clr.dataset.clear, undefined);
+            this._set(this._propTarget(this.R.byId(this.doc, this.sel[0]), clr.dataset.clear), clr.dataset.clear, undefined);
             this.markDirty(); this.render(); this.renderProps();
             return;
         }

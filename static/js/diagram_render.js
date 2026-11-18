@@ -15,9 +15,14 @@
               arrow: end|start|both|none, dashed, color, width, labelSize,
               line: bus (thick double line, default width 5), busWidth ("8", "SWD": slash mark + text near the start),
               signals: "TXD, RXD" (bus: carried signals, plus the wires tapped into it), hideSignals }
-            A wire end may also sit on a bus line: {wire: "<bus id>", t: 0..1 (fraction of its length)} — only signal
-            wires tap buses (bus ends never do, so anchors cannot recurse). Colour of a wire without `color` = colour of
-            the type of the port it starts from (else the port it ends on); ports on the far end adopt the wire colour.
+            A wire end may also sit on another line: {wire: "<line id>", t: 0..1 (fraction of its length)} — a tap.
+            Signal ends tap signal lines and buses, bus ends tap buses only; taps may chain (the editor refuses cycles,
+            the renderer stops at one). A tap into a line of the same kind (signal↔signal, bus↔bus) is a *branch*:
+            it shows the colour, width and dash of the root line of its chain (styleRoot) — its own are ignored.
+            A signal tapped into a bus keeps its own style. Colour of a wire without `color` = colour of the type of
+            the port it starts from (else the port it ends on, else the line it taps); ports adopt the wire colour.
+            With `via` and route ortho, consecutive points that are not aligned get an elbow (wire stays orthogonal
+            when the things it is attached to move).
    Optional doc.catalog: station|assembly|bus|component|uut|diagram (sidebar group; derived from the content when absent).
      legend { x, y, source: kinds|ports, kinds: [keys] | null (= used ones), style: tags|swatch, size }
      unit   { x, y, w, h, category (CATEGORIES key), title, subtitle, des (designator, e.g. MUX1),
@@ -145,13 +150,14 @@ const DiagramRender = {
 
     // ── Geometry ───────────────────────────────────────────────
 
-    /** Point on a block/chip side for a wire end {id, side, t}; free ends {x, y} pass through. */
-    anchor(doc, end) {
+    /** Point on a block/chip side for a wire end {id, side, t}; free ends {x, y} pass through.
+     *  `seen` = ids of the wires on the current tap chain (a cycle falls back to the stored x/y). */
+    anchor(doc, end, seen) {
         if (!end) return { x: 0, y: 0, side: null };
         if (end.wire) {
             const bus = this.byId(doc, end.wire);
-            if (bus && bus.type === 'wire' && !bus.from.wire && !bus.to.wire) {
-                const pts = this.wirePoints(doc, bus), len = this._length(pts);
+            if (bus && bus.type === 'wire' && !(seen && (seen.has(bus.id) || seen.size > 16))) {
+                const pts = this.wirePoints(doc, bus, seen), len = this._length(pts);
                 const q = this._along(pts, (end.t == null ? 0.5 : end.t) * len);
                 return { x: q.x, y: q.y, side: null, tx: q.tx, ty: q.ty };
             }
@@ -187,10 +193,12 @@ const DiagramRender = {
         return { side, t: Math.round(t * 1000) / 1000 };
     },
 
-    wirePoints(doc, w) {
-        const a = this.anchor(doc, w.from), b = this.anchor(doc, w.to);
+    wirePoints(doc, w, seen) {
+        const chain = new Set(seen || []); chain.add(w.id);
+        const a = this.anchor(doc, w.from, chain), b = this.anchor(doc, w.to, chain);
         const via = (w.via || []).map(([x, y]) => ({ x, y }));
-        if (via.length || w.route === 'straight') return [a, ...via, b];
+        if (w.route === 'straight') return [a, ...via, b];
+        if (via.length) return this._orthoVia(a, via, b);
         const tapSide = (p, q) => {               // a signal leaves a bus perpendicular to it, towards the other end
             if (p.tx == null) return;
             p.side = Math.abs(p.tx) >= Math.abs(p.ty) ? (q.y < p.y ? 'top' : 'bottom') : (q.x < p.x ? 'left' : 'right');
@@ -212,6 +220,26 @@ const DiagramRender = {
             return [a, { x: a.x, y: my }, { x: b.x, y: my }, b];
         }
         return h1 ? [a, { x: b.x, y: a.y }, b] : [a, { x: a.x, y: b.y }, b];
+    },
+
+    /** a → via… → b with an elbow between points that are not aligned: the first leg leaves along a's side (a tap:
+     *  across its line), the last enters along b's side, other elbows turn at the user's point. */
+    _orthoVia(a, via, b) {
+        const H = s => s === 'left' || s === 'right';
+        const pts = [a, ...via, b], out = [a];
+        for (let i = 1; i < pts.length; i++) {
+            const p = out[out.length - 1], q = pts[i];
+            if (Math.abs(p.x - q.x) >= 0.5 && Math.abs(p.y - q.y) >= 0.5) {
+                let hFirst;
+                if (i === pts.length - 1 && (b.side || b.tx != null)) hFirst = b.side ? !H(b.side) : Math.abs(b.tx) >= Math.abs(b.ty);
+                else if (i === 1 && (a.side || a.tx != null)) hFirst = a.side ? H(a.side) : Math.abs(a.tx) < Math.abs(a.ty);
+                else if (out.length > 1) hFirst = Math.abs(out[out.length - 2].x - p.x) < 0.5;     // previous leg vertical → turn
+                else hFirst = Math.abs(q.x - p.x) >= Math.abs(q.y - p.y);
+                out.push(hFirst ? { x: q.x, y: p.y } : { x: p.x, y: q.y });
+            }
+            out.push(q);
+        }
+        return this._simplify(out);
     },
 
     /** Orthogonal route that first leaves a port outwards (LEAD), then turns; goes around when the ports face away. */
@@ -383,14 +411,43 @@ const DiagramRender = {
         return u && u.type === 'unit' ? (u.ports || []).find(q => q.name === end.port) || null : null;
     },
 
-    /** Effective wire colour: own colour, else the type colour of its start port / end port, else of the bus it taps. */
+    /** Line a wire end taps ({wire, t}) — the start end first — or null. */
+    tapParent(doc, w) {
+        for (const e of [w.from, w.to]) {
+            const p = e && e.wire && this.byId(doc, e.wire);
+            if (p && p.type === 'wire' && p !== w) return p;
+        }
+        return null;
+    },
+
+    /** A branch = a wire tapped into a line of the same kind (signal↔signal, bus↔bus). */
+    isBranch(doc, w) {
+        const p = this.tapParent(doc, w);
+        return !!p && (p.line === 'bus') === (w.line === 'bus');
+    },
+
+    /** Wire whose colour / width / dash a wire shows: the root of its branch chain (itself when it is no branch). */
+    styleRoot(doc, w) {
+        let cur = w;
+        const seen = new Set([w.id]);
+        for (;;) {
+            const p = this.tapParent(doc, cur);
+            if (!p || seen.has(p.id) || (p.line === 'bus') !== (cur.line === 'bus')) return cur;
+            seen.add(p.id); cur = p;
+        }
+    },
+
+    /** Effective wire colour: the branch root's; own colour, else the type colour of its start / end port,
+     *  else of the line it taps. */
     wireColor(doc, w, depth = 0) {
+        if (depth > 8) return this.DEFAULT_WIRE;
+        const r = this.styleRoot(doc, w);
+        if (r !== w) return this.wireColor(doc, r, depth + 1);
         if (w.color) return w.color;
         const p = this.endPort(doc, w.from) || this.endPort(doc, w.to);
         if (p) return this.portType(p.type).color;
-        const tap = [w.from, w.to].find(e => e && e.wire);
-        const bus = tap && depth < 2 && this.byId(doc, tap.wire);
-        return bus && bus.type === 'wire' ? this.wireColor(doc, bus, depth + 1) : this.DEFAULT_WIRE;
+        const par = this.tapParent(doc, w);
+        return par ? this.wireColor(doc, par, depth + 1) : this.DEFAULT_WIRE;
     },
 
     /** "unitId\u0000port" -> colour of the wire connected there (the net colour); first wire wins. */
@@ -412,7 +469,7 @@ const DiagramRender = {
     busSignals(doc, bus) {
         const out = String(bus.signals || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
         for (const w of doc.items) {
-            if (w.type !== 'wire' || w === bus) continue;
+            if (w.type !== 'wire' || w === bus || w.line === 'bus') continue;      // bus branches carry no own signal
             const tapFrom = w.from && w.from.wire === bus.id, tapTo = w.to && w.to.wire === bus.id;
             if (!tapFrom && !tapTo) continue;
             const p = this.endPort(doc, tapFrom ? w.to : w.from);
@@ -470,20 +527,20 @@ const DiagramRender = {
 
     _wire(doc, w, opts) {
         const pts = this.wirePoints(doc, w);
-        const bus = w.line === 'bus';
+        const bus = w.line === 'bus', st = this.styleRoot(doc, w);
         const color = this.wireColor(doc, w), mid = `url(#${this.markerId(color, bus)})`;
         const path = list => 'M' + list.map(p => `${this.num(p.x)},${this.num(p.y)}`).join(' L');
         const d = path(pts);
         const arrow = w.arrow || 'end';
         const aEnd = arrow === 'end' || arrow === 'both', aStart = arrow === 'start' || arrow === 'both';
-        const W = w.width || (bus ? 5 : 1.6);
+        const W = st.width || (bus ? 5 : 1.6), dashed = !!st.dashed;
         let s = `<path d="${d}" fill="none" stroke="${this.esc(color)}" stroke-width="${W}"` + (bus ? ' stroke-linejoin="round"' : '') +
                 (arrow === 'end' || arrow === 'both' ? ` marker-end="${mid}"` : '') +
                 (arrow === 'start' || arrow === 'both' ? ` marker-start="${mid}"` : '') +
-                (w.dashed ? ' stroke-dasharray="6 4"' : '') + '/>';
+                (dashed ? ' stroke-dasharray="6 4"' : '') + '/>';
         if (bus) {
             s += `<path d="${path(this._trim(pts, aStart ? 14 : 0, aEnd ? 14 : 0))}" fill="none" stroke="#ffffff" stroke-opacity=".85"` +
-                 ` stroke-width="${this.num(W * 0.36)}" stroke-linejoin="round"${w.dashed ? ' stroke-dasharray="6 4"' : ''}/>`;
+                 ` stroke-width="${this.num(W * 0.36)}" stroke-linejoin="round"${dashed ? ' stroke-dasharray="6 4"' : ''}/>`;
             if (w.busWidth) {                    // slash mark with the width / name near the start
                 const q = this._along(pts, 30), nx = q.ty, ny = -q.tx;            // normal: up for → , right for ↓
                 const vertical = Math.abs(q.ty) > Math.abs(q.tx);
@@ -493,10 +550,14 @@ const DiagramRender = {
                      ` text-anchor="start" fill="${this.esc(color)}" font-family="${this.esc(this.MONO)}">${this.esc(w.busWidth)}</text>`;
             }
         }
-        for (const e of [w.from, w.to]) {           // junction dot where a signal joins a bus
+        for (const e of [w.from, w.to]) {           // junction dot where the wire joins a line
             if (e && e.wire) {
                 const b = this.byId(doc, e.wire), a = this.anchor(doc, e);
-                if (b) s += `<circle cx="${this.num(a.x)}" cy="${this.num(a.y)}" r="4" fill="${this.esc(this.wireColor(doc, b))}" stroke="#ffffff" stroke-width="1"/>`;
+                if (b && b.type === 'wire') {
+                    const r = b.line === 'bus' ? 4 : Math.max(3, W * 1.6);
+                    s += `<circle cx="${this.num(a.x)}" cy="${this.num(a.y)}" r="${this.num(r)}" fill="${this.esc(this.wireColor(doc, b))}"` +
+                         (b.line === 'bus' ? ' stroke="#ffffff" stroke-width="1"' : '') + '/>';
+                }
             }
         }
         if (bus && !w.hideSignals) {

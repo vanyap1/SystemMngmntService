@@ -635,7 +635,13 @@ A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar 
   power, ground, bus, n.c.), a legend can show port types. *Bus* lines (tool S, or any wire drawn from a bus port)
   are thick double lines with an optional slash mark and width / name (`/8`, `SWD`); signal wires dropped onto a
   bus join it (junction dot) and the bus lists the signals it carries. A wire without its own colour takes the colour
-  of its port type, and the port at the other end adopts it — one colour per net. Units keep a copy of the ports: when the component
+  of its port type, and the port at the other end adopts it — one colour per net. Wires are drawn by dragging or
+  corner by corner (clicks; `Enter` / double-click ends, `Backspace` drops a corner); a run of a selected wire is
+  dragged across itself (horizontal up / down, vertical left / right) and attached ends stay put — a corner is added
+  next to them. A wire started on another line (or `Ctrl`-dragged from it) is a *branch*, and a wire end dropped on
+  a line joins it: a branch of the same kind (signal from a signal, bus from a bus) shows the colour, width and dash
+  of the root line, editing them on a branch changes the whole line; branches can chain (loops are refused), taps
+  stay on their run when the line is reshaped. Units keep a copy of the ports: when the component
   changes they are marked *outdated* and updated with one click; renaming a component relinks its units.
   The sidebar groups diagrams into catalogs: **Stations**, **Assemblies** (jigs / boards built of units),
   **Bus-level modules** (simplified symbols: one port per interface — SWD, UART, I²C…, no power),

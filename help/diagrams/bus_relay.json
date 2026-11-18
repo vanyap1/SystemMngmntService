@@ -79,29 +79,30 @@
  },
  "items": [
   {
+   "id": "t7uqkkq",
    "type": "text",
    "x": 60,
    "y": 68,
    "text": "Relay",
    "size": 32,
-   "weight": "700",
-   "id": "t7uqkkq"
+   "weight": "700"
   },
   {
+   "id": "t1h3ngk",
    "type": "text",
    "x": 60,
    "y": 98,
    "text": "Bus-level switch: IN → OUT when CTRL is on. One port per interface, no power pins.",
    "size": 14,
-   "color": "#6b7280",
-   "id": "t1h3ngk"
+   "color": "#6b7280"
   },
   {
+   "id": "umscf1n",
    "type": "unit",
-   "x": 420,
-   "y": 170,
-   "w": 160,
-   "h": 120,
+   "x": 410,
+   "y": 180,
+   "w": 110,
+   "h": 70,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -114,29 +115,28 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
    ],
-   "id": "umscf1n",
    "master": true,
    "prefix": "K",
    "detail": "bus"
   },
   {
+   "id": "lqvykih",
    "type": "legend",
    "x": 60,
    "y": 440,
-   "source": "ports",
-   "id": "lqvykih"
+   "source": "ports"
   }
  ]
 }

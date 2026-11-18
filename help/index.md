@@ -51,6 +51,10 @@ Hovering a diagram in a page shows **Edit diagram**. Example: [Orange Pi 3B](har
 |---|---|
 | `V` `B` `W` `C` `T` `L` | select, block, wire, chip, text, legend |
 | drag from block to block (Wire) | arrow attached to both blocks — it follows when they move |
+| click, click, … (Wire / Bus) | line corner by corner — ends on a block / port / line, or with double-click / `Enter`; `Backspace` drops the last corner, `Shift` = any angle |
+| drag a run of a selected wire | moves a horizontal run up / down, a vertical one left / right — ends stay attached |
+| start a wire on a line, or `Ctrl`-drag from it | branch: it takes the colour, width and dash of that line |
+| drop a wire end on a line | joins it (junction dot) |
 | double-click a wire / bend point | add / remove a bend point |
 | double-click a chip | pin table — paste rows from Excel (pin, port, function, kind, dir, note) |
 | Space-drag / right-drag, wheel | pan, zoom · `F` fit · `Alt` no snapping |

@@ -104,10 +104,11 @@
    "source": "ports"
   },
   {
+   "id": "u8ybye9",
    "type": "unit",
    "ref": "Oscilloscope_LAN",
    "x": 280,
-   "y": 670,
+   "y": 440,
    "w": 180,
    "h": 120,
    "category": "scope",
@@ -139,14 +140,14 @@
      "side": "right",
      "note": ""
     }
-   ],
-   "id": "u8ybye9"
+   ]
   },
   {
+   "id": "ubn83ol",
    "type": "unit",
    "ref": "Function_generator_2CH_LAN",
    "x": 280,
-   "y": 810,
+   "y": 600,
    "w": 180,
    "h": 110,
    "category": "gen",
@@ -178,14 +179,14 @@
      "side": "right",
      "note": ""
     }
-   ],
-   "id": "ubn83ol"
+   ]
   },
   {
+   "id": "ui73e9a",
    "type": "unit",
    "ref": "bus_psu",
    "x": 280,
-   "y": 540,
+   "y": 300,
    "w": 180,
    "h": 110,
    "category": "psu",
@@ -205,13 +206,13 @@
      "side": "right",
      "note": "OUT1, OUT2"
     }
-   ],
-   "id": "ui73e9a"
+   ]
   },
   {
+   "id": "u81phhb",
    "type": "unit",
    "ref": "G_FiletrBoard",
-   "x": 970,
+   "x": 980,
    "y": 190,
    "w": 230,
    "h": 130,
@@ -238,16 +239,16 @@
      "side": "bottom",
      "note": ""
     }
-   ],
-   "id": "u81phhb"
+   ]
   },
   {
+   "id": "uc1a2jr",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 670,
-   "y": 320,
+   "x": 680,
+   "y": 330,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -260,27 +261,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "uc1a2jr"
+   ]
   },
   {
+   "id": "u4acksk",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 670,
+   "x": 680,
    "y": 470,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -293,27 +294,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "u4acksk"
+   ]
   },
   {
+   "id": "uys571a",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 670,
+   "x": 680,
    "y": 620,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -326,27 +327,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "uys571a"
+   ]
   },
   {
+   "id": "uplvvhd",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 670,
+   "x": 680,
    "y": 780,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -359,27 +360,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "uplvvhd"
+   ]
   },
   {
+   "id": "uhb4ocs",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 1340,
+   "x": 1350,
    "y": 320,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -392,27 +393,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "uhb4ocs"
+   ]
   },
   {
+   "id": "ugjw9lt",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 1340,
+   "x": 1350,
    "y": 470,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -425,27 +426,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "ugjw9lt"
+   ]
   },
   {
+   "id": "ukms8sp",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 1340,
+   "x": 1350,
    "y": 620,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -458,27 +459,27 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
-   ],
-   "id": "ukms8sp"
+   ]
   },
   {
+   "id": "u9vnz9n",
    "type": "unit",
    "ref": "bus_relay",
-   "x": 1340,
+   "x": 1350,
    "y": 770,
    "w": 140,
-   "h": 120,
+   "h": 80,
    "category": "relay",
    "title": "Relay",
    "subtitle": "",
@@ -491,269 +492,383 @@
      "note": ""
     },
     {
+     "name": "CTRL",
+     "type": "in",
+     "side": "left",
+     "note": ""
+    },
+    {
      "name": "OUT",
      "type": "io",
      "side": "right",
      "note": ""
-    },
-    {
-     "name": "CTRL",
-     "type": "in",
-     "side": "top",
-     "note": ""
     }
+   ]
+  },
+  {
+   "id": "w33jprt",
+   "type": "wire",
+   "from": {
+    "id": "u8ybye9",
+    "port": "CH2"
+   },
+   "to": {
+    "id": "u81phhb",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus",
+   "via": [
+    [
+     540,
+     730
+    ],
+    [
+     540,
+     260
+    ]
    ],
-   "id": "u9vnz9n"
+   "color": "#03635b"
   },
   {
-   "type": "wire",
-   "from": {
-    "id": "ui73e9a",
-    "port": "OUT"
-   },
-   "to": {
-    "id": "uc1a2jr",
-    "port": "IN"
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "wu5irjy"
-  },
-  {
-   "type": "wire",
-   "from": {
-    "x": 560,
-    "y": 600
-   },
-   "to": {
-    "id": "uhb4ocs",
-    "port": "IN"
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "wm3q66z",
-   "color": "#d53030"
-  },
-  {
+   "id": "w9rs3wc",
    "type": "wire",
    "from": {
     "id": "uc1a2jr",
     "port": "OUT"
    },
    "to": {
-    "id": "u81phhb",
-    "port": "IN"
+    "wire": "w33jprt",
+    "t": 0.8707
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "wpx0ml8",
-   "color": "#7cb7b0"
+   "line": "bus",
+   "via": [
+    [
+     870,
+     370
+    ],
+    [
+     870,
+     260
+    ]
+   ]
   },
   {
-   "type": "wire",
-   "from": {
-    "id": "uhb4ocs",
-    "port": "OUT"
-   },
-   "to": {
-    "id": "u81phhb",
-    "port": "OUT"
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "wy7oh12",
-   "dashed": false
-  },
-  {
+   "id": "wllvsa3",
    "type": "wire",
    "from": {
     "id": "u4acksk",
     "port": "OUT"
    },
    "to": {
-    "x": 890,
-    "y": 380
+    "wire": "w9rs3wc",
+    "t": 0.2395
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "wlq00dl",
-   "color": "#81b6b0"
+   "line": "bus",
+   "via": [
+    [
+     870,
+     510
+    ],
+    [
+     870,
+     370
+    ]
+   ]
   },
   {
+   "id": "wxqysfz",
    "type": "wire",
    "from": {
     "id": "uys571a",
     "port": "OUT"
    },
    "to": {
-    "x": 890,
-    "y": 530
+    "wire": "wllvsa3",
+    "t": 0.2008
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "ww50igy",
-   "color": "#86b5b0"
+   "line": "bus",
+   "via": [
+    [
+     870,
+     660
+    ],
+    [
+     870,
+     518
+    ]
+   ]
   },
   {
+   "id": "wya0nyr",
    "type": "wire",
    "from": {
     "id": "uplvvhd",
     "port": "OUT"
    },
    "to": {
-    "x": 890,
-    "y": 680
+    "wire": "wxqysfz",
+    "t": 0.1888
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "wsoz2eb",
-   "color": "#86b5b0"
+   "line": "bus",
+   "via": [
+    [
+     870,
+     820
+    ]
+   ]
   },
   {
-   "type": "wire",
-   "from": {
-    "id": "ugjw9lt",
-    "port": "OUT"
-   },
-   "to": {
-    "x": 1510,
-    "y": 380
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "w89rgyd"
-  },
-  {
-   "type": "wire",
-   "from": {
-    "id": "ukms8sp",
-    "port": "OUT"
-   },
-   "to": {
-    "x": 1510,
-    "y": 530
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "w3ituum"
-  },
-  {
-   "type": "wire",
-   "from": {
-    "id": "u9vnz9n",
-    "port": "OUT"
-   },
-   "to": {
-    "x": 1510,
-    "y": 680
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "wemnsqn"
-  },
-  {
-   "type": "wire",
-   "from": {
-    "x": 890,
-    "y": 260
-   },
-   "to": {
-    "x": 530,
-    "y": 260
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "wygjru1",
-   "color": "#5fada4"
-  },
-  {
-   "type": "wire",
-   "from": {
-    "x": 530,
-    "y": 260
-   },
-   "to": {
-    "id": "u8ybye9",
-    "port": "CH2"
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "w175z4m"
-  },
-  {
+   "id": "wfcllw1",
    "type": "wire",
    "from": {
     "id": "u8ybye9",
     "port": "CH1"
    },
    "to": {
-    "x": 510,
-    "y": 150
-   },
-   "route": "ortho",
-   "arrow": "end",
-   "label": "",
-   "id": "wrldwh3",
-   "color": "#9770ea"
-  },
-  {
-   "type": "wire",
-   "from": {
-    "x": 510,
-    "y": 150
-   },
-   "to": {
-    "id": "u81phhb",
+    "id": "u9vnz9n",
     "port": "OUT"
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "wn1sqzw",
-   "color": "#9770ea"
+   "line": "bus",
+   "via": [
+    [
+     520,
+     710
+    ],
+    [
+     520,
+     160
+    ],
+    [
+     1540,
+     160
+    ],
+    [
+     1540,
+     830
+    ]
+   ],
+   "color": "#0bb12d"
   },
   {
+   "id": "wsx55al",
+   "type": "wire",
+   "from": {
+    "id": "ukms8sp",
+    "port": "OUT"
+   },
+   "to": {
+    "wire": "wfcllw1",
+    "t": 0.9109
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus"
+  },
+  {
+   "id": "wth3ooh",
+   "type": "wire",
+   "from": {
+    "id": "ugjw9lt",
+    "port": "OUT"
+   },
+   "to": {
+    "wire": "wfcllw1",
+    "t": 0.8384
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus"
+  },
+  {
+   "id": "wwafoi3",
+   "type": "wire",
+   "from": {
+    "id": "uhb4ocs",
+    "port": "OUT"
+   },
+   "to": {
+    "wire": "wfcllw1",
+    "t": 0.7661
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus",
+   "via": [
+    [
+     1530,
+     340
+    ],
+    [
+     1530,
+     344
+    ]
+   ]
+  },
+  {
+   "id": "wvzmfr7",
+   "type": "wire",
+   "from": {
+    "id": "u81phhb",
+    "port": "OUT"
+   },
+   "to": {
+    "wire": "wfcllw1",
+    "t": 0.578
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus",
+   "via": [
+    [
+     1270,
+     260
+    ]
+   ]
+  },
+  {
+   "id": "wb1vj1b",
+   "type": "wire",
+   "from": {
+    "id": "ui73e9a",
+    "port": "OUT"
+   },
+   "to": {
+    "id": "uhb4ocs",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus",
+   "via": [
+    [
+     500,
+     360
+    ],
+    [
+     500,
+     430
+    ],
+    [
+     900,
+     430
+    ],
+    [
+     900,
+     350
+    ]
+   ],
+   "signals": "UUT_Power",
+   "labelDx": 81,
+   "labelDy": -23
+  },
+  {
+   "id": "wgj2pi9",
+   "type": "wire",
+   "from": {
+    "wire": "wb1vj1b",
+    "t": 0.0247
+   },
+   "to": {
+    "id": "uc1a2jr",
+    "port": "IN"
+   },
+   "route": "ortho",
+   "arrow": "none",
+   "label": "",
+   "line": "bus",
+   "via": [
+    [
+     575,
+     361
+    ],
+    [
+     575,
+     360
+    ]
+   ]
+  },
+  {
+   "id": "wej08w6",
    "type": "wire",
    "from": {
     "id": "ubn83ol",
     "port": "OUT1"
    },
    "to": {
-    "x": 580,
-    "y": 530
+    "id": "ugjw9lt",
+    "port": "IN"
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "wucuhpw"
+   "line": "bus",
+   "via": [
+    [
+     560,
+     640
+    ],
+    [
+     560,
+     570
+    ],
+    [
+     910,
+     570
+    ],
+    [
+     910,
+     500
+    ]
+   ]
   },
   {
+   "id": "wy71a78",
    "type": "wire",
    "from": {
-    "x": 580,
-    "y": 530
+    "wire": "wej08w6",
+    "t": 0.1543
    },
    "to": {
     "id": "u4acksk",
     "port": "IN"
    },
    "route": "ortho",
-   "arrow": "end",
+   "arrow": "none",
    "label": "",
-   "id": "w17chvp",
-   "color": "#5caaa2"
+   "line": "bus",
+   "via": [
+    [
+     560,
+     600
+    ],
+    [
+     560,
+     500
+    ]
+   ]
   }
  ]
 }

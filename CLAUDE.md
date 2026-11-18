@@ -309,9 +309,13 @@ static/
   Catalogs (sidebar groups station / assembly / bus / component / uut / diagram; `bus` = symbol with `detail: "bus"`) are virtual: `doc.catalog` or derived by
   `DiagramRender.catalogOf` = `core/diagrams.catalog()` (keep both rules equal, tested in tests/test_help.py);
   files stay flat in help/diagrams — never move them into folders (links and `ref`s use the bare name).
-  Wire colour without `color` = `DiagramRender.wireColor` (start port type → end port type → tapped bus); ports adopt
-  the colour of their wire (`portColors`). Signal wires may end on a bus `{wire, t}`; bus ends never tap (no recursion) —
-  every place that moves/copies/deletes wire ends must treat taps as attached (`Diagrams._attached`).
+  Wire colour without `color` = `DiagramRender.wireColor` (start port type → end port type → tapped line); ports adopt
+  the colour of their wire (`portColors`). A wire end may tap a line `{wire, t}`: signal ends any line, bus ends buses
+  only (`_lineAt`, `_fixTaps`); taps chain, the editor refuses loops (`_dependents`), the renderer stops at one (`seen`).
+  A tap into a line of the same kind is a branch: colour / width / dash come from `DiagramRender.styleRoot` (the panel
+  edits the root, `_propTarget`). When a line changes shape in the editor, its taps are re-projected (`_tapRec` /
+  `_tapFollow`). Ortho wires with `via` get elbows between unaligned points (`_orthoVia`). Every place that
+  moves/copies/deletes wire ends must treat taps as attached (`Diagrams._attached`).
   Visual checks without touching help/: `python3 tests/devserver.py --help-dir <scratch>`.
 
 ## Git (Settings → Git, popup in editor / docs)

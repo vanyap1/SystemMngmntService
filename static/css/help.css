@@ -206,6 +206,9 @@ body.page-help { height: 100vh; overflow: hidden; }
 #dg-overlay .dg-h-end { fill: var(--text); cursor: crosshair; }
 #dg-overlay .dg-h-end.on { fill: var(--info); }
 #dg-overlay .dg-h-via { fill: var(--warn); cursor: move; }
+#dg-overlay .dg-h-seg { fill: var(--info); stroke: var(--text); cursor: move; }
+#dg-overlay .dg-h-seg.hz { cursor: ns-resize; } #dg-overlay .dg-h-seg.vt { cursor: ew-resize; }
+#dg-overlay .dg-hover-line { fill: none; stroke: var(--accent); stroke-width: 6; stroke-opacity: .35; vector-effect: non-scaling-stroke; pointer-events: none; }
 .dg-h-nw, .dg-h-se { cursor: nwse-resize; } .dg-h-ne, .dg-h-sw { cursor: nesw-resize; }
 .dg-h-n, .dg-h-s { cursor: ns-resize; } .dg-h-e, .dg-h-w { cursor: ew-resize; }
 

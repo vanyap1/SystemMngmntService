@@ -2,7 +2,7 @@
  "version": 1,
  "title": "DS_H618_Core (U13) — pinout",
  "width": 1800,
- "height": 1360,
+ "height": 1500,
  "background": "#ffffff",
  "grid": 10,
  "kinds": {
@@ -134,16 +134,16 @@
    "y": 360,
    "w": 940,
    "h": 790,
-   "body": "outline",
+   "body": "module",
    "holes": false,
    "ic": {
-    "show": false,
+    "show": true,
     "title": "",
     "subtitle": ""
    },
    "caption": "",
    "caption2": "",
-   "pinStyle": "simple",
+   "pinStyle": "tags",
    "corner": 70,
    "corner2": 80,
    "numbers": true,
@@ -1049,8 +1049,8 @@
   {
    "id": "lvzs0f7",
    "type": "legend",
-   "x": 40,
-   "y": 1320,
+   "x": 30,
+   "y": 1450,
    "kinds": [
     "enc",
     "pwm",
