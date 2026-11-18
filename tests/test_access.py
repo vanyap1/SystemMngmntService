@@ -8,7 +8,7 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/backups/job', '/api/tree'
                  '/api/net/interfaces', '/api/tests/scripts', '/api/logs', '/api/logs/export.csv',
                  '/api/help/tree', '/api/help/search?q=x', '/api/help/assets?kind=img',
                  '/api/help/diagrams', '/api/git/repos', '/api/git/status', '/api/git/summary', '/api/git/credentials',
-                 '/api/git/tree_status', '/api/update/status', '/api/i2c/buses', '/api/pyrun/poll',
+                 '/api/git/tree_status', '/api/update/status', '/api/update/job', '/api/i2c/buses', '/api/pyrun/poll',
                  '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions',
                  '/api/display/status', '/api/display/scripts', '/api/display/backgrounds',
                  '/api/uiscreens', '/api/uiscreens/example_dashboard', '/api/video/sources']
@@ -20,7 +20,7 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/a
                   '/api/help/diagram/rename', '/api/help/diagram/delete', '/api/git/commit', '/api/git/push',
                   '/api/git/pull', '/api/git/fetch', '/api/git/branch', '/api/git/checkout', '/api/git/discard',
                   '/api/git/reset', '/api/git/fix', '/api/git/identity', '/api/git/credentials', '/api/git/clone',
-                  '/api/git/init', '/api/update/apply', '/api/update/restart', '/api/update/plan', '/api/update/force', '/api/display/settings', '/api/display/restart', '/api/uiscreens/x', '/api/uiscreens/x/delete', '/api/uiscreens/x/show', '/api/video/sources', '/api/video/sources/x/test',
+                  '/api/git/init', '/api/update/apply', '/api/update/restart', '/api/update/plan', '/api/update/force', '/api/update/job', '/api/display/settings', '/api/display/restart', '/api/uiscreens/x', '/api/uiscreens/x/delete', '/api/uiscreens/x/show', '/api/video/sources', '/api/video/sources/x/test',
                   '/api/i2c/scan', '/api/i2c/read', '/api/i2c/write', '/api/i2c/label',
                   '/api/pyrun/start', '/api/pyrun/cmd', '/api/pyrun/input', '/api/pyrun/stop', '/api/pyrun/eval',
                   '/api/pyrun/vars', '/api/pyrun/breaks', '/api/term/open', '/api/term/input', '/api/term/resize',

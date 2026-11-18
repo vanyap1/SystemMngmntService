@@ -9,6 +9,9 @@ Forced update (Git panel → Update panel): ``plan()`` fetches and lists what is
 files, untracked files the update would overwrite); ``force_update()`` saves them (backup branch, git stash, copies
 in <git dir>/panel-update-backup/), resets the branch to its upstream — ``KEEP`` files (live host settings) stay as
 they are — and restarts the panel's unit.
+
+The UI runs the forced update as a background job (``start_job`` / ``job_status``): every step is logged so the
+browser can show the progress, the new code is syntax-checked, and the restart is left to the user (``restart``).
 """
 import os
 import shutil
@@ -119,16 +122,23 @@ class UpdateBlocked(GitError):
         self.plan = p
 
 
-def plan():
+def _nolog(*_a, **_k):
+    pass
+
+
+def plan(log=None):
     """Fetch the panel repository and describe a forced update of it (nothing is changed)."""
+    log = log or _nolog
     repo = git_ops.Repo('panel')
     st = repo.status()
     if not st['branch']:
         raise GitError('The panel repository is on a detached HEAD — check out a branch first', 409)
     if not st['upstream']:
         raise GitError(f'Branch {st["branch"]} has no upstream to update from', 409)
+    log(f'Fetching {st["upstream"]}')
     with git_ops._lock(repo.top):
         repo.run('fetch', '--quiet', timeout=FETCH_TIMEOUT, network=True)
+    log('Comparing with the local copy')
     st = repo.status()
     incoming = {p for p in repo.run('diff', '--name-only', '-z', 'HEAD', '@{u}').split('\0') if p}
     changed = [f['path'] for f in st['files'] if f['kind'] != 'untracked' and f['path'] not in KEEP]
@@ -150,10 +160,13 @@ def plan():
             'can_restart': own_unit() is not None, 'boot': BOOT}
 
 
-def force_update(confirmed=False, restart_after=True):
+def force_update(confirmed=False, restart_after=True, log=None):
     """Bring the panel to its upstream whatever is local (see plan()); raises GitError 409 with the plan when there
-    are issues and ``confirmed`` is false. Returns {'message', 'plan', 'changed' (code changed), 'restart' (unit)}."""
-    p = plan()
+    are issues and ``confirmed`` is false. ``log(text)`` starts a progress step, ``log(text, detail=True)`` adds
+    a line to it. Returns {'message', 'plan', 'notes', 'before', 'after', 'changed' (code changed), 'restart' (unit)}."""
+    log = log or _nolog
+    p = plan(log)
+    log(f'{p["behind"]} new commit(s), {p["ahead"]} local commit(s), {len(p["changed"])} modified file(s)', detail=True)
     if p['issues'] and not confirmed:
         raise UpdateBlocked(p)
     repo = git_ops.Repo('panel')
@@ -166,6 +179,8 @@ def force_update(confirmed=False, restart_after=True):
             if os.path.isfile(path):
                 with open(path, 'rb') as f:
                     keep[path] = f.read()
+        if keep:
+            log('Saving the host settings (' + ', '.join(os.path.basename(k) for k in keep) + ')')
         stamp = time.strftime('%Y%m%d-%H%M%S')
         dest = os.path.join(repo.git_dir(), 'panel-update-backup', stamp)
         for path, data in keep.items():                      # a copy in case the panel dies before restoring them
@@ -173,17 +188,21 @@ def force_update(confirmed=False, restart_after=True):
             with open(os.path.join(dest, os.path.basename(path)), 'wb') as f:
                 f.write(data)
         if p['ahead'] or p['changed']:
+            log(f'Backup branch backup/{stamp}')
             repo.run('branch', f'backup/{stamp}')
             notes.append(f'backup branch backup/{stamp}')
         if p['changed']:
+            log(f'Stashing {len(p["changed"])} local change(s)')
             repo.run('stash', 'push', '-q', '-m', f'panel update {stamp}')       # tracked changes only
             notes.append('local changes: git stash list')
         if p['in_way']:
+            log(f'Copying {len(p["in_way"])} untracked file(s) the update overwrites')
             for rel in p['in_way']:
                 os.makedirs(os.path.dirname(os.path.join(dest, rel)), exist_ok=True)
                 shutil.copy2(os.path.join(repo.top, rel), os.path.join(dest, rel))
             notes.append(f'overwritten untracked files copied to {dest}')
         _chown_tree(os.path.join(repo.git_dir(), 'panel-update-backup'), repo.top)
+        log(f'Resetting {p["branch"]} to {p["upstream"]}')
         try:
             repo.run('reset', '--hard', '-q', '@{u}')
         finally:
@@ -191,6 +210,8 @@ def force_update(confirmed=False, restart_after=True):
                 with open(path, 'wb') as f:
                     f.write(data)
         after = repo.run('rev-parse', 'HEAD').strip()
+        log(f'{before[:7]} → {after[:7]}', detail=True)
+    log('Refreshing the update status')
     with _lock:
         _state['checking'] = True
     _worker()
@@ -198,7 +219,98 @@ def force_update(confirmed=False, restart_after=True):
     msg = (f'Updated {p["branch"]} to {p["upstream"]} ({after[:7]})' if before != after else
            f'{p["branch"]} is at {p["upstream"]} ({after[:7]})') + (' · ' + ' · '.join(notes) if notes else '')
     unit = restart() if code_changed and restart_after and p['can_restart'] else None
-    return {'message': msg, 'plan': p, 'changed': code_changed, 'restart': unit}
+    return {'message': msg, 'plan': p, 'notes': notes, 'before': before, 'after': after,
+            'changed': code_changed, 'restart': unit}
+
+
+SYNTAX_DIRS = ('core', 'routes')     # what the panel imports at start (plus app.py)
+
+
+def syntax_errors(top=None):
+    """Python files of the panel that do not compile (checked in memory, nothing is written): ['path:line: msg']."""
+    top = top or git_ops.Repo('panel').top
+    files = [os.path.join(top, 'app.py')]
+    for d in SYNTAX_DIRS:
+        for base, dirs, names in os.walk(os.path.join(top, d)):
+            dirs[:] = [x for x in dirs if not x.startswith(('.', '__'))]
+            files += [os.path.join(base, n) for n in names if n.endswith('.py')]
+    errors = []
+    for path in sorted(files):
+        try:
+            with open(path, 'rb') as f:
+                compile(f.read(), path, 'exec', dont_inherit=True)
+        except FileNotFoundError:
+            continue
+        except (SyntaxError, ValueError) as e:
+            errors.append(f'{os.path.relpath(path, top)}:{getattr(e, "lineno", "?")}: {getattr(e, "msg", e)}')
+    return errors
+
+
+# ── Update job: forced update in a background thread, progress for the UI ──
+
+_job_lock = threading.Lock()
+_job = {'id': 0, 'running': False, 'steps': [], 'result': None, 'error': '', 'plan': None, 'started': 0.0,
+        'finished': 0.0}
+
+
+def _log(text, detail=False, state=None):
+    """Job progress: a new step (the running one is marked ok), a detail line of the current step, or its state."""
+    with _job_lock:
+        steps = _job['steps']
+        if detail:
+            if steps:
+                steps[-1]['details'].append(str(text))
+            return
+        if state:
+            if steps and steps[-1]['state'] == 'run':
+                steps[-1]['state'] = state
+            return
+        if steps and steps[-1]['state'] == 'run':
+            steps[-1]['state'] = 'ok'
+        steps.append({'text': str(text), 'state': 'run', 'details': [], 't': round(time.time() - _job['started'], 1)})
+
+
+def _run_job(confirmed):
+    res, error, blocked = None, '', None
+    try:
+        res = force_update(confirmed, restart_after=False, log=_log)
+        _log('Checking the new code (Python syntax)')
+        res['syntax_errors'] = syntax_errors() if res['changed'] else []
+        for e in res['syntax_errors']:
+            _log(e, detail=True)
+        _log(None, state='err' if res['syntax_errors'] else 'ok')
+        res['can_restart'] = own_unit() is not None
+        res['unit'] = own_unit()
+    except UpdateBlocked as e:
+        error, blocked = str(e), e.plan
+        _log(error, detail=True)
+        _log(None, state='err')
+    except Exception as e:                       # GitError, OSError…: shown in the job, the panel keeps running
+        error = git_ops.scrub(str(e))
+        _log(error, detail=True)
+        _log(None, state='err')
+    with _job_lock:
+        _job.update(running=False, result=res, error=error, plan=blocked, finished=time.time())
+
+
+def start_job(confirmed=False):
+    """Start the forced update in the background (one at a time). Returns job_status()."""
+    with _job_lock:
+        if _job['running']:
+            raise GitError('An update is already running', 409)
+        _job.update(id=_job['id'] + 1, running=True, steps=[], result=None, error='', plan=None,
+                    started=time.time(), finished=0.0)
+    threading.Thread(target=_run_job, args=(bool(confirmed),), name='panel-update', daemon=True).start()
+    return job_status()
+
+
+def job_status():
+    """Progress of the last update job: {id, running, steps: [{text, state run|ok|err, details, t}], result, error}."""
+    with _job_lock:
+        j = dict(_job)
+        j['steps'] = [dict(s, details=list(s['details'])) for s in _job['steps']]
+    j['boot'] = BOOT
+    return j
 
 
 def _chown_tree(path, top):
@@ -227,5 +339,7 @@ def restart():
 
 
 def _reset_for_tests():
+    with _job_lock:
+        _job.update(running=False, steps=[], result=None, error='', plan=None)
     with _lock:
         _state.update(checked=0.0, checking=False, online=None, behind=0, ahead=0, commits=[], error='')

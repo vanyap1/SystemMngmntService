@@ -152,6 +152,59 @@ class SelfUpdate(unittest.TestCase):
         with open(os.path.join(bk, stamp, 'config.json')) as f:
             self.assertIn('h5', f.read())
 
+    def _job(self):
+        for _ in range(200):
+            j = self.c.get('/api/update/job').get_json()
+            if not j['running']:
+                return j
+            time.sleep(0.05)
+        self.fail('update job did not finish')
+
+    def test_job_reports_steps_and_never_restarts(self):
+        with mock.patch.object(updates, 'restart') as rs, \
+                mock.patch.object(updates, 'own_unit', return_value='systemmngmntservice.service'):
+            self.assertTrue(self.c.post('/api/update/job', json={}).get_json()['running'])
+            j = self._job()
+        rs.assert_not_called()                                                # the user restarts from the UI
+        self.assertEqual(j['error'], '')
+        texts = [s['text'] for s in j['steps']]
+        self.assertTrue(texts[0].startswith('Fetching'))
+        self.assertTrue(any(t.startswith('Resetting main') for t in texts))
+        self.assertIn('Checking the new code (Python syntax)', texts)
+        self.assertEqual({s['state'] for s in j['steps']}, {'ok'})
+        r = j['result']
+        self.assertTrue(r['changed'])
+        self.assertTrue(r['can_restart'])
+        self.assertEqual(r['syntax_errors'], [])
+        self.assertEqual(self._read('app.py'), 'v2')
+
+    def test_job_blocked_by_local_changes_until_confirmed(self):
+        with open(os.path.join(self.panel, 'app.py'), 'w') as f:
+            f.write('edited here')
+        self.c.post('/api/update/job', json={})
+        j = self._job()
+        self.assertIn('Local changes are in the way', j['error'])
+        self.assertEqual(j['plan']['changed'], ['app.py'])
+        self.assertEqual(j['steps'][-1]['state'], 'err')
+        self.assertEqual(self._read('app.py'), 'edited here')
+        self.c.post('/api/update/job', json={'confirm': True})
+        j = self._job()
+        self.assertEqual((j['error'], self._read('app.py')), ('', 'v2'))
+        self.assertTrue(any(s['text'].startswith('Stashing') for s in j['steps']))
+
+    def test_job_finds_syntax_errors(self):
+        os.makedirs(os.path.join(self.panel, 'core'))
+        with open(os.path.join(self.panel, 'core', 'bad.py'), 'w') as f:
+            f.write('def x(:\n')
+        self.assertEqual(updates.syntax_errors(self.panel)[0].split(':')[0], os.path.join('core', 'bad.py'))
+        with open(os.path.join(self.panel, 'core', 'bad.py'), 'w') as f:
+            f.write('x = 1\n')
+        self.assertEqual(updates.syntax_errors(self.panel), [])
+
+    def test_job_needs_login(self):
+        self.assertEqual(client().get('/api/update/job').status_code, 401)
+        self.assertEqual(client().post('/api/update/job', json={}).status_code, 401)
+
     def test_status_endpoint(self):
         d = self.c.get('/api/update/status').get_json()
         self.assertIn('available', d)

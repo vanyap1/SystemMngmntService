@@ -376,6 +376,7 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/display/status`, `/api/display/scripts` | login | Device display: process state, settings, Kivy / X detection, log / scripts of `UI/` with their docstrings |
 | POST | `/api/display/settings`, `/api/display/restart` | login | Save the display settings (applied at once: the script is replaced / stopped) / restart the script |
 | POST | `/api/update/plan`, `/api/update/force` | login | Git panel → *Update panel*: fetch and list local changes in the way / update to the upstream whatever is local (`{confirm: true}` when the plan has issues; saved first: backup branch, git stash, copies in `.git/panel-update-backup/`; `config.json` kept), then restart the unit → 409 `{error, plan}` without confirmation |
+| GET, POST | `/api/update/job` | login | Update window (top bar button, Git → *Update panel*): POST `{confirm}` runs the forced update in the background (no restart), GET = progress `{running, steps: [{text, state run/ok/err, details, t}], result: {message, notes, changed, syntax_errors, can_restart, unit}, error, plan}`; the window then offers *Restart now* (`/api/update/restart`) |
 | GET | `/help[?doc=<path>]` | login, or public with `public.docs` (read only) | Documentation viewer / editor |
 | GET | `/help/file/<path>[?dl=1]` | login, or public with `public.docs` | Image, attachment or raw page from `help_dir` (sandboxed) |
 | GET | `/api/help/tree` | login, or public with `public.docs` | All pages `{path, title, mtime, size}` |

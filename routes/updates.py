@@ -51,3 +51,14 @@ def api_force():
     except updates.UpdateBlocked as e:
         return jsonify({'error': str(e), 'plan': e.plan}), 409
     return jsonify({'ok': True, **res})
+
+
+@bp.route('/api/update/job', methods=['GET', 'POST'])
+@login_required
+def api_job():
+    """GET: progress of the update job. POST {confirm}: start the forced update in the background (no restart —
+    the UI offers it when the job is done, /api/update/restart)."""
+    if request.method == 'POST':
+        d = request.get_json(silent=True) or {}
+        return jsonify(updates.start_job(bool(d.get('confirm'))))
+    return jsonify(updates.job_status())

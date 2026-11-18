@@ -1,0 +1,11 @@
+{# Panel update progress (logged in only, js/updates.js Updates.openFlow): plan → job steps → restart offer. #}
+<div id="upd-overlay" class="modal-overlay" onclick="if (event.target === this) Updates.closeFlow()">
+    <div class="modal-box upd-box">
+        <div class="modal-head">
+            <span class="modal-title"><i class="fa-solid fa-rotate"></i> Panel update</span>
+            <button class="modal-close" onclick="Updates.closeFlow()">&#215;</button>
+        </div>
+        <div class="modal-body upd-body" id="upd-flow-body"></div>
+        <div class="modal-foot upd-foot" id="upd-flow-foot"></div>
+    </div>
+</div>

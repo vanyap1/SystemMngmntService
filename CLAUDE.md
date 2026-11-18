@@ -380,6 +380,10 @@ static/
 - Git panel → *Update panel* (only for the panel's own repo): `updates.plan()` / `force_update()` — asks only when
   local commits / modified files / untracked files in the way exist, saves them (backup branch, stash, copies in
   `.git/panel-update-backup/`), `reset --hard @{u}`, never replaces `KEEP` (`config.json`), restarts the unit.
+  The UI (top bar button and Git → *Update panel*) uses the progress window `Updates.openFlow()`
+  (`partials/update_modal.html`): plan → confirm → `start_job()` (thread, steps via the `log` callback of
+  `plan` / `force_update`, then `syntax_errors()` of app.py, core/, routes/) → polled `/api/update/job` → the user
+  chooses *Restart now* / *Later* — the job never restarts the panel by itself.
 - The update check (`core/updates.py`) runs only while the UI polls `/api/update/status`, at most every
   `update_check_minutes`; tests and `tests/devserver.py` set it to 0 (`devserver.py --fake-update` shows the button).
   Never fetch or pull the real repository in tests — point `config.BASE_DIR` to a temporary clone (`tests/test_updates.py`).
