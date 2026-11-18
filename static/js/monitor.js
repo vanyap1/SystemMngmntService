@@ -340,16 +340,18 @@ const Monitor = {
                 ? `<span class="mon-rx">R ${Monitor.fmtRate(s.read_rate)}</span> <span class="mon-tx">W ${Monitor.fmtRate(s.write_rate)}</span>`
                 : '<span class="faint">idle</span>';
             return `<tr>
-                <td class="mono nowrap${child ? ' mon-child' : ''}">${child ? '<span class="faint">└ </span>' : '<i class="fa-solid fa-hard-drive faint"></i> '}${esc(b.name)}${temp}
+                <td class="mono nowrap mon-dev${child ? ' mon-child' : ''}" title="${esc([b.name, ...what].join(' · '))}">${child ? '<span class="faint">└ </span>' : '<i class="fa-solid fa-hard-drive faint"></i> '}${esc(b.name)}${temp}
                     <div class="small faint">${esc(what.join(' · '))} ${flags}</div></td>
                 <td class="num nowrap small">${App.fmtBytes(b.size)}</td>
                 <td class="mon-usage">${usage}</td>
                 <td class="small mono">${b.mounts.map(esc).join('<br>') || '<span class="faint">—</span>'}</td>
-                <td class="small nowrap">${ioText}${s.busy ? `<div class="faint">busy ${s.busy}%</div>` : ''}</td>
+                <td class="small nowrap mon-io">${ioText}<div class="faint">${s.busy ? `busy ${s.busy}%` : '&nbsp;'}</div></td>
             </tr>`;
         };
         const rows = blocks.map(b => row(b, false) + b.children.map(ch => row(ch, true)).join('')).join('');
-        return `<div class="mon-scroll"><table class="tbl mon-tbl"><thead><tr><th>Device</th><th class="num">Size</th>
+        // fixed column widths: changing I/O rates, mounts or usage text never re-flow the table
+        return `<div class="mon-scroll"><table class="tbl mon-tbl"><colgroup><col><col class="mon-c-size"><col class="mon-c-usage">
+            <col class="mon-c-mount"><col class="mon-c-io"></colgroup><thead><tr><th>Device</th><th class="num">Size</th>
             <th>Usage</th><th>Mounted</th><th>I/O</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     },
 
