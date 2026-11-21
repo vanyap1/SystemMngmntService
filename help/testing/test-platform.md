@@ -246,7 +246,7 @@ In the code editor put the arguments into **Debug → arguments**, e.g. `--sn VT
 Every instrument is an object created once at the top of the script and closed / switched off in `finalize()`.
 The list of drivers, how to create a device, a complete example and how to write a driver for another SCPI
 instrument: **[Instruments](instruments.md)**. Pages of the drivers:
-[Power supply PSU_CUSTOM6020](psu-custom6020.md) · [Oscilloscope Rigol DHO](rigol-dho.md) · [Bench multimeter OWON](owon-xdm.md) ·
+[Power supply PSU_CUSTOM6020](psu-custom6020.md) · [Oscilloscope Rigol DHO](rigol-dho.md) · [Oscilloscope Siglent SDS](siglent-sds.md) · [Bench multimeter OWON](owon-xdm.md) ·
 [Electronic load OWON](owon-oel.md) · [Serial terminal](serial-term.md) · [SSH terminal](ssh-term.md) ·
 [Parameter files](param-file.md).
 

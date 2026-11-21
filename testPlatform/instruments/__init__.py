@@ -7,6 +7,7 @@ File = instrument (maker + model / series), class = the same name in capitals:
     from instruments.siglent_spd1305x import SIGLENT_SPD1305X  # Siglent SPD1305X power supply 30 V / 5 A (LAN :5025)
     from instruments.siglent_sdg1032x import SIGLENT_SDG1032X  # Siglent SDG1032X generator 2 ch 30 MHz (LAN :5025)
     from instruments.siglent_sdl1020x import SIGLENT_SDL1020X  # Siglent SDL1020X electronic load 150 V / 30 A / 200 W
+    from instruments.siglent_sds802xhd import SIGLENT_SDS802XHD  # Siglent SDS802X HD oscilloscope 2 ch 70 MHz (LAN :5025)
     from instruments.rigol_dho924 import RIGOL_DHO924        # Rigol DHO924 oscilloscope (LXI :5555)
     from instruments.rigol_dho804 import RIGOL_DHO804        # Rigol DHO804 oscilloscope (LXI :5555)
     from instruments.owon_xdm import OWON_XDM                # OWON XDM bench multimeter (USB serial / LAN)

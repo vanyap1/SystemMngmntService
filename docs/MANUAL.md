@@ -92,7 +92,7 @@ SystemMngmntService/
 │                     #   .kivy/ and .run/ are git-ignored runtime files
 ├── testPlatform/     # Test platform: *_test.py sequences, testStrategy.py / testWatch.py (run from the Tests page)
 │   └── instruments/  # Drivers, file = instrument model: psu_custom6020, psu_custom305, siglent_spd1305x,
-│                     #   siglent_sdg1032x, siglent_sdl1020x, rigol_dho804/924, owon_xdm, owon_oel, fs9922, ads1115,
+│                     #   siglent_sdg1032x, siglent_sdl1020x, siglent_sds802xhd, rigol_dho804/924, owon_xdm, owon_oel, fs9922, ads1115,
 │                     #   stlink_stm8; protocols / tools: modbus, scpi, serial_term, ssh_term, param_file, uut_serial;
 │                     #   fw/ = firmware, binaries
 ├── testLogs/         # One log file per test run (git-ignored)

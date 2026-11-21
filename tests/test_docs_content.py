@@ -44,7 +44,8 @@ class DocLinks(unittest.TestCase):
         pages = {'rigol_dho.py': 'rigol-dho.md', 'owon_xdm.py': 'owon-xdm.md', 'owon_oel.py': 'owon-oel.md',
                  'serial_term.py': 'serial-term.md', 'ssh_term.py': 'ssh-term.md', 'param_file.py': 'param-file.md',
                  'psu_custom305.py': 'psu-custom305.md', 'siglent_spd.py': 'siglent-spd.md',
-                 'siglent_sdg.py': 'siglent-sdg.md', 'siglent_sdl.py': 'siglent-sdl.md', 'modbus.py': 'modbus.md',
+                 'siglent_sdg.py': 'siglent-sdg.md', 'siglent_sdl.py': 'siglent-sdl.md',
+                 'siglent_sds.py': 'siglent-sds.md', 'modbus.py': 'modbus.md',
                  'scpi.py': 'instruments.md'}
         skip = {'scpi.py': {'open', 'readline', 'read_exact', 'drain'}}        # transport internals
         for module, page in pages.items():

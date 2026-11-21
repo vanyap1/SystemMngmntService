@@ -28,6 +28,7 @@ from instruments.serial_term import SerialTerm, TermError  # noqa: E402
 from instruments.siglent_sdg import parse_params  # noqa: E402
 from instruments.siglent_sdg1032x import SIGLENT_SDG1032X  # noqa: E402
 from instruments.siglent_sdl1020x import SIGLENT_SDL1020X  # noqa: E402
+from instruments.siglent_sds802xhd import SIGLENT_SDS802XHD  # noqa: E402
 from instruments.siglent_spd1305x import SIGLENT_SPD1305X  # noqa: E402
 from instruments.ssh_term import SshError, SshTerm  # noqa: E402
 
@@ -658,6 +659,96 @@ class ParamFileTest(unittest.TestCase):
         self.assertEqual(ParamFile('data/x.ini').path, os.path.join(ROOT, 'testPlatform', 'data', 'x.ini'))
         self.assertEqual([parse_value(v) for v in ('12', '1.5', 'yes', '', '"x"', 'abc')], [12, 1.5, True, None, 'x', 'abc'])
         self.assertEqual(format_value(' a'), '" a"')
+
+
+class SiglentScope(unittest.TestCase):
+    """SDS802X HD: ripple setup with read-back, simple measurements ("****" = None), WORD waveform, raw PNG."""
+
+    def setUp(self):
+        self.state = {':CHANnel1:COUPling': 'DC', ':CHANnel1:SCALe': '1.00E+00', ':TIMebase:SCALe': '1.00E-03',
+                      ':CHANnel1:PROBe': '1.00E+01', ':MEASure': 'OFF'}
+        pre = bytearray(346)
+        pre[0:8] = b'WAVEDESC'
+        struct.pack_into('<i', pre, 116, 4)                      # 4 points
+        struct.pack_into('<fff', pre, 156, 0.05, 0.01, 7680.0)   # V/div, offset, codes per div
+        struct.pack_into('<f', pre, 176, 1e-9)                   # sample interval
+        struct.pack_into('<d', pre, 180, 0.0)                    # delay
+        struct.pack_into('<f', pre, 328, 1.0)                    # probe
+        self.pre = bytes(pre)
+
+        def answer(cmd):
+            if cmd == '*IDN?':
+                return 'Siglent Technologies,SDS802X HD,SDS08A0000,4.8.12.1.1.6.5'
+            if cmd == ':CHANnel1:PROBe VALue,1':
+                self.state[':CHANnel1:PROBe'] = '1.00E+00'
+                return None
+            if cmd.endswith('?') and cmd[:-1] in self.state:
+                return self.state[cmd[:-1]]
+            if ' ' in cmd and not cmd.endswith('?') and cmd.split(' ')[0] in self.state:
+                key, val = cmd.split(' ', 1)
+                self.state[key] = val if not val[0].isdigit() else f'{float(val):.2E}'
+                return None
+            if cmd.startswith(':MEASure:SIMPle:VALue? '):
+                if self.state[':MEASure'] != 'ON':
+                    return 'The number of measurements is zero'
+                return {'PKPK': '2.5E-02', 'FREQ': '****'}.get(cmd.split()[-1], '1.0E+00')
+            if cmd == ':WAVeform:PREamble?':
+                return block(self.pre)
+            if cmd == ':WAVeform:DATA?':
+                return block(struct.pack('<4h', 0, 7680, -7680, 3840))
+            if cmd == ':PRINt? PNG':
+                return PNG + b'IEND\xaeB`\x82'
+            if cmd == ':SYSTem:ERRor?':
+                return '0,"No error"'
+            if cmd.endswith('?'):
+                return '1'
+            return None
+        self.srv = FakeScpi(answer)
+        self.s = SIGLENT_SDS802XHD('127.0.0.1', self.srv.port, timeout=2)
+        self.s.SETTLE = 0
+
+    def tearDown(self):
+        self.s.close()
+        self.srv.close()
+
+    def test_model_and_channels(self):
+        self.assertEqual(self.s.checkModel(), 'SDS802X HD')
+        with self.assertRaises(ValueError):
+            self.s.setScale(3, 0.1)                              # a 2-channel model
+
+    def test_ripple_setup_reads_back(self):
+        self.s.setupRipple(1)
+        self.assertEqual((self.state[':CHANnel1:COUPling'], self.state[':CHANnel1:PROBe']), ('AC', '1.00E+00'))
+        self.assertEqual(float(self.state[':CHANnel1:SCALe']), 0.05)
+        self.assertEqual(float(self.state[':TIMebase:SCALe']), 5e-6)
+        self.assertIn(':TRIGger:MODE AUTO', self.srv.lines)
+        self.state[':CHANnel1:COUPling'] = 'DC'
+        self.srv.lines.clear()
+        orig = self.s.setCoupling
+        self.s.setCoupling = lambda ch, c: None                  # the scope "does not take" the coupling
+        with self.assertRaisesRegex(InstrumentError, 'ripple setup CH1'):
+            self.s.setupRipple(1)
+        self.s.setCoupling = orig
+
+    def test_measurements(self):
+        self.assertEqual(self.s.getVoltPkPk(1), 0.025)          # switches the measurement on first
+        self.assertIn(':MEASure ON', self.srv.lines)
+        self.assertIn(':MEASure:SIMPle:SOURce C1', self.srv.lines)
+        self.assertIsNone(self.s.getFrequency(1))               # "****"
+        self.assertEqual(self.s.getRipple(1, n=3, delay=0), 0.025)
+        self.assertEqual(self.s.measureStats('PKPK', 1, n=2, delay=0), (0.025, 0.025, 0.025))
+
+    def test_waveform_and_screenshot(self):
+        t, v = self.s.getWaveform(1, points=4)
+        self.assertEqual([round(x, 4) for x in v], [-0.01, 0.04, -0.06, 0.015])
+        self.assertAlmostEqual(t[1] - t[0], 1e-9)
+        self.assertIn(':WAVeform:WIDTh WORD', self.srv.lines)
+        with tempfile.TemporaryDirectory() as d:
+            path = self.s.screenshot(os.path.join(d, 's.png'))
+            with open(path, 'rb') as f:
+                data = f.read()
+        self.assertTrue(data.startswith(b'\x89PNG') and data.endswith(b'IEND\xaeB`\x82'))
+        self.assertEqual(self.s.idn().split(',')[1], 'SDS802X HD')   # nothing left in the socket
 
 
 if __name__ == '__main__':

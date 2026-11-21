@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from testStrategy import TestStrategy
 from instruments.siglent_spd1305x import SIGLENT_SPD1305X
 from instruments.siglent_sdl1020x import SIGLENT_SDL1020X
+from instruments.siglent_sds802xhd import SIGLENT_SDS802XHD
 
 
 load = SIGLENT_SDL1020X("192.168.1.72")         # host, port=5025, timeout=3.0
@@ -15,6 +16,10 @@ psu.setCurrent(3.0)                             # current limit, A (0…5)
 psu.setVoltage(24.0)                            # voltage setpoint, V (0…30)
                         
 load.setCC(0.5)                                 # constant current, A
+scope = SIGLENT_SDS802XHD("192.168.1.75")       # host, port=5025, timeout=5.0
+
+SCOPE_CH = 1                                    # scope input switched to the UUT outputs by the dso_tp* relays
+RIPPLE_MAX_MV = 120                             # output ripple limit, mV peak-to-peak
 
 
 
@@ -54,9 +59,21 @@ def step(seconds):
     return True
 
 
+def check_output(name, amps):
+    """Output voltage, then its ripple (scope: probe 1x, AC, 50 mV/div, 5 us/div) at a load current."""
+    load.setCC(amps)
+    time.sleep(1)
+    ts.numericLimitTest(f"{name} CURR {amps:.1f}A", load.getVoltage(), 11.7, 12.3, "V")
+    ripple = scope.getRipple(SCOPE_CH, n=5)
+    ts.numericLimitTest(f"{name} RIPPLE {amps:.1f}A", None if ripple is None else round(ripple * 1000, 1),
+                        0, RIPPLE_MAX_MV, "mV")
+
+
 def steps():
     ts.logResult("PSU info", True, psu.idn())
     ts.logResult("LOAD info", True, load.idn())
+    ts.logResult("DSO info", True, scope.checkModel())
+    scope.setupRipple(SCOPE_CH, volts_per_div=0.05, seconds_per_div=5e-6, probe=1)
     uut1_tp3.set_value(0)
     dso_tp3.set_value(0)
     uut1_tp1.set_value(0)
@@ -64,24 +81,8 @@ def steps():
     load.on()  
 
     
-    load.setCC(0.5)
-    time.sleep(1);
-    ts.numericLimitTest("CH1 CURR 0.5A", load.getVoltage(), 11.7, 12.3, "V") 
-    load.setCC(1.0)
-    time.sleep(1);
-    ts.numericLimitTest("CH1 CURR 1.0A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(1.5)
-    time.sleep(1);
-    ts.numericLimitTest("CH1 CURR 1.5A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(2.0)
-    time.sleep(1);
-    ts.numericLimitTest("CH1 CURR 2.0A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(2.5)
-    time.sleep(1);
-    ts.numericLimitTest("CH1 CURR 2.5A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(3)
-    time.sleep(1);
-    ts.numericLimitTest("CH1 CURR 3.0A", load.getVoltage(), 11.7, 12.3, "V")
+    for amps in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0):
+        check_output("CH1", amps)
     load.off()
     psu.off()
     
@@ -96,24 +97,8 @@ def steps():
     psu.on() 
     load.on()  
 
-    load.setCC(0.5)
-    time.sleep(1);
-    ts.numericLimitTest("CH2 CURR 0.5A", load.getVoltage(), 11.7, 12.3, "V") 
-    load.setCC(1.0)
-    time.sleep(1);
-    ts.numericLimitTest("CH2 CURR 1.0A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(1.5)
-    time.sleep(1);
-    ts.numericLimitTest("CH2 CURR 1.5A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(2.0)
-    time.sleep(1);
-    ts.numericLimitTest("CH2 CURR 2.0A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(2.5)
-    time.sleep(1);
-    ts.numericLimitTest("CH2 CURR 2.5A", load.getVoltage(), 11.7, 12.3, "V")
-    load.setCC(3)
-    time.sleep(1);
-    ts.numericLimitTest("CH2 CURR 3.0A", load.getVoltage(), 11.7, 12.3, "V")
+    for amps in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0):
+        check_output("CH2", amps)
     load.off()
     psu.off()
     load.off()

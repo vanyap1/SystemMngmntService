@@ -27,6 +27,7 @@ small file — see `rigol_dho804.py` / `rigol_dho924.py` on top of the common `r
 | `siglent_spd1305x.py` | `SIGLENT_SPD1305X` | Siglent SPD1305X power supply, 30 V / 5 A (LAN :5025) | `psu = SIGLENT_SPD1305X("192.168.1.74")` | [Siglent SPD](siglent-spd.md) |
 | `siglent_sdg1032x.py` | `SIGLENT_SDG1032X` | Siglent SDG1032X generator, 2 ch, 30 MHz (LAN :5025) | `gen = SIGLENT_SDG1032X("192.168.1.73")` | [Siglent SDG](siglent-sdg.md) |
 | `siglent_sdl1020x.py` | `SIGLENT_SDL1020X` | Siglent SDL1020X electronic load, 150 V / 30 A / 200 W (LAN :5025) | `load = SIGLENT_SDL1020X("192.168.1.72")` | [Siglent SDL](siglent-sdl.md) |
+| `siglent_sds802xhd.py` | `SIGLENT_SDS802XHD` | Siglent SDS802X HD oscilloscope, 2 ch, 70 MHz, 12 bit (LAN :5025) | `scope = SIGLENT_SDS802XHD("192.168.1.75")` | [Siglent SDS](siglent-sds.md) |
 | `rigol_dho924.py` | `RIGOL_DHO924` | Rigol DHO924 oscilloscope, 4 ch, 250 MHz (LXI :5555) | `scope = RIGOL_DHO924("192.168.1.146")` | [Rigol DHO](rigol-dho.md) |
 | `rigol_dho804.py` | `RIGOL_DHO804` | Rigol DHO804 oscilloscope, 4 ch, 70 MHz (LXI :5555) | `scope = RIGOL_DHO804("192.168.1.147")` | [Rigol DHO](rigol-dho.md) |
 | `owon_xdm.py` | `OWON_XDM` | OWON XDM series bench multimeter (USB or LAN) | `dmm = OWON_XDM(serial="/dev/ttyUSB0")` | [OWON XDM](owon-xdm.md) |
@@ -50,6 +51,7 @@ small file — see `rigol_dho804.py` / `rigol_dho924.py` on top of the common `r
 | `siglent_spd.py` | `SiglentSPD` | common part of the Siglent SPD1000X drivers | — | [Siglent SPD](siglent-spd.md) |
 | `siglent_sdg.py` | `SiglentSDG` | common part of the Siglent SDG generator drivers | — | [Siglent SDG](siglent-sdg.md) |
 | `siglent_sdl.py` | `SiglentSDL` | common part of the Siglent SDL1000X load drivers | — | [Siglent SDL](siglent-sdl.md) |
+| `siglent_sds.py` | `SiglentSDS` | common part of the Siglent SDS800X HD oscilloscope drivers | — | [Siglent SDS](siglent-sds.md) |
 | `psu_tcp.py` | `OneShotTcpPsu` | transport of the custom PSU controllers | — | — |
 
 ## How to create a device

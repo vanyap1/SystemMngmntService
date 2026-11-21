@@ -244,9 +244,9 @@ static/
   abort stays a KeyboardInterrupt (Stop button). Tests: `tests/test_watch.py` (subprocesses), `demo_estop_test.py`.
 - Instrument drivers live in the package `testPlatform/instruments/`; scripts import them as
   `from instruments.psu_custom6020 import PSU_CUSTOM6020`. **Naming: file = maker + model / series in lower case,
-  class = the same in capitals** (`psu_custom6020.py` / `PSU_CUSTOM6020`, `psu_custom305.py`, `siglent_spd1305x.py` / `SIGLENT_SPD1305X`, `siglent_sdg1032x.py` / `SIGLENT_SDG1032X`, `siglent_sdl1020x.py` / `SIGLENT_SDL1020X`, `rigol_dho924.py` /
+  class = the same in capitals** (`psu_custom6020.py` / `PSU_CUSTOM6020`, `psu_custom305.py`, `siglent_spd1305x.py` / `SIGLENT_SPD1305X`, `siglent_sdg1032x.py` / `SIGLENT_SDG1032X`, `siglent_sdl1020x.py` / `SIGLENT_SDL1020X`, `siglent_sds802xhd.py` / `SIGLENT_SDS802XHD`, `rigol_dho924.py` /
   `RIGOL_DHO924`, `rigol_dho804.py`, `owon_xdm.py` / `OWON_XDM`, `owon_oel.py` / `OWON_OEL`, `fs9922.py`,
-  `fs9922_bridge.py`, `ads1115.py`, `stlink_stm8.py`). A family shares a common module (`rigol_dho.py` `RigolScope`, `siglent_spd.py` `SiglentSPD`, `siglent_sdg.py` `SiglentSDG`, `siglent_sdl.py` `SiglentSDL`,
+  `fs9922_bridge.py`, `ads1115.py`, `stlink_stm8.py`). A family shares a common module (`rigol_dho.py` `RigolScope`, `siglent_spd.py` `SiglentSPD`, `siglent_sdg.py` `SiglentSDG`, `siglent_sdl.py` `SiglentSDL`, `siglent_sds.py` `SiglentSDS`,
   `psu_tcp.py` `OneShotTcpPsu`) and each model is a small file on top. Protocols / tools keep generic names
   (`modbus.py`, `scpi.py`, `serial_term.py`, `ssh_term.py`, `param_file.py`, `uut_serial.py`). Every file must be
   in the catalog tables of `help/testing/instruments.md` (tested). Firmware images and
@@ -271,7 +271,7 @@ static/
   `setVoltage`/`setCurrent` confirm them in `getData()` (VERIFY_TIMEOUT). Measure the supply only through its
   external sensors (`getVoltage`/`getCurrent`), never the module's registers. Below 1 A the module's current limit
   is not exact (0.6 A at a 0.4 A preset): in tests the load's CC level bounds the current.
-  The real scope (192.168.1.146) and PSUs (.91, .99, .74), generator (.73), load (.72, on PSU .91 CH2: max 16 V / 1 A) may be queried by hand, read-only — never change settings or
+  The real scope (192.168.1.146) and PSUs (.91, .99, .74), generator (.73), scope SDS802X HD (.75), load (.72, on PSU .91 CH2: max 16 V / 1 A) may be queried by hand, read-only — never change settings or
   switch outputs without asking. Drivers that import `instruments.*` start with the `__package__` shim so
   `python3 instruments/<driver>.py` (read-only self-check in `__main__`) works.
 - `modbus.py`: low-level Modbus master for scripts (ModbusRTU / TCP / UDP / RTUoverTCP / RTUoverUDP, functions
