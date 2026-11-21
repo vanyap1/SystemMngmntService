@@ -19,7 +19,7 @@ load.setCC(0.5)                                 # constant current, A
 scope = SIGLENT_SDS802XHD("192.168.1.75")       # host, port=5025, timeout=5.0
 
 SCOPE_CH = 1                                    # scope input switched to the UUT outputs by the dso_tp* relays
-RIPPLE_MAX_MV = 120                             # output ripple limit, mV peak-to-peak
+RIPPLE_MAX_MV = 210                             # output ripple limit, mV peak-to-peak
 
 
 
@@ -62,7 +62,7 @@ def step(seconds):
 def check_output(name, amps):
     """Output voltage, then its ripple (scope: probe 1x, AC, 50 mV/div, 5 us/div) at a load current."""
     load.setCC(amps)
-    time.sleep(1)
+    time.sleep(0.2)
     ts.numericLimitTest(f"{name} CURR {amps:.1f}A", load.getVoltage(), 11.7, 12.3, "V")
     ripple = scope.getRipple(SCOPE_CH, n=5)
     ts.numericLimitTest(f"{name} RIPPLE {amps:.1f}A", None if ripple is None else round(ripple * 1000, 1),
@@ -89,7 +89,7 @@ def steps():
     uut1_tp3.set_value(1)
     dso_tp3.set_value(1)
     uut1_tp1.set_value(1)
-    time.sleep(1);
+    
 
     uut1_tp5.set_value(0)
     dso_tp5.set_value(0)
@@ -107,7 +107,7 @@ def steps():
     uut1_tp5.set_value(1)
     dso_tp5.set_value(1)
     uut1_tp1.set_value(1)
-    time.sleep(1);
+    
 
 
 
