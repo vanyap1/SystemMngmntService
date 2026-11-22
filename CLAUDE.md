@@ -43,7 +43,9 @@ core/
   gpio_ctl.py          manual GPIO control for the HW Utils popup: per-client claimed lines under a lease
   i2c.py               I²C tools for HW Utils: scan (i2cdetect), register read/write (i2ctransfer), labels
   net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
-  netcfg.py            Settings → Network: NetworkManager (nmcli) connections, Wi-Fi, hotspot — every change under a checkpoint
+  netcfg.py            Settings → Network: NetworkManager (nmcli) connections, Wi-Fi — every change under a checkpoint
+  hostname.py          Settings → General: rename the machine (hostnamectl, /etc/hosts, config.rename_host moves the host section)
+  netap.py             Settings → Network: Wi-Fi client ↔ access point, DHCP pool + MAC → IP reservations, clients, network map
   udev.py              udev db grouping, USB/PCI/I2C buses, rules files + lint, UdevMonitor (lease)
   monitor.py           system monitor sampler (CPU/RAM/temp/active iface/disk I/O, 15 min history, lease)
   terminal.py          interactive shell in a pty for the editor's Terminal tab (SSE output, POST keys, lease)
@@ -71,7 +73,9 @@ UI/                    device display scripts (Kivy): smms_ui.py helper, system_
                        backgrounds/ (one picture for all scripts, chosen in Settings → Display, drawn by smms_ui)
 help/                  documentation (user content): *.md pages, img/, docs/ attachments, examples/ raw notes
 tests/                 unittest suite (support.py isolates config/logs), devserver.py, screenshot.sh
-install.sh             installer: menu, online/offline install, service unit, `bundle` → tools/offline_bundle.py
+install.sh             installer: menu, online/offline install, service unit, `bundle` → tools/offline_bundle.py,
+                       `network` → install-network.sh
+install-network.sh     access point + DHCP tools (dnsmasq-base, iw, wireless-regdb, rfkill), online only; `status`
 tools/offline_bundle.py  builds offline bundles (local apt repo + Flask wheels) for armhf (H3) / arm64 (H5),
                          flavor `rpi` for Raspberry Pi OS (+ archive.raspberrypi.com, tag <suite>-<arch>-rpi)
 docs/MANUAL.md         manual + technical reference (install, config, pages, API tables); README.md = project overview
@@ -128,8 +132,19 @@ static/
   a project containing the backup dir or the panel. The service is stopped only if running, never the panel's own unit.
 
 ## Network (Settings → Network)
+- Sub-pages (Settings nav `.st-sub`, panes `network` / `network-conn` / `network-ap`): overview map
+  (`static/js/settings_netmap.js` `NetMap`), Interfaces & Wi-Fi (`settings_net.js` `NetCfg`), Access point & DHCP
+  (`settings_netap.js` `NetAP`). The pending-change box `#nc-pending` sits above all Settings panes; NetAP hands its
+  changes to `NetCfg.track()`, the others refresh on the `netcfg-changed` DOM event.
 - `core/netcfg.py` + `routes/netcfg.py` + `static/js/settings_net.js`, tests `tests/test_netcfg.py` (fake nmcli / busctl
   via `netcfg._run` — **never change the board's real network in tests or by hand**; reading with nmcli is fine).
+- Access point + DHCP: `core/netap.py`, tests `tests/test_netap.py` with `tests/fake_net.py` (also
+  `devserver.py --fake-net`; it patches every /etc and /run path into a temp dir). The AP is one keyfile
+  `smms-ap.nmconnection` (mode ap, `ipv4.method=shared`, `shared-dhcp-range` / `-lease-time`, NM ≥ 1.42) — NM is the
+  only store of its settings (nothing in config.json). Reservations: `HOSTS_FILE` (outside the dnsmasq conf dir —
+  dnsmasq parses every file there) via `dhcp-hostsfile` in `DNSMASQ_DIR/CONF_NAME`, applied by SIGHUP to NM's dnsmasq
+  — the only network-related write outside `_guarded` (DHCP data, no link change). Mode switch / AP save / restart go
+  through `_guarded`. Paths are duplicated in `install-network.sh` (tested). Defaults 10.10.10.1/24, pool .2 – .254.
 - The only place that reconfigures Ethernet / Wi-Fi. Every change goes through `_guarded()`: NM checkpoint (rollback
   ROLLBACK_SECONDS) → command → pending; the browser confirms once it still reaches the panel, else NM rolls back.
   A failing command rolls back at once; one pending change at a time. Never apply a network change outside `_guarded`.

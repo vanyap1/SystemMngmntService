@@ -12,7 +12,8 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/backups/job', '/api/tree'
                  '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions',
                  '/api/display/status', '/api/display/scripts', '/api/display/backgrounds',
                  '/api/uiscreens', '/api/uiscreens/example_dashboard', '/api/video/sources']
-PROTECTED_GET_NOCHECK = ['/api/netcfg', '/api/netcfg/pending', '/api/netcfg/wifi', '/api/netcfg/connection?uuid=x']
+PROTECTED_GET_NOCHECK = ['/api/netcfg', '/api/netcfg/pending', '/api/netcfg/wifi', '/api/netcfg/connection?uuid=x',
+                         '/api/netcfg/ap', '/api/netcfg/ap/clients', '/api/netcfg/map', '/api/system/hostname']
 PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/api/backups/create', '/api/backups/cancel', '/api/backups/preview', '/api/backups/tree', '/api/settings',
                   '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
@@ -30,7 +31,8 @@ PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/a
                   '/api/tty/lines', '/api/tty/close', '/api/tty/profiles', '/api/tty/oneshot', '/api/tty/session/save',
                   '/api/tty/session/delete',
                   '/api/netcfg/connection', '/api/netcfg/activate', '/api/netcfg/deactivate', '/api/netcfg/delete',
-                  '/api/netcfg/radio', '/api/netcfg/join', '/api/netcfg/hotspot', '/api/netcfg/confirm', '/api/netcfg/revert',
+                  '/api/netcfg/radio', '/api/netcfg/join', '/api/netcfg/confirm', '/api/netcfg/revert',
+                  '/api/netcfg/ap', '/api/netcfg/ap/mode', '/api/system/hostname', '/api/netcfg/ap/restart', '/api/netcfg/dhcp/reservations',
                   '/api/smb/mount', '/api/smb/umount', '/api/smb/forget', '/api/smb/mkdir']
 PROTECTED_PAGES = ['/editor', '/ui', '/settings', '/tests', '/logs', '/backups/download/x.tar.gz', '/help',
                    '/help/file/img/x.png', '/help?diagram=x']

@@ -31,6 +31,8 @@ parser.add_argument('--fake-devices', action='store_true',
                     help='simulated Modbus TCP :5502, JSON telemetry :5555 and SCPI PSU :5588 (tests/fake_devices.py)')
 parser.add_argument('--display', action='store_true',
                     help='run the device display supervisor (Settings → Display draws on the real screen)')
+parser.add_argument('--fake-net', action='store_true',
+                    help='simulated NetworkManager / iw / ip (tests/fake_net.py): Settings → Network never touches the real one')
 parser.add_argument('--fake-i2c', action='store_true', help='simulated I²C bus (tests/fake_i2c.py) instead of the real ones')
 args = parser.parse_args()
 
@@ -49,6 +51,9 @@ if args.fake_i2c:
     from tests import fake_i2c
     fake_i2c.install()
     config.CFG['i2c_labels'] = {str(fake_i2c.BUS): {'0x41': 'INA228 power monitor (EXT1)'}}
+if args.fake_net:
+    from tests import fake_net
+    fake_net.install(tmp)
 if args.fake_devices:
     from tests import fake_devices
     fake_devices.start()

@@ -61,6 +61,23 @@ class Installer(unittest.TestCase):
             r = subprocess.run(['bash', '-n', os.path.join(ROOT, f)], capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, f + r.stderr)
 
+    def test_network_script(self):
+        """install-network.sh: syntax, help, and the DHCP paths it prepares = core/netap.py's."""
+        path = os.path.join(ROOT, 'install-network.sh')
+        r = subprocess.run(['bash', '-n', path], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(os.access(path, os.X_OK))
+        r = subprocess.run([path, '--help'], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('install-network.sh status', r.stdout)
+        from core import netap
+        with open(path) as f:
+            text = f.read()
+        self.assertIn(f'DNSMASQ_DIR="{netap.DNSMASQ_DIR}"', text)
+        self.assertIn(f'CONF="$DNSMASQ_DIR/{netap.CONF_NAME}"', text)
+        self.assertIn(f'HOSTS="{netap.HOSTS_FILE}"', text)
+        self.assertIn('cmd_network()', INSTALL_TEXT)
+
     def test_components_in_sync(self):
         """install.sh's PKGS must match COMPONENTS of the bundle builder."""
         text = INSTALL_TEXT

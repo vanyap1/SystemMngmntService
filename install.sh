@@ -12,6 +12,7 @@
 #  sudo ./install.sh service  [--yes]     write/enable the systemd unit, (re)start the panel
 #  sudo ./install.sh uninstall [--yes]    remove the systemd unit (the project and its config stay)
 #  sudo ./install.sh display  [--bundle]  Kivy for the device screen UI (Settings → Display), no panel restart
+#  sudo ./install.sh network  [--yes]     Wi-Fi access point + DHCP server (runs install-network.sh; online only)
 #
 #  Options: --components core,git,gpio,devices,video   --bundle DIR|FILE.tar   --yes (no questions)
 #  Dashed forms (--online, --offline, --status, --service, --uninstall) are accepted too.
@@ -199,6 +200,8 @@ EOF
     for m in "$DATA"/smms-offline-*.tar; do [[ -f "$m" ]] && { found=1; echo "    $(basename "$m")"; }; done
     [[ $found -eq 1 ]] || echo "    none"
     echo "  This machine needs: $(machine_tag)"
+    local apd=0; [[ -x /usr/sbin/dnsmasq || -x /sbin/dnsmasq ]] && command -v nmcli >/dev/null && apd=1
+    echo "  Wi-Fi access point + DHCP: $(mark $apd) $( [[ $apd -eq 1 ]] && echo "ready (details: ./install-network.sh status)" || echo "not installed — sudo $0 network")"
 }
 
 # ── online install ───────────────────────────────────────────────────────────────────────────────────────────
@@ -412,6 +415,14 @@ cmd_display() {   # Kivy for UI/*.py; the panel picks it up by itself (no restar
     ok "Kivy $(py -c 'import importlib.metadata as m; print(m.version("Kivy"))' 2>/dev/null) installed — enable the screen UI in Settings → Display"
 }
 
+# ── Wi-Fi access point + DHCP (Settings → Network → Access point & DHCP) ───────────────────────────────────────
+cmd_network() {   # separate script, online only; no panel restart
+    need_root network
+    [[ -x "$DIR/install-network.sh" ]] || die "install-network.sh not found in $DIR"
+    local a=(install); [[ $YES -eq 1 ]] && a+=(--yes)
+    "$DIR/install-network.sh" "${a[@]}"
+}
+
 # ── menu ─────────────────────────────────────────────────────────────────────────────────────────────────────
 menu() {
     local choice items=(
@@ -420,13 +431,14 @@ menu() {
         offline   "Install / update from an offline bundle (setup_data/)"
         bundle    "Build offline bundles for H3 (armhf) / H5 (arm64)"
         display   "Install the device screen UI dependencies (Kivy)"
+        network   "Install the Wi-Fi access point + DHCP server tools (online)"
         service   "Install / update the systemd service and restart"
         uninstall "Remove the systemd service"
         quit      "Exit"
     )
     while true; do
         if [[ $UI == whiptail ]]; then
-            choice=$(whiptail --title "SystemMngmntService installer" --menu "$(os_name) · $(deb_arch)\n$DIR" 19 76 8 \
+            choice=$(whiptail --title "SystemMngmntService installer" --menu "$(os_name) · $(deb_arch)\n$DIR" 20 76 9 \
                      "${items[@]}" 3>&1 1>&2 2>&3) || return 0
         else
             echo; echo "${C_B}SystemMngmntService installer${C_0} — $(os_name) · $(deb_arch)"
@@ -457,7 +469,7 @@ main() {
             --bundle=*) BUNDLE="${1#*=}" ;;
             --plain) UI=plain ;;
             -h|--help) sed -n '2,/^# =\{5,\}$/p' "$0" | sed '1d;$d;s/^# \{0,1\}//'; exit 0 ;;
-            status|online|offline|bundle|service|uninstall|display|menu) cmd="$1" ;;
+            status|online|offline|bundle|service|uninstall|display|network|menu) cmd="$1" ;;
             --status|--online|--offline|--service|--uninstall) cmd="${1#--}" ;;
             *) [[ $cmd == bundle ]] && rest+=("$1") || die "unknown argument: $1 (see $0 --help)" ;;
         esac

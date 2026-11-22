@@ -46,6 +46,7 @@ python3 tests/devserver.py &                  # port 5099, login disabled in mem
                                               #   --target DIR: other target_dir for the editor / Git)
 python3 tests/devserver.py --port 5098 --auth &   # anonymous view
 python3 tests/devserver.py --fake-devices &   # + simulated Modbus TCP :5502, JSON telemetry :5555, SCPI PSU :5588
+python3 tests/devserver.py --fake-net &       # Settings → Network on a simulated NetworkManager / iw / ip (tests/fake_net.py)
                                               #   (tests/fake_devices.py; --help-dir DIR: other docs folder)
 tests/screenshot.sh / /tmp/x.png              # prints JS "Uncaught" errors to stderr
 tests/screenshot.sh '/tests?js=MonitorFloat.open()' /tmp/x.png 1400x900 9000

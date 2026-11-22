@@ -222,14 +222,6 @@ class Changes(Base):
         self.assertIn('[ipv4]', text)
         self.assertIn(['connection', 'load', path], self.nm_calls())
 
-    def test_hotspot(self):
-        netcfg.hotspot('Board', 'password1', 'wlan0')
-        text = read(os.path.join(self.keydir, os.listdir(self.keydir)[0]))
-        self.assertIn('mode=ap', text)
-        self.assertIn('method=shared', text)
-        with self.assertRaises(netcfg.NetError):
-            netcfg.hotspot('Board', 'short', 'wlan0')
-
 
 class Routes(Base):
     def test_api(self):

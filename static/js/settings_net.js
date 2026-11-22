@@ -2,6 +2,8 @@
    Settings → Network (routes/netcfg.py, core/netcfg.py): interfaces, Wi-Fi scan / join / hotspot, saved
    NetworkManager connections and their editor. Every change comes back "pending": this page confirms it when the
    panel is still reachable a few seconds later; otherwise NetworkManager rolls it back after the timeout.
+   The pending box (#nc-pending) is shared by all Settings tabs; NetAP / NetMap hand their changes to track() and
+   listen for the 'netcfg-changed' DOM event fired after a change is kept / reverted.
    ========================================================================== */
 
 const NetCfg = {
@@ -17,10 +19,24 @@ const NetCfg = {
 
     $(id) { return document.getElementById(id); },
 
+    init() {
+        App.api('/api/netcfg/pending').then(r => this.setPending(r.pending, false)).catch(() => {});
+    },
+
     visible(on) {
         this._shown = on;
         if (on) { this.load(); this.scan(false); }
     },
+
+    /** A change made elsewhere on this page (NetAP): show it pending and confirm it once the panel still answers. */
+    track(p, newAddr) {
+        this._newAddr = newAddr || '';
+        this._mine = true;
+        this._lost = false;
+        this.setPending(p, true);
+    },
+
+    _changed() { document.dispatchEvent(new Event('netcfg-changed')); },
 
     load() {
         return App.api('/api/netcfg').then(d => {
@@ -77,8 +93,9 @@ const NetCfg = {
                 <td class="mono">${esc(c.device || '—')}</td>
                 <td>${c.autoconnect ? 'yes' : 'no'}</td>
                 <td class="mono">${c.priority}</td>
-                <td class="nc-acts">
-                    <button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.edit(${n})"><i class="fa-solid fa-pen"></i> Edit</button>
+                <td class="nc-acts">${/\/smms-ap\.nmconnection$/.test(c.file || '')
+                    ? `<a class="btn btn-ghost btn-sm" href="#network-ap" title="Managed on the Access point &amp; DHCP page"><i class="fa-solid fa-tower-broadcast"></i> Access point</a>`
+                    : `<button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.edit(${n})"><i class="fa-solid fa-pen"></i> Edit</button>`}
                     ${c.active
                         ? `<button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.act('deactivate', {uuid: ${n}}, ${you})"${you ? ' title="You are connected through it — rolled back if the page loses the panel"' : ''}><i class="fa-solid fa-link-slash"></i> Disconnect</button>`
                         : `<button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.act('activate', {uuid: ${n}})"><i class="fa-solid fa-link"></i> Connect</button>`}
@@ -132,6 +149,7 @@ const NetCfg = {
             this.close();
             setTimeout(() => this.load(), 1500);
             setTimeout(() => this.scan(false), 3000);
+            setTimeout(() => this._changed(), 1500);
         }).catch(e => {
             if (this.modal) this.$('nc-m-err').textContent = e.message; else toast(e.message, true);
             this.load();
@@ -169,7 +187,7 @@ const NetCfg = {
                 <span class="spacer"></span>
                 <button class="btn btn-success btn-sm" type="button" onclick="NetCfg.decide('confirm')"><i class="fa-solid fa-check"></i> Keep</button>
                 <button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.decide('revert')"><i class="fa-solid fa-rotate-left"></i> Revert</button>`;
-            if (left <= 0) { clearInterval(this._tick); setTimeout(() => this.load(), 4000); }
+            if (left <= 0) { clearInterval(this._tick); setTimeout(() => this._afterTimeout(), 4000); }
         };
         draw();
         this._tick = setInterval(() => {
@@ -185,6 +203,11 @@ const NetCfg = {
         }, 1000);
     },
 
+    _afterTimeout() {
+        App.api('/api/netcfg/pending').then(r => this.setPending(r.pending, false)).catch(() => {});
+        this._refresh();
+    },
+
     _reach() {
         const ctl = new AbortController();
         const t = setTimeout(() => ctl.abort(), 2500);
@@ -195,8 +218,13 @@ const NetCfg = {
     decide(what) {
         clearInterval(this._tick);
         App.api('/api/netcfg/' + what, { json: {} })
-            .then(r => { this.setPending(r, true); if (what === 'confirm') toast('Network settings kept'); this.load(); this.scan(false); })
-            .catch(e => { toast(e.message, true); this.load(); });
+            .then(r => { this.setPending(r, true); if (what === 'confirm') toast('Network settings kept'); this._refresh(); })
+            .catch(e => { toast(e.message, true); this._refresh(); });
+    },
+
+    _refresh() {
+        if (this._shown) { this.load(); this.scan(false); }
+        this._changed();
     },
 
     // ── Dialogs ────────────────────────────────────────────────
@@ -275,18 +303,6 @@ const NetCfg = {
         setTimeout(() => { const f = this.$(w ? 'nc-j-psk' : 'nc-j-ssid'); if (f) f.focus(); }, 50);
     },
 
-    openHotspot() {
-        const wifi = (this.data ? this.data.devices : []).filter(x => x.type === 'wifi');
-        this._open('<i class="fa-solid fa-tower-broadcast"></i> Hotspot', '<i class="fa-solid fa-tower-broadcast"></i> Start', `
-            <div class="nc-warn"><i class="fa-solid fa-triangle-exclamation"></i> The adapter leaves its current Wi-Fi network. Clients get addresses from this board (10.42.0.x) — the panel is then at <b class="mono">10.42.0.1</b>.</div>
-            <div class="field-row">
-                <div class="field"><label>Network name (SSID)</label><input class="input mono" id="nc-h-ssid" maxlength="32" value="${esc((this.data && this.data.hostname) || 'smms')}"></div>
-                <div class="field"><label>Adapter</label><select class="input" id="nc-h-if">${wifi.map(x => `<option>${esc(x.device)}</option>`).join('')}</select></div>
-            </div>
-            <div class="field"><label>Password</label><input class="input" type="text" id="nc-h-psk" autocomplete="off" minlength="8">
-                <span class="hint">WPA2, 8–63 characters</span></div>`, 'hotspot');
-    },
-
     submit() {
         this.$('nc-m-err').textContent = '';
         const v = id => (this.$(id) || {}).value || '';
@@ -312,10 +328,8 @@ const NetCfg = {
                 security: w ? w.security : v('nc-j-sec'), hidden: !w,
             });
         }
-        if (this.modal === 'hotspot') {
-            return this._post('/api/netcfg/hotspot', { ssid: v('nc-h-ssid').trim(), password: v('nc-h-psk'), ifname: v('nc-h-if') }, '10.42.0.1');
-        }
     },
 };
 
 App.onEscape(() => NetCfg.close());
+NetCfg.init();

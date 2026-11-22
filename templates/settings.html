@@ -42,6 +42,8 @@
         <a href="#service" data-tab="service"><i class="fa-solid fa-gears"></i> Service</a>
         <a href="#tests" data-tab="tests"><i class="fa-solid fa-vial"></i> Tests &amp; docs</a>
         <a href="#network" data-tab="network"><i class="fa-solid fa-network-wired"></i> Network</a>
+        <a href="#network-conn" data-tab="network-conn" class="st-sub"><i class="fa-solid fa-ethernet"></i> Interfaces &amp; Wi-Fi</a>
+        <a href="#network-ap" data-tab="network-ap" class="st-sub"><i class="fa-solid fa-tower-broadcast"></i> Access point &amp; DHCP</a>
         <a href="#video" data-tab="video"><i class="fa-solid fa-video"></i> Video</a>
         <a href="#display" data-tab="display"><i class="fa-solid fa-display"></i> Display</a>
         <a href="#access" data-tab="access"><i class="fa-solid fa-lock"></i> Access</a>
@@ -49,6 +51,7 @@
     </nav>
 
     <main class="st-main">
+        <div class="nc-pending" id="nc-pending" hidden></div>
 
         <section class="st-pane" id="pane-general" data-pane="general">
             <h2>General</h2>
@@ -63,6 +66,23 @@
                 <div class="card-head">Panel updates</div>
                 <div class="card-body">
                     {{ field('update_check_minutes', 'Check for updates every (minutes)', 'Fetches the panel repository\'s upstream while the panel is open; when it is ahead, a <i class="fa-solid fa-triangle-exclamation text-warn"></i> button offers to update. Needs internet; <code>0</code> = off', type='number') }}
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">System host name <span class="meta">the name of this machine (<code>hostnamectl</code>) — shown in the network, the shell prompt, logs</span></div>
+                <div class="card-body stack">
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="st-hostname">Host name</label>
+                            <div class="row">
+                                <input class="input mono st-hn-input" id="st-hostname" value="{{ hostname }}" maxlength="63" spellcheck="false" autocomplete="off"
+                                       oninput="Settings.hostnameInput()" onkeydown="if (event.key === 'Enter') Settings.setHostname()">
+                                <button class="btn btn-primary" type="button" id="st-hostname-btn" onclick="Settings.setHostname()" disabled><i class="fa-solid fa-check"></i> Apply</button>
+                            </div>
+                            <span class="hint" id="st-hostname-hint">Letters, digits and "-" (not at the start or end), up to 63. Applied at once, no reboot; also updates
+                                <code>/etc/hosts</code> and moves this host's settings in <code>config.json</code> to the new name.</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="card">
@@ -189,9 +209,25 @@
         </section>
 
         <section class="st-pane st-pane-wide" id="pane-network" data-pane="network" hidden>
-            <h2>Network</h2>
+            <h2><i class="fa-solid fa-network-wired"></i> Network
+                <span class="spacer"></span>
+                <label class="check-row small"><input type="checkbox" id="nm-live" checked onchange="NetMap.live(this.checked)"> live</label>
+                <button class="btn-icon" type="button" onclick="NetMap.load()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button></h2>
+            <div class="card">
+                <div class="card-head">Network map <span class="meta">uplinks on the left, networks this board serves on the right — click a node for details</span></div>
+                <div class="card-body nm-wrap"><div class="nm-canvas" id="nm-canvas"><div class="muted">Loading…</div></div></div>
+            </div>
+            <div class="nm-detail card" id="nm-detail" hidden></div>
+            <div class="nm-links">
+                <a class="nm-link card" href="#network-conn"><i class="fa-solid fa-ethernet"></i><span><b>Interfaces &amp; Wi-Fi</b>
+                    <span class="hint">addresses, DHCP / static IP, Wi-Fi networks, saved profiles, panel web server</span></span></a>
+                <a class="nm-link card" href="#network-ap"><i class="fa-solid fa-tower-broadcast"></i><span><b>Access point &amp; DHCP</b>
+                    <span class="hint">Wi-Fi client ↔ access point, address pool, MAC → IP reservations, connected clients</span></span></a>
+            </div>
+        </section>
 
-            <div class="nc-pending" id="nc-pending" hidden></div>
+        <section class="st-pane st-pane-wide" id="pane-network-conn" data-pane="network-conn" hidden>
+            <h2><i class="fa-solid fa-ethernet"></i> Interfaces &amp; Wi-Fi</h2>
 
             <div class="card">
                 <div class="card-head">Interfaces <span class="meta mono" id="nc-host"></span>
@@ -206,7 +242,7 @@
                     <span class="spacer"></span>
                     <select class="input input-sm nc-wdev" id="nc-wdev" title="Wi-Fi adapter"></select>
                     <button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.openJoin(null)" title="Network that does not broadcast its name"><i class="fa-solid fa-eye-slash"></i> Hidden…</button>
-                    <button class="btn btn-ghost btn-sm" type="button" onclick="NetCfg.openHotspot()" title="Make this board an access point"><i class="fa-solid fa-tower-broadcast"></i> Hotspot…</button>
+                    <a class="btn btn-ghost btn-sm" href="#network-ap" title="Client ↔ access point, DHCP server"><i class="fa-solid fa-tower-broadcast"></i> Access point…</a>
                     <button class="btn btn-primary btn-sm" type="button" onclick="NetCfg.scan(true)" id="nc-scan"><i class="fa-solid fa-magnifying-glass"></i> Scan</button>
                 </div>
                 <div class="card-body flush"><table class="tbl nc-tbl"><thead><tr><th>Network</th><th>Signal</th><th>Security</th><th>Band / ch.</th><th></th></tr></thead>
@@ -231,6 +267,54 @@
                 </div>
                 <div class="st-note"><i class="fa-solid fa-circle-info"></i> Takes effect after restarting <code>systemmngmntservice.service</code>.</div>
             </div></div>
+        </section>
+
+        <section class="st-pane st-pane-wide" id="pane-network-ap" data-pane="network-ap" hidden>
+            <h2><i class="fa-solid fa-tower-broadcast"></i> Access point &amp; DHCP
+                <span class="spacer"></span>
+                <button class="btn-icon" type="button" onclick="NetAP.load()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button></h2>
+            <div id="ap-warn"></div>
+
+            <div class="card">
+                <div class="card-head">Wi-Fi mode <span class="meta" id="ap-mode-meta"></span></div>
+                <div class="card-body" id="ap-mode"><div class="muted">Loading…</div></div>
+            </div>
+
+            <div class="grid ap-grid">
+                <div class="card">
+                    <div class="card-head">Access point</div>
+                    <div class="card-body stack" id="ap-form"></div>
+                </div>
+                <div class="card">
+                    <div class="card-head">DHCP server <span class="meta">NetworkManager's dnsmasq; also DNS and NAT to the uplink</span></div>
+                    <div class="card-body stack" id="ap-dhcp"></div>
+                </div>
+            </div>
+            <div class="row ap-save">
+                <span class="muted small" id="ap-dirty"></span><span class="spacer"></span>
+                <button class="btn btn-ghost" type="button" onclick="NetAP.render()">Revert</button>
+                <button class="btn btn-primary" type="button" id="ap-save" onclick="NetAP.save()"><i class="fa-solid fa-floppy-disk"></i> Save access point &amp; DHCP</button>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Clients <span class="meta" id="ap-cl-meta"></span>
+                    <span class="spacer"></span>
+                    <label class="check-row small"><input type="checkbox" id="ap-cl-live" checked> live</label>
+                    <button class="btn-icon" type="button" onclick="NetAP.loadClients()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button></div>
+                <div class="card-body flush"><table class="tbl nc-tbl"><thead><tr><th>Device</th><th>IP</th><th>MAC</th><th>Signal</th><th>Connected</th><th>Lease</th><th></th></tr></thead>
+                    <tbody id="ap-clients"></tbody></table></div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Reserved addresses <span class="meta">MAC → IP; a client gets its address at the next lease renewal (reconnect it to apply at once)</span>
+                    <span class="spacer"></span>
+                    <button class="btn btn-ghost btn-sm" type="button" onclick="NetAP.editRes(-1)"><i class="fa-solid fa-plus"></i> Add</button></div>
+                <div class="card-body flush"><table class="tbl nc-tbl"><thead><tr><th>Name</th><th>MAC</th><th>IP</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="ap-res"></tbody></table></div>
+            </div>
+            <div class="st-note"><i class="fa-solid fa-shield-halved"></i><span>Switching the mode and saving the access point / pool
+                are applied with the same safety net as other network changes: NetworkManager restores the previous state unless this
+                page still reaches the panel afterwards. Reservations are applied at once without interrupting the access point.</span></div>
         </section>
 
         <section class="st-pane st-pane-wide" id="pane-video" data-pane="video" hidden>
@@ -479,6 +563,21 @@
         </div>
     </div>
 </div>
+<div id="ap-overlay" class="modal-overlay" onclick="if (event.target === this) NetAP.closeRes()">
+    <div class="modal-box nc-box">
+        <div class="modal-head">
+            <span class="modal-title" id="ap-m-title"></span>
+            <button class="modal-close" onclick="NetAP.closeRes()">&#215;</button>
+        </div>
+        <div class="modal-body stack" id="ap-m-body"></div>
+        <div class="modal-foot">
+            <span class="text-error small" id="ap-m-err"></span>
+            <span class="spacer"></span>
+            <button class="btn btn-ghost" onclick="NetAP.closeRes()">Cancel</button>
+            <button class="btn btn-primary" onclick="NetAP.submitRes()"><i class="fa-solid fa-check"></i> Save</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -487,5 +586,7 @@
 <script src="{{ asset('js/settings_display.js') }}"></script>
 <script src="{{ asset('js/settings_video.js') }}"></script>
 <script src="{{ asset('js/settings_net.js') }}"></script>
+<script src="{{ asset('js/settings_netap.js') }}"></script>
+<script src="{{ asset('js/settings_netmap.js') }}"></script>
 <script src="{{ asset('js/settings_backups.js') }}"></script>
 {% endblock %}

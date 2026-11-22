@@ -521,18 +521,3 @@ def wifi_connect(ssid, password='', ifname='', security='WPA2', hidden=False):
 def _known(ssid):
     return any(c['type'] == 'wifi' and c['name'] == ssid for c in connections())
 
-
-def hotspot(ssid, password, ifname, ipv4='shared'):
-    """Access point on ``ifname`` (clients get addresses from NM's shared mode)."""
-    ssid = check_ssid(ssid)
-    _check_ifname(ifname)
-    psk = check_psk(password, required=True)
-
-    def run():
-        uid = str(uuidlib.uuid4())
-        path = _write_keyfile('hotspot-' + ssid, _wifi_keyfile(uid, f'Hotspot {ssid}', ssid, ifname, psk, 'wpa-psk',
-                                                                mode='ap', ipv4=ipv4))
-        nm('connection', 'load', path)
-        nm('connection', 'up', 'uuid', uid, timeout=60)
-        return {'uuid': uid}
-    return _guarded(f'Hotspot {ssid} on {ifname}', run)

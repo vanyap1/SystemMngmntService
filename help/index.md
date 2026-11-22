@@ -7,7 +7,7 @@ Notes, how-tos and command cheat sheets for the boards and PCs managed with this
 | Section | Documents |
 |---|---|
 | **Linux** | [systemd services and logs](linux/systemd-and-logs.md) · [Devices, udev, kernel](linux/devices-udev.md) · [Storage, images, backups](linux/storage-backup.md) · [Users and SSH keys](linux/users-ssh.md) · [Python](linux/python.md) |
-| **Network** | [Linux network and SMB](network/linux-network.md) · [Windows network tools](network/windows-network.md) |
+| **Network** | [Linux network from the command line](network/linux-network-cli.md) · [Linux network and SMB](network/linux-network.md) · [Windows network tools](network/windows-network.md) |
 | **Testing** | [Test platform: operators, parameters, dialogs, logs, debugging](testing/test-platform.md) · [Power supply PSU_CUSTOM6020](testing/psu-custom6020.md) |
 | **Hardware** | [Orange Pi 3B power button](hardware/orangepi3b-power.md) · [USB camera streaming](hardware/video-streaming.md) · [Quectel M66 AT commands](hardware/quectel-m66-at.md) · [Schematic ideas](hardware/schematic-ideas.md) |
 

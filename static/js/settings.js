@@ -26,9 +26,11 @@ const Settings = {
         if (!document.querySelector(`[data-pane="${tab}"]`)) tab = 'general';
         document.querySelectorAll('.st-pane').forEach(p => { p.hidden = p.dataset.pane !== tab; });
         document.querySelectorAll('#st-nav a').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
-        document.getElementById('st-savebar').hidden = ['git', 'display', 'video'].includes(tab) && !this.changed().length;
+        document.getElementById('st-savebar').hidden = ['git', 'display', 'video', 'network', 'network-ap'].includes(tab) && !this.changed().length;
         if (tab === 'video' && typeof VideoSources !== 'undefined') VideoSources.load();
-        if (typeof NetCfg !== 'undefined') NetCfg.visible(tab === 'network');
+        if (typeof NetCfg !== 'undefined') NetCfg.visible(tab === 'network-conn');
+        if (typeof NetAP !== 'undefined') NetAP.visible(tab === 'network-ap');
+        if (typeof NetMap !== 'undefined') NetMap.visible(tab === 'network');
         if (tab !== 'video' && typeof VideoDevices !== 'undefined') VideoDevices.stop();
         if (typeof DisplaySettings !== 'undefined') DisplaySettings.visible(tab === 'display');
         if (tab === 'git' && !this._gitMounted) {
@@ -56,7 +58,7 @@ const Settings = {
         document.getElementById('st-save').disabled = !ch.length;
         document.getElementById('st-revert').disabled = !ch.length;
         document.getElementById('st-savebar').hidden = !ch.length &&
-            ['pane-git', 'pane-display', 'pane-video'].some(id => !document.getElementById(id).hidden);
+            ['pane-git', 'pane-display', 'pane-video', 'pane-network', 'pane-network-ap'].some(id => !document.getElementById(id).hidden);
     },
 
     revert() {
@@ -150,6 +152,29 @@ const Settings = {
 
     // ── Save ───────────────────────────────────────────────────
 
+    // ── System host name ───────────────────────────────────────
+
+    _hostnameOrig: null,
+
+    hostnameInput() {
+        const el = document.getElementById('st-hostname');
+        if (this._hostnameOrig === null) this._hostnameOrig = el.defaultValue;
+        const v = el.value.trim();
+        const ok = /^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(v) && !/^\d+$/.test(v);
+        el.classList.toggle('st-bad', !!v && !ok);
+        document.getElementById('st-hostname-btn').disabled = !ok || v === this._hostnameOrig;
+    },
+
+    setHostname() {
+        const el = document.getElementById('st-hostname'), v = el.value.trim();
+        if (document.getElementById('st-hostname-btn').disabled) return;
+        if (!confirm(`Rename this machine to "${v}"?\n\nThe name changes at once (no reboot). Other devices see it after the next DHCP renewal / reconnect; open SSH sessions keep the old prompt until you log in again.`)) return;
+        App.api('/api/system/hostname', { json: { hostname: v } }).then(r => {
+            toast(`Host name: ${r.hostname}` + (r.warning ? ' — ' + r.warning : ''), !!r.warning);
+            setTimeout(() => location.reload(), 900);
+        }).catch(e => toast(e.message, true));
+    },
+
     resetHost() {
         if (!confirm('Delete the settings of this host and use the defaults?')) return;
         App.api('/api/settings/reset', { method: 'POST' })
@@ -241,4 +266,4 @@ document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.target.closest('.git-commit')) { e.preventDefault(); if (Settings.changed().length) Settings.save(); }
 });
 
-Settings.init();
+document.addEventListener('DOMContentLoaded', () => Settings.init());

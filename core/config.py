@@ -185,6 +185,23 @@ def reset_host():
     load()
 
 
+def rename_host(new):
+    """The machine was renamed: this host's section moves to the new name (it wins over one already there) and the
+    panel uses the new name from now on. Returns True when a section was moved."""
+    global HOSTNAME
+    old, moved = HOSTNAME, False
+    if new != old:
+        sec = _FILE['hosts'].pop(old, None)
+        if sec is not None:
+            _FILE['hosts'][new] = sec
+            moved = True
+        HOSTNAME = new
+        _write()
+        if not moved and new in _FILE['hosts']:
+            load()                      # the new name already had its own section: it applies now
+    return moved
+
+
 def get(key, default=None):
     return CFG.get(key, default)
 

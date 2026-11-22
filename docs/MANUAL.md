@@ -337,8 +337,16 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/netcfg` | login | Settings → Network: Ethernet / Wi-Fi devices, NetworkManager connections, Wi-Fi radio, the interface this visitor comes through, pending change |
 | GET | `/api/netcfg/connection?uuid=`, `/api/netcfg/wifi?ifname=&rescan=1`, `/api/netcfg/pending` | login | One connection (no secrets) / Wi-Fi scan / pending change |
 | POST | `/api/netcfg/connection` | login | Change a connection `{uuid, name, interface, autoconnect, priority, ipv4 {method, addresses, gateway, dns, ignore_auto_dns}, ipv6 {method}, wifi {hidden}, password}` (an active one is re-applied) |
-| POST | `/api/netcfg/activate`, `/deactivate`, `/delete`, `/radio`, `/join`, `/hotspot` | login | `{uuid}` / `{on}` / `{ssid, password, ifname, security, hidden}` / `{ssid, password, ifname}`; each answer is the pending change |
+| POST | `/api/netcfg/activate`, `/deactivate`, `/delete`, `/radio`, `/join` | login | `{uuid}` / `{on}` / `{ssid, password, ifname, security, hidden}`; each answer is the pending change |
 | POST | `/api/netcfg/confirm`, `/api/netcfg/revert` | login | Keep / roll back the pending change (NetworkManager checkpoint) |
+| GET / POST | `/api/system/hostname` | login | Settings → General: system host name `{hostname, pretty, hosts_ok, …}` / rename `{hostname}` (hostnamectl, /etc/hosts 127.0.1.1 line, this host's config.json section moves to the new name) |
+| GET | `/api/netcfg/ap` | login | Access point & DHCP: settings (no password, `has_password`), Wi-Fi adapters with mode / AP support, saved client networks, reservations, clients, tool checks (NM version, dnsmasq, iw), pending change |
+| GET | `/api/netcfg/ap/clients` | login | AP clients: leases + stations + neighbours `{mac, ip, hostname, online, signal, connected, expires_in, reserved, name, …}` |
+| POST | `/api/netcfg/ap` | login | Save `{settings: {ssid, ifname, security, band, channel, hidden, address, prefix, start, end, lease}, password}` — a running AP is restarted (pending change), else only the profile is written |
+| POST | `/api/netcfg/ap/mode` | login | `{mode: ap\|client, ifname, uuid (client network), settings, password}` — pending change |
+| POST | `/api/netcfg/ap/restart` | login | Re-activate the access point (pending change) |
+| POST | `/api/netcfg/dhcp/reservations` | login | Replace the reservations `{reservations: [{mac, ip, name}]}`; dnsmasq re-reads them (SIGHUP) → `{reservations, reloaded, restart_needed}` |
+| GET | `/api/netcfg/map` | login | Network map: all links (`ip addr` + NetworkManager state), default routes, AP with clients, the visitor's interface |
 | GET | `/api/net/interfaces` | login | Interfaces (state, addresses, counters, CAN bit timing), routes, DNS |
 | POST | `/api/net/can/link` | login | `{iface, action: open\|close, bitrate, sample_point, restart_ms, listen_only}` |
 | GET | `/api/net/can/frames?iface=&since=` | login | New CAN frames + cyclic jobs; polling keeps the socket open |
@@ -556,21 +564,55 @@ and caches parsed files by mtime/size.
 
 ## Network (Settings → Network)
 
-`core/netcfg.py` drives NetworkManager (`nmcli`): interfaces with their addresses, saved connections (edit name,
-interface, auto-connect + priority, IPv4 DHCP / static / shared / disabled with addresses, gateway, DNS, IPv6 method,
-Wi-Fi hidden flag and password; connect, disconnect, forget), Wi-Fi radio on / off, scan and join (also hidden
-networks, WPA2 / WPA3 / open) and a hotspot (access point in shared mode, clients get 10.42.0.x).
+Three pages, listed under *Network* in the Settings menu:
 
-**Safety net.** Every change runs inside a NetworkManager *checkpoint* (D-Bus `CheckpointCreate` via `busctl`, all
-devices, rollback after 120 s). The page that made the change checks that it still reaches the panel a few seconds
-later and then confirms (`CheckpointDestroy`); *Keep* / *Revert* buttons do it by hand. If the change cut the
-connection, NetworkManager restores the previous settings by itself when the timeout ends. Changing the address of the
-interface you are connected through: open the new address within the timeout (the banner links it) and press *Keep*.
-A failing command rolls back at once; one change can be pending at a time.
+- **Network** (overview) — an interactive map from `/api/netcfg/map`: Internet · gateways · uplink interfaces (those
+  with a default route; the lowest metric, the one in use, is drawn thick) · the board · its other interfaces · their
+  peers (clients of the access point, the local network of an interface without a default route). Every link of
+  `ip addr` is shown, also ones NetworkManager does not manage (CAN, USB gadget, …); the interface this page comes
+  through is marked. Click a node for details and actions (*Configure*, *Reserve IP*, …). Refreshed every 5 s while
+  *live* is ticked.
+- **Interfaces & Wi-Fi** — `core/netcfg.py` drives NetworkManager (`nmcli`): interfaces with their addresses, saved
+  connections (edit name, interface, auto-connect + priority, IPv4 DHCP / static / shared / disabled with addresses,
+  gateway, DNS, IPv6 method, Wi-Fi hidden flag and password; connect, disconnect, forget), Wi-Fi radio on / off, scan
+  and join (also hidden networks, WPA2 / WPA3 / open). The panel's web server address / port are here too.
+- **Access point & DHCP** — `core/netap.py`:
+  - *Wi-Fi mode*: **Client** ↔ **Access point** for the Wi-Fi adapter. Access point mode activates the profile
+    *SMMS Access Point* (keyfile `smms-ap.nmconnection`, auto-connect on, priority 100, so it comes back after a
+    reboot); client mode switches its auto-connect off, stops it and joins the chosen saved network (or the best known
+    one in range). Starting the AP turns the Wi-Fi radio on.
+  - *Access point*: SSID, adapter, WPA2 password (or open), band 2.4 / 5 GHz, channel, hidden SSID.
+  - *DHCP server*: AP address (default **10.10.10.1/24**), pool (default **10.10.10.2 – 10.10.10.254**; .255 is the
+    broadcast address of a /24), lease time. Changing the address moves the pool into the new network.
+  - *Clients*: DHCP leases + associated stations (`iw station dump`: signal, bitrate, connected time, traffic) +
+    neighbours, joined by MAC, refreshed every 5 s. *Reserve IP* binds the client's MAC to an address.
+  - *Reserved addresses*: MAC → IP (+ host name) list; add / edit / delete. A client gets its reserved address at the
+    next lease renewal (reconnect it to apply at once).
 
-**Secrets.** Wi-Fi passwords never appear on a command line or in an answer: new networks / hotspots are written as
-keyfiles (0600) into `/etc/NetworkManager/system-connections/smms-*.nmconnection` and loaded with
-`nmcli connection load`; a new password of a saved network is written into its keyfile the same way.
+**How the access point works.** The AP profile uses `ipv4.method=shared`: NetworkManager runs its own dnsmasq for
+the interface — DHCP, DNS (the AP address) and NAT to the uplink. The pool and lease time are the keyfile's
+`shared-dhcp-range` / `shared-dhcp-lease-time` (NetworkManager 1.42+; older versions use their defaults — the page
+warns). Reservations are lines `mac,ip[,name]` of `/etc/NetworkManager/smms-dhcp.hosts`, passed to that dnsmasq by
+`dhcp-hostsfile=` in `/etc/NetworkManager/dnsmasq-shared.d/smms-dhcp.conf`; saving them sends SIGHUP to the running
+dnsmasq (`/run/nm-dnsmasq-<if>.pid`), so the access point is not interrupted. NetworkManager is the only store of the
+AP settings — nothing about them is in `config.json`.
+
+Dependencies: `dnsmasq-base` (the binary NM runs — not the dnsmasq service, which can block ports 53 / 67), `iw`,
+`wireless-regdb`, `rfkill` — `sudo ./install-network.sh` (online) or the *network* item of `sudo ./install.sh`;
+`./install-network.sh status` shows what is missing and whether each Wi-Fi adapter supports AP mode.
+
+**Safety net.** Every change of the link (all of the above except reservations) runs inside a NetworkManager
+*checkpoint* (D-Bus `CheckpointCreate` via `busctl`, all devices, rollback after 120 s). The page that made the change
+checks that it still reaches the panel a few seconds later and then confirms (`CheckpointDestroy`); *Keep* / *Revert*
+buttons do it by hand — the banner is shown at the top of every Settings tab. If the change cut the connection,
+NetworkManager restores the previous settings by itself when the timeout ends. Changing the address of the interface
+you are connected through (or switching to AP mode over Wi-Fi): open the new address within the timeout (the banner
+links it) and press *Keep*. A failing command rolls back at once; one change can be pending at a time.
+
+**Secrets.** Wi-Fi passwords never appear on a command line or in an answer: new networks and the access point are
+written as keyfiles (0600) into `/etc/NetworkManager/system-connections/smms-*.nmconnection` and loaded with
+`nmcli connection load`; a new password of a saved network is written into its keyfile the same way. An empty AP
+password field keeps the saved one.
 
 ## Git (Settings → Git, Git icon in the editor and docs)
 
@@ -801,6 +843,7 @@ sudo ./install.sh                 # interactive menu (whiptail; --plain for text
 | `sudo ./install.sh service` | write `/etc/systemd/system/systemmngmntservice.service` if it changed, enable it, (re)start the panel |
 | `sudo ./install.sh uninstall` | stop and remove the unit (project, `config.json` and packages stay) |
 | `sudo ./install.sh display` | Kivy for the device display (component `display`; from the internet, else an offline bundle) — no panel restart |
+| `sudo ./install.sh network` / `sudo ./install-network.sh` | Wi-Fi access point + DHCP tools: dnsmasq-base, iw, wireless-regdb, rfkill (online only), DHCP reservation files; `./install-network.sh status` = check — no panel restart |
 
 Options: `--components core,git,gpio,devices,video` (default `core,git,gpio,devices`), `--bundle DIR|FILE.tar`,
 `--yes` (no questions — for scripts). Every step is idempotent; a running panel is restarted only after a confirmation.
@@ -878,6 +921,7 @@ python3 -m unittest tests.test_access -q               # one module
 |---|---|
 | `test_access.py` | access matrix: anonymous / logged in / auth disabled, public test machine / archives / docs |
 | `test_netcfg.py` | Settings → Network with a fake nmcli / busctl: parsing, checkpoint confirm / revert / rollback, validation, keyfiles (password never on a command line) |
+| `test_netap.py` | Access point & DHCP + network map with `tests/fake_net.py` (fake nmcli / iw / ip, temp paths): AP keyfile, mode switch under a checkpoint, pool / reservation validation, SIGHUP reload, clients join, map |
 | `test_backups.py` | backup patterns, create / deploy job, safety checks |
 | `test_config.py` | legacy migration, per-host sections, save / reset |
 | `test_monitor.py` | `/api/monitor` payload, sampler lease, active interface detection |
