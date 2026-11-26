@@ -474,7 +474,7 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
     with step charts over 2 s … 5 min or everything; the last 200 frames with Δt and changed bytes. *Pause* freezes
     the view (frames are still collected), Esc / × closes it.
   - *TX list & notes* (bottom, can be hidden) — like the Terminal's macros: named lists (profiles: new, rename,
-    duplicate, export / import JSON, delete; config.json `can`, per host) of rows: on, name, ID, Ext, RTR, data, period
+    duplicate, export / import JSON, delete; `hwProfiles/can.json`, in git) of rows: on, name, ID, Ext, RTR, data, period
     (0 = only on demand). Per row ▶ sends once, ⟳ sends every period / stops; *Send once* sends the ticked rows top to
     bottom, *Start all* starts the ticked rows with a period, *Stop all*. **A running row can be edited**: the next
     frame carries the new ID / data, a new period applies at once (server job tagged with the row, `update`); ↑ / ↓ on
@@ -555,9 +555,9 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   quick request, ▶ runs it; *Examples* lists the syntax. The port is opened only for each
   request batch; *Close port* stops timers / scan so it is free for other tools. *Scan* probes unit ids (an exception
   answer counts as a device; a row can be added from a hit). TX / RX frames in hex on the right. Profiles
-  (connection + rows + period) are saved per host in `config.json` → `modbus`, exported / imported as JSON.
+  (connection + rows + period) are saved in git in `hwProfiles/modbus.json`, exported / imported as JSON.
   *Session* → *Save* stores the whole research state under a name — connection, rows, last results, frame log, scan
-  hits and notes — as a JSON file in `modbusSessions/` (git-ignored, `modbus_sessions_dir`); pick it in the list to
+  hits and notes — as a JSON file in `modbusSessions/` (in git, `modbus_sessions_dir`); pick it in the list to
   continue later. Serial ports are locked while a test script runs.
 - **Terminal** — raw data terminal for a serial port, a TCP client or UDP (send to host:port and / or listen on a
   port — empty = a free port chosen automatically; datagrams show their sender) in one tool (`core/ttyterm.py`).
@@ -578,8 +578,8 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
   **Notes** (kept in the profile): commands written as `[[ADC:MEAS:EXT1:VOLT?1]]` show as buttons — ⇩ puts the
   command into the send field, ▶ sends it with the send field settings (line ending, hex, reply); *[[ ]]* appends
   the send field as such a tag; double-click or *Edit* to change the text.
-  DTR / RTS for serial, pause, clear, download the log; profiles per host in `config.json` → `tty`; **sessions**
-  (connection, macros, output, notes) saved as files in `ttySessions/` (git-ignored) — reopening parses the JSON
+  DTR / RTS for serial, pause, clear, download the log; profiles in git in `hwProfiles/tty.json`; **sessions**
+  (connection, macros, output, notes) saved as files in `ttySessions/` (in git) — reopening parses the JSON
   in the output again, so the plot is back. The connection is closed by *Close*, by leaving the page, or 30 s
   after the last poll. Serial ports are opened exclusively (the Modbus tool gets "in use") and locked while a test
   script runs.

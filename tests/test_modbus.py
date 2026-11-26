@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 from tests.support import client, config  # noqa: F401
-from core import modbus
+from core import modbus, profile_files
 
 
 class Device:
@@ -277,7 +277,7 @@ class Validation(unittest.TestCase):
         self.assertIn('ports', info)
         r = c.post('/api/modbus/profiles', json={'profiles': [{'name': 'P1', 'conn': {'transport': 'tcp'}, 'macros': []}], 'current': 'P1'})
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(config.get('modbus')['current'], 'P1')
+        self.assertEqual(profile_files.load('modbus')['current'], 'P1')
         self.assertEqual(c.get('/api/modbus/info').get_json()['profiles'][0]['name'], 'P1')
         self.assertEqual(c.post('/api/modbus/request', json={'conn': {'transport': 'rtu', 'port': '/bad'}, 'ops': [{}]}).status_code, 400)
 

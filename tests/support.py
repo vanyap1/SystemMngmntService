@@ -32,6 +32,7 @@ config.CFG['help_dir'] = os.path.join(TMP, 'help')
 config.CFG['modbus_sessions_dir'] = os.path.join(TMP, 'modbusSessions')
 config.CFG['tty_sessions_dir'] = os.path.join(TMP, 'ttySessions')
 config.CFG['can_traces_dir'] = os.path.join(TMP, 'canTraces')
+config.CFG['profiles_dir'] = os.path.join(TMP, 'hwProfiles')
 config.CFG['update_check_minutes'] = 0                     # never fetch the real panel upstream
 credentials.PATH = os.path.join(TMP, 'credentials.json')   # never touch the real git token
 app.config['TESTING'] = True

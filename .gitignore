@@ -251,9 +251,7 @@ setup_data/*
 setup_data.7z
 # Station data of test scripts (calibration, counters: instruments.param_file.data_path)
 testPlatform/data/
-# Saved Modbus sessions of HW Utils -> Modbus (research data of this station)
-modbusSessions/
-ttySessions/
+# HW Utils sessions (modbusSessions/, ttySessions/) and profiles (hwProfiles/) are kept in git
 # Recorded CAN traces of HW Utils -> CAN (the folder itself is kept)
 canTraces/*
 !canTraces/.gitkeep

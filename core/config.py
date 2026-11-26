@@ -68,6 +68,8 @@ BUILTIN_DEFAULTS = {
     'modbus_sessions_dir': 'modbusSessions',
     # Saved terminal sessions (profile + macros + output + notes); relative to the project directory.
     'tty_sessions_dir': 'ttySessions',
+    # HW Utils profiles in git (tty.json, modbus.json, can.json — core/profile_files.py); relative to the project.
+    'profiles_dir': 'hwProfiles',
     # HW Utils → CAN: recorded traces (candump log files, folders); relative to the project directory.
     'can_traces_dir': 'canTraces',
     # Backups (Settings → Backups, syntax in core/backups.py): patterns not archived, patterns kept on deploy.
@@ -281,6 +283,10 @@ def modbus_sessions_dir():
 
 def tty_sessions_dir():
     return _project_path(CFG.get('tty_sessions_dir') or 'ttySessions')
+
+
+def profiles_dir():
+    return _project_path(CFG.get('profiles_dir') or 'hwProfiles')
 
 
 def can_traces_dir():

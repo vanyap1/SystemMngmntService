@@ -54,6 +54,7 @@ core/
   spawn.py             popen() with PDEATHSIG from one long-lived thread (children die with the panel only)
   pyrun.py             run / debug a .py from the editor: pty session, output buffer, lease, gentle stop
   pydbg_agent.py       bdb debugger running inside the debugged process (stdlib only), JSON over two pipes
+  profile_files.py     HW Utils profiles in git: hwProfiles/{tty,modbus,can}.json (migrated from config.json sections)
   help_docs.py         documentation store: Markdown pages in help_dir, img/ + docs/ assets, search, .trash
   git_ops.py           git for target_dir / panel / help_dir repos: status, actions, problems + fixes (runs as repo owner)
   credentials.py       host secrets (git token) in ~/.config/systemmngmntservice/credentials.json — outside repos
@@ -200,7 +201,7 @@ static/
   `can_trace.check_path`; delete = move to `.trash`. File view: `can_trace.scan()` (cached by mtime/size, index every
   INDEX_EVERY frames) + `read_frames()` — never load a whole trace into memory or the browser. Replay filter = ID keys
   (`frame_key`: s:123 / x:… / err) in `skip`, kept per file in the browser (localStorage `can.skips`).
-- TX list = profiles in config.json `can` (HOST_KEYS, `net.check_profiles`), rows sent by server cyclic jobs tagged
+- TX list = profiles in git `hwProfiles/can.json` (`profile_files`, `net.check_profiles`), rows sent by server cyclic jobs tagged
   with the row uid; editing a running row calls `update_cyclic` (frame swapped atomically, period re-planned via
   `_wake`) — never stop / restart a job to change it. Notes tags `[[ID#data]]` (candump syntax).
 - Analyser: `static/js/can_analyzer.js` (`CanAnalyzer`, popup `#can-an` over the tab). Live data only from the server
@@ -222,9 +223,9 @@ static/
   raw — formats (s16, u32, float32, ascii, word swap) are converted in the browser.
 - Two tables: manual rows and timer rows (`auto: true`, own `period`, `cycle` = timer on). One scheduler in the browser
   (`startCycle`) sends the due rows as one batch, the next batch only after the answer; it stops when the tab closes.
-- Sessions (research snapshots) are files in `config.modbus_sessions_dir()` (git-ignored `modbusSessions/`; tests and
+- Sessions (research snapshots) are files in `config.modbus_sessions_dir()` (`modbusSessions/`, in git; tests and
   devserver point it to a temp dir); names → file slugs via `_slug`.
-- Profiles live in config.json `modbus` (HOST_KEYS), sanitised by `check_profiles`. Tests (`tests/test_modbus.py`)
+- Profiles live in git: `hwProfiles/modbus.json` (`core/profile_files.py`), sanitised by `check_profiles`. Tests (`tests/test_modbus.py`)
   use fake TCP / UDP servers and a pseudo terminal — never the board's real serial ports; never write to a real
   device while checking things by hand.
 
@@ -240,6 +241,9 @@ static/
 - Not connected, a send is `oneshot()` (a Session that is not registered: open → send → reply until peer close /
   idle / timeout → close). A tx chunk is logged *before* the bytes go out (a fast reply / close must follow it).
 - Sessions of both Modbus and the terminal use `core/session_files.SessionStore` (`modbusSessions/`, `ttySessions/`).
+- Profiles (macros, TX lists, notes) and sessions are **in git** (shared by every host): `profile_files.load/save` for
+  profiles (the old config.json sections `tty` / `modbus` / `can` are read until the first save, then emptied);
+  everything the panel (root) writes there goes through `profile_files.own()` (repo owner) so git can update it.
 - Tests (`tests/test_ttyterm.py`): pseudo terminal, local TCP / UDP sockets — never the board's real ports.
 
 ## Clone / Image (HW Utils)

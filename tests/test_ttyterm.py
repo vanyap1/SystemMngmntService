@@ -10,7 +10,7 @@ import unittest
 from unittest import mock
 
 from tests.support import client, config  # noqa: F401
-from core import modbus, ttyterm
+from core import modbus, profile_files, ttyterm
 
 
 def wait(cond, t=3.0):
@@ -259,7 +259,7 @@ class Misc(unittest.TestCase):
         self.assertEqual(c.get(f'/api/tty/read?id={sid}&since=0').get_json()['chunks'][-1]['dir'], 'tx')
         self.assertEqual(c.post('/api/tty/close', json={'id': sid}).get_json()['closed'], True)
         r = c.post('/api/tty/profiles', json={'profiles': [{'name': 'A'}], 'current': 'A'})
-        self.assertEqual(config.get('tty')['current'], 'A')
+        self.assertEqual(profile_files.load('tty')['current'], 'A')
 
 
 if __name__ == '__main__':

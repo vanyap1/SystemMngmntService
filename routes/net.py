@@ -4,7 +4,7 @@ import os
 
 from flask import Blueprint, jsonify, request, send_file
 
-from core import can_trace, config, net, pyrun
+from core import can_trace, net, profile_files, pyrun
 from core.auth import login_required
 from core.test_runner import runner
 
@@ -163,9 +163,9 @@ def api_can_play():
 @bp.route('/api/can/profiles')
 @login_required
 def api_can_profiles():
-    """TX lists + notes of HW Utils → CAN (config.json ``can``, per host)."""
+    """TX lists + notes of HW Utils → CAN (hwProfiles/can.json, in git)."""
     try:
-        return jsonify(net.check_profiles(config.get('can') or {}))
+        return jsonify(net.check_profiles(profile_files.load('can')))
     except net.NetError:
         return jsonify({'profiles': [], 'current': ''})
 
@@ -177,7 +177,7 @@ def api_can_profiles_save():
         data = net.check_profiles(request.get_json(silent=True) or {})
     except net.NetError as e:
         return _error(e)
-    config.save_key('can', data)
+    profile_files.save('can', data)
     return jsonify(data)
 
 

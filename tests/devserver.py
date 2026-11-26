@@ -42,6 +42,7 @@ config.CFG['test_logs_dir'] = os.path.abspath(args.logs) if args.logs else os.pa
 config.CFG['modbus_sessions_dir'] = os.path.join(tmp, 'modbusSessions')
 config.CFG['tty_sessions_dir'] = os.path.join(tmp, 'ttySessions')
 config.CFG['can_traces_dir'] = os.path.join(tmp, 'canTraces')
+config.CFG['profiles_dir'] = os.path.join(tmp, 'hwProfiles')
 if args.target:
     config.CFG['target_dir'] = os.path.abspath(args.target)
 if args.help_dir:

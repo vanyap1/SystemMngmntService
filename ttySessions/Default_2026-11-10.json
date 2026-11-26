@@ -1,0 +1,255 @@
+{
+ "profile": {
+  "name": "Default 2026-11-10",
+  "conn": {
+   "transport": "tcp",
+   "port": "/dev/ttyUSB0",
+   "baud": "115200",
+   "parity": "N",
+   "bytesize": "8",
+   "stopbits": "1",
+   "host": "192.168.1.91",
+   "netport": "8080",
+   "listen": "5006"
+  },
+  "eol": "crlf",
+  "commands": [
+   {
+    "name": "GetVoltageCH1",
+    "data": "ADC:MEAS:EXT1:VOLT?1",
+    "hex": false,
+    "eol": "crlf",
+    "period": 1000,
+    "timer": true,
+    "wait": true
+   },
+   {
+    "name": "test",
+    "data": "ADC:MEAS:EXT1:VOLT?2",
+    "hex": false,
+    "eol": "crlf",
+    "period": 1000,
+    "timer": false,
+    "wait": true
+   }
+  ],
+  "wait": true,
+  "replyMs": 1000,
+  "view": {
+   "hex": false,
+   "time": true,
+   "tx": true,
+   "json": true,
+   "wrap": false
+  }
+ },
+ "lines": [
+  {
+   "t": 1794345202769.3848,
+   "dir": "sys",
+   "text": "opened tcp 192.168.1.91:8080 (local 192.168.1.11:47204)",
+   "src": ""
+  },
+  {
+   "t": 1794345205283.1,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345205289.4602,
+   "dir": "rx",
+   "text": "12.0152",
+   "src": ""
+  },
+  {
+   "t": 1794345205289.719,
+   "dir": "sys",
+   "text": "closed by the peer",
+   "src": ""
+  },
+  {
+   "t": 1794345206681.71,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345206720.0903,
+   "dir": "rx",
+   "text": "12.0154",
+   "src": ""
+  },
+  {
+   "t": 1794345206720.2163,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 44 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345211842.031,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345211846.2852,
+   "dir": "rx",
+   "text": "12.0145",
+   "src": ""
+  },
+  {
+   "t": 1794345211846.3962,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 14 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345214026.0347,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345214031.0283,
+   "dir": "rx",
+   "text": "12.0137",
+   "src": ""
+  },
+  {
+   "t": 1794345214031.5894,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 14 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345325678.479,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345325699.1653,
+   "dir": "rx",
+   "text": "12.0148",
+   "src": ""
+  },
+  {
+   "t": 1794345325699.2825,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 24 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345328609.7285,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345328614.7537,
+   "dir": "rx",
+   "text": "12.0152",
+   "src": ""
+  },
+  {
+   "t": 1794345328614.8645,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 14 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345331945.8945,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345331949.8352,
+   "dir": "rx",
+   "text": "12.0148",
+   "src": ""
+  },
+  {
+   "t": 1794345331949.9434,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 12 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345332958.65,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345332963.2966,
+   "dir": "rx",
+   "text": "12.0146",
+   "src": ""
+  },
+  {
+   "t": 1794345332963.4006,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 14 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345333964.032,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345333968.736,
+   "dir": "rx",
+   "text": "12.0137",
+   "src": ""
+  },
+  {
+   "t": 1794345333968.8389,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 14 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345334964.4092,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345334969.0305,
+   "dir": "rx",
+   "text": "12.0156",
+   "src": ""
+  },
+  {
+   "t": 1794345334969.1365,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 14 ms",
+   "src": ""
+  },
+  {
+   "t": 1794345335960.9912,
+   "dir": "tx",
+   "text": "ADC:MEAS:EXT1:VOLT?1",
+   "src": ""
+  },
+  {
+   "t": 1794345335965.2903,
+   "dir": "rx",
+   "text": "12.0154",
+   "src": ""
+  },
+  {
+   "t": 1794345335965.363,
+   "dir": "sys",
+   "text": "one-shot tcp 192.168.1.91:8080 · closed by the peer · 13 ms",
+   "src": ""
+  }
+ ],
+ "note": "ADC:MEAS:EXT1:VOLT?1 - Get vottage\n\n\n\n\n\n\n",
+ "name": "Default 2026-11-10",
+ "saved": 1794345543.428247
+}
