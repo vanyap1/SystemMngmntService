@@ -1,10 +1,10 @@
 """Modbus tool of the HW Utils popup (core/modbus.py): read / write / scan over serial RTU, RTU over TCP / UDP,
-Modbus TCP / UDP; macro profiles in git (hwProfiles/modbus.json); saved sessions (profile + results + frame log)
+Modbus TCP / UDP; macro profiles per host in config.json (``modbus``); saved sessions (profile + results + frame log)
 as JSON files in ``modbus_sessions_dir``. Login only. Serial ports are locked while a
 test script runs (it may own the same UART)."""
 from flask import Blueprint, jsonify, request
 
-from core import modbus, profile_files
+from core import config, modbus
 from core.auth import login_required
 from core.modbus import ModbusError
 from core.test_runner import runner
@@ -26,7 +26,7 @@ def _body():
 @bp.route('/api/modbus/info')
 @login_required
 def api_info():
-    saved = profile_files.load('modbus')
+    saved = config.get('modbus') or {}
     try:
         profiles = modbus.check_profiles(saved) if saved.get('profiles') else {'profiles': [], 'current': ''}
     except ModbusError:
@@ -79,5 +79,5 @@ def api_session_delete():
 @login_required
 def api_profiles():
     data = modbus.check_profiles(_body())
-    profile_files.save('modbus', data)
+    config.save_key('modbus', data)
     return jsonify(data)

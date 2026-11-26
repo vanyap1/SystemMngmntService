@@ -385,11 +385,14 @@ class TxList(unittest.TestCase):
 
     def test_profiles_api(self):
         c = client(logged_in=True)
-        r = c.post('/api/can/profiles', json={'profiles': [{'name': 'Dash', 'tx': [{'uid': 'a', 'id': '123'}]}]})
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(c.get('/api/can/profiles').get_json()['profiles'][0]['tx'][0]['id'], '123')
-        self.assertTrue(os.path.isfile(os.path.join(config.profiles_dir(), 'can.json')))     # in git, not config.json
-        self.assertEqual(c.post('/api/can/profiles', json={'profiles': 5}).status_code, 400)
+        saved = config.CFG.get('can')
+        try:
+            r = c.post('/api/can/profiles', json={'profiles': [{'name': 'Dash', 'tx': [{'uid': 'a', 'id': '123'}]}]})
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(c.get('/api/can/profiles').get_json()['profiles'][0]['tx'][0]['id'], '123')
+            self.assertEqual(c.post('/api/can/profiles', json={'profiles': 5}).status_code, 400)
+        finally:
+            config.CFG['can'] = saved or {}
 
 
 class Watch(unittest.TestCase):

@@ -9,8 +9,6 @@ import os
 import re
 import time
 
-from core import profile_files
-
 MAX_BYTES = 4 * 1024 * 1024
 _NAME = re.compile(r'^[\w .,()+-]{1,60}$')
 
@@ -53,17 +51,13 @@ class SessionStore:
         text = json.dumps(doc, ensure_ascii=False, indent=1)
         if len(text.encode()) > MAX_BYTES:
             raise self.Error('Session too large (clear the log / output first)', 400)
-        folder = os.path.dirname(path)
-        if not os.path.isdir(folder):
-            os.makedirs(folder, exist_ok=True)
-            profile_files.own(folder)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not overwrite:
             raise self.Error(f'Session "{name}" already exists', 409)
         tmp = path + '.tmp'
         with open(tmp, 'w', encoding='utf-8') as f:
             f.write(text)
         os.replace(tmp, path)
-        profile_files.own(path)         # sessions are in git: they belong to the repository owner
         return {'name': name, 'saved': doc['saved'], 'sessions': self.list()}
 
     def load(self, name):

@@ -1,10 +1,10 @@
 """Raw data terminal of the HW Utils popup (core/ttyterm.py): serial port / TCP client / UDP socket, polled output,
-send, DTR / RTS, profiles in git (hwProfiles/tty.json, core/profile_files). Login only; serial is locked while a test script runs."""
+send, DTR / RTS, profiles per host in config.json (``tty``). Login only; serial is locked while a test script runs."""
 import base64
 
 from flask import Blueprint, jsonify, request
 
-from core import modbus, profile_files, ttyterm
+from core import config, modbus, ttyterm
 from core.auth import login_required
 from core.test_runner import runner
 from core.ttyterm import TtyError
@@ -26,7 +26,7 @@ def _body():
 @bp.route('/api/tty/info')
 @login_required
 def api_info():
-    saved = profile_files.load('tty')
+    saved = config.get('tty') or {}
     try:
         profiles = ttyterm.check_profiles(saved) if saved.get('profiles') else {'profiles': [], 'current': ''}
     except TtyError:
@@ -114,5 +114,5 @@ def api_close():
 @login_required
 def api_profiles():
     data = ttyterm.check_profiles(_body())
-    profile_files.save('tty', data)
+    config.save_key('tty', data)
     return jsonify(data)
