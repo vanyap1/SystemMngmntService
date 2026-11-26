@@ -37,7 +37,7 @@ For what the project is and what it looks like, see the [README](../README.md).
 | **Log viewer** | filter runs by script / verdict / serial / date, yield and first-pass yield, top failing steps, parsed log view, per-step value analysis (Cpk), CSV export |
 | **Docs** | Markdown knowledge base in `help/`: sidebar tree, full-text search, rendered view with table of contents and code copy buttons, Monaco editor with live preview, toolbar, image paste/drop upload, attachments; **diagram editor** for pinouts and block diagrams (exported to SVG, embedded in pages) |
 | **Git** | Settings → Git and a Git popup in the code editor and docs: changes with diff, commit (selected files, current or new branch, push after), branches, fetch / pull / push, problem detection with one-click fixes, discard / reset to remote with automatic backup; HTTPS token stored outside the repositories |
-| **HW Utils** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces and **CAN bus** (bitrate, RX trace, TX with repeat timer), **GPIO** viewer and manual control, **I²C** scan + register read/write, **udev** events / rules editor / tools, **Modbus** master (RTU / TCP / UDP, macros, timers, scan, sessions), **Terminal** (serial / TCP / UDP, JSON plot), **Clone / Image** of the system (to a disk or an SMB share) |
+| **HW Utils** | logical device list, `/dev` tree, USB/PCI/I²C buses (`lsusb` / `lspci`), network interfaces, **CAN** (bitrate, per-ID list with cycle time / count, trace, TX with repeat timer, recording and replay of candump traces), **GPIO** viewer and manual control, **I²C** scan + register read/write, **udev** events / rules editor / tools, **Modbus** master (RTU / TCP / UDP, macros, timers, scan, sessions), **Terminal** (serial / TCP / UDP, JSON plot), **Clone / Image** of the system (to a disk or an SMB share) |
 | **Video** | preview of V4L2 cameras |
 | **Per-host config** | one repository deployed to several machines, each with its own section in `config.json` |
 | **Simple access model** | anonymous operators see the target service (restart) and the read-only monitor — or, as a test machine, the Tests page; archives (download) and docs (read only) can be opened; everything else needs a login |
@@ -349,8 +349,19 @@ test cannot start on the Tests page while it runs (and vice versa). Starting rel
 | GET | `/api/netcfg/map` | login | Network map: all links (`ip addr` + NetworkManager state), default routes, AP with clients, the visitor's interface |
 | GET | `/api/net/interfaces` | login | Interfaces (state, addresses, counters, CAN bit timing), routes, DNS |
 | POST | `/api/net/can/link` | login | `{iface, action: open\|close, bitrate, sample_point, restart_ms, listen_only}` |
-| GET | `/api/net/can/frames?iface=&since=` | login | New CAN frames + cyclic jobs; polling keeps the socket open |
-| POST | `/api/net/can/send` | login | `{iface, action: send\|cyclic\|stop\|stop_all\|clear, id, ext, rtr, data, period_ms, job}` |
+| GET | `/api/net/can/frames?iface=&since=` | login | New CAN frames, per-ID rows changed since `since` (count, cycle avg / min / max), totals, cyclic jobs; polling keeps the socket open |
+| POST | `/api/net/can/send` | login | `{iface, action: send\|cyclic\|update\|stop\|stop_all\|clear, id, ext, rtr, data, period_ms, job, tag}` — `cyclic` with a running `tag` replaces it, `update` changes a running job; `cs` (toyota / sum8 / xor8) and `cnt` `{byte, bits}` are applied to every frame |
+| GET | `/api/net/can/watch?iface=&key=&since=` | login | Analyser: every frame of one ID (`s:123` / `x:18ff50e5`) after `since`; polling keeps the watch (5 s) |
+| POST | `/api/net/can/watch` | login | `{iface}` — end the analyser's watch |
+| GET / POST | `/api/can/profiles` | login | TX lists + notes of the CAN tab (`{profiles: [{name, tx, note}], current}`) |
+| POST | `/api/net/can/record` | login | `{iface, action: start\|stop, path, append}` — record frames to a trace file |
+| POST | `/api/net/can/play` | login | `{iface, action: start\|pause\|resume\|stop\|set, path, mode: view\|bus, speed, loop, skip: [ID keys]}` |
+| GET | `/api/can/traces` | login | Trace files tree of `canTraces/` |
+| GET | `/api/can/traces/info?path=` | login | One file: frames, duration, recordings, IDs (`key` s:123 / x:18ff50e5 / err, count, rx, tx, last data) |
+| GET | `/api/can/traces/frames?path=&start=&limit=&key=` | login | A page of frames (`n`, `rel` play time); `key` = one ID only |
+| POST | `/api/can/traces` | login | `{action: mkdir\|rename\|delete, path, name}` (delete = move to `.trash`) |
+| POST | `/api/can/traces/upload` | login | multipart `file`, `folder` — a candump log |
+| GET | `/api/can/traces/download?path=` | login | Download a trace file |
 | GET | `/api/udev/status` | login | systemd-udevd state, udev version, rules counts, subsystems |
 | POST | `/api/udev/action` | login | `{action: reload\|restart\|trigger\|test\|attrs, kind, subsystem, device, devpath, all}` |
 | GET | `/api/udev/events?since=` | login | New monitor events; polling keeps `udevadm monitor` running |
@@ -435,17 +446,76 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
 - **Buses** — USB topology like `lsusb -t` (VID:PID, hwdb names, serial, speed, interface class → driver,
   device nodes of each device; 🔍 = `lsusb -v`), PCI (`lspci -k`), I²C adapters with the clients the kernel
   knows about (the bus is never scanned).
-- **Network**
-  - *Interfaces* — every interface with type, state, IPv4/IPv6, MAC, RX/TX rate and errors; a row expands to
-    MTU, driver, link speed, packet counters (and bit timing / bus state / error counters for CAN).
-    *Routes & DNS* below. Read-only: interfaces other than CAN are never reconfigured.
-  - *CAN bus* — SocketCAN tool for `can*` / `vcan*`: *Open* applies bitrate, sample point, restart-ms,
-    listen-only (`ip link set … type can …`, root) and brings the link up, *Close* brings it down (vcan: up/down
-    only). Frames (RX, own TX, error frames with decoded class) in *Trace* or *By ID* (count, period, changed
-    bytes highlighted). Send a frame (hex ID, Ext, RTR, hex data) or *Start repeat* every N ms; running
-    repeats are listed with counters and a Stop button. The socket and all repeats exist only while the
-    CAN view is open (leaving it stops the repeats, an idle client loses them after 10 s). Configuration is
-    locked while a test script runs; starting a test stops all repeats.
+- **Network** — every interface with type, state, IPv4/IPv6, MAC, RX/TX rate and errors; a row expands to
+  MTU, driver, link speed, packet counters (and bit timing / bus state / error counters for CAN).
+  *Routes & DNS* below. Read-only: interfaces other than CAN are never reconfigured; a CAN interface has a
+  *CAN tool* button that opens the CAN tab.
+- **CAN** — SocketCAN tool for `can*` / `vcan*`. The top row: pages *Monitor* / *Traces*, interface, bus state,
+  one *Open* / *Close* button (follows the link state; Open applies the bit timing of ⚙ — bitrate, sample point,
+  restart-ms, listen-only — with `ip link set … type can …`, root; vcan: up/down only), status (bitrate, TEC / REC),
+  replay indicator, *Record*. *Monitor* = the frames on the full width + the TX list below (drag the splitter; *TX*
+  hides it, the note icon hides the notes); the quick send (ID, X = 29-bit, R = remote, data) sits in the TX list
+  header. *Traces* = the files tree, the player and the opened file.
+  The filter of By ID / Trace takes space-separated tokens: `3FD` = ID starting with 3FD (several IDs = any of them),
+  `610-61F` = range, `!200` = not this ID, `rx` / `tx` / `rp` / `err` = direction, `#00FF` = data contains these bytes,
+  other words = text of an error frame. Frames (RX, own TX, error frames with decoded class, RP = replayed from a file) in *By ID* (default, like
+  PCAN-View: one row per ID grouped Receive / Transmit / Replay / Errors, last data with changed bytes highlighted,
+  average cycle time — tooltip last / min / max —, count; sortable by ID / cycle / count / last; IDs silent for
+  3 cycles are dimmed) or *Trace* (every frame). Counts and cycle times are kept by the server from kernel receive
+  timestamps, so they stay exact when the 2000-frame trace buffer overflows; *Clear* resets them. Send a frame
+  (hex ID, Ext, RTR, hex data); *+ TX list* adds it as a row.
+  - *Analyser* (🔬 next to an ID in By ID / Trace / the ID list of an opened file) — a view over the tab for one ID.
+    Live, the server keeps every frame of that ID in its own buffer (20 000 frames, kernel timestamps) and the popup
+    fetches them every 100 ms, while the main list is not polled (other IDs are ignored) — so no frame is skipped
+    between two polls. From a file, the frames of the ID in the file are loaded (up to 20 000). Shows: frames, fps,
+    cycle avg / min / max / last; the bit grid (changed bits outlined, click = plot the bit); HEX / ASCII of the last
+    frame; all 64 bits over the last 240 frames (rows B0.7 … B7.0, changes in orange); signals (LSB first =
+    little-endian / Intel, MSB first = big-endian / Motorola) (bit, u/s 8 – 64, byte order, × scale + offset, name — kept per ID in the browser)
+    with step charts over 2 s … 5 min or everything; the last 200 frames with Δt and changed bytes. *Pause* freezes
+    the view (frames are still collected), Esc / × closes it.
+  - *TX list & notes* (bottom, can be hidden) — like the Terminal's macros: named lists (profiles: new, rename,
+    duplicate, export / import JSON, delete; config.json `can`, per host) of rows: on, name, ID, Ext, RTR, data, period
+    (0 = only on demand). Per row ▶ sends once, ⟳ sends every period / stops; *Send once* sends the ticked rows top to
+    bottom, *Start all* starts the ticked rows with a period, *Stop all*. **A running row can be edited**: the next
+    frame carries the new ID / data, a new period applies at once (server job tagged with the row, `update`); ↑ / ↓ on
+    a data byte changes it by 1 (Shift 16). The state column shows the frames sent and errors.
+    *Frame editor* (sliders icon of a row) — a popover next to the row, live while it is being sent: DLC,
+    period, Once, Start / Stop; the bit grid (click = toggle) with the bytes in hex (↑ ↓ / wheel ±1), a click on a byte
+    label B0…B7 (or its +) = a u8 field for that byte; the quick send has its own editor (sliders next to ✈: edits
+    the ID / data fields, fields and period kept in the browser, Start / Stop sends it cyclically, + Row copies the fields); *fields* kept in the row (`fields`): bit (ON / OFF switch) or u8 / s8 / u16 / s16 / u32 / s32
+    LSB / MSB first with × scale + offset, min / max (default: the range of the type) and step — input, −/+, slider;
+    the byte (and bit / byte order) of a field can be changed in its row while it runs — the value is written there from
+    then on; *Sweep* runs a value ↗ min → max (again from min), ↘ max → min or ↗↘ min → max → min (a bit: toggles)
+    every N ms; *From analyser* takes the analyser's signals of
+    the ID. *CS* = a checksum in the last byte (Toyota: (ID bytes + DLC + D0 … Dn-2) & 0xFF, e.g. 0x0B4 with DLC 8:
+    0xBC + D0 … D6; sum8; xor8) and *Counter* = a rolling counter (byte, bits 0–7 / 0–3 / 4–7 / 0–1, starting from
+    its value in the data) — both applied by the server to **every** transmission (counter first, then the checksum),
+    so they change together frame by frame and keep running while the data is edited; marked CS / N in the table.
+    the ID. Bits of a field are underlined in its colour. Every change goes to the running transmission at once
+    (throttled to one update per 40 ms with the latest bytes). Sweeps stop when the editor closes; the row keeps running.
+    *Notes* (per list): `[[123#11 22 33]]` (candump syntax, `[[7FF#R]]` remote) become buttons — ⇩ to the send
+    field, + to the TX list, ▶ send.
+  - *Traces* (left, like the code editor's explorer) — the folder `canTraces/` (config `can_traces_dir`,
+    git-ignored): folders up to 3 levels, rename, delete (moved to `canTraces/.trash`), download, upload.
+    Files are candump logs (`(1732640000.123456) can0 123#1122`, extended IDs with 8 digits, `#R<dlc>` remote,
+    error frames with `20000000` in the ID, own transmissions with a trailing ` T`) — they open in can-utils
+    (`canplayer -I file.log`, `log2asc`) and candump logs can be uploaded.
+  - *Record* opens a menu: a new file (folder + name) or an existing file to append to. The server writes every
+    rx / tx / error frame from the reader thread (nothing is lost when the browser lags), one `# recording …`
+    comment line per session, stops at 1 GiB. *Stop rec* closes the file.
+  - A click on a file opens it in the *File* mode (next to By ID / Trace): left the IDs of the file (count, TX / RX,
+    last data) — a click on an ID shows only its frames —, right every frame page by page (500 per page: number,
+    play time from the start, clock time, dir, ID, data). The file is scanned once (cached while unchanged, an index
+    every 1000 frames for fast pages); ↻ re-reads it (e.g. while it is being recorded).
+    The checkbox of an ID = replay it: *All on* / *All off* / single IDs, remembered per file in the browser and
+    applied at once to a running replay (switched-off IDs are skipped, their time still passes).
+  - *Play* the file selected in the tree (double-click = play): *View only* puts the frames into the list as RP
+    (nothing is sent), *Send to bus* transmits them (error frames skipped; asks first; locked while a test
+    script runs). Pause / resume, stop, slower / faster (0.1× … 10×), loop, position bar. The timing of the file is
+    kept; the gap between two appended recording sessions is not waited for.
+  The socket, repeats, the recording and the replay exist only while the CAN tab is open (leaving it asks and
+  stops them, an idle client loses them after 10 s). Configuration is locked while a test script runs; starting a
+  test stops all repeats and a replay onto the bus.
 - **GPIO** — every `/dev/gpiochip*` with its lines: offset, global sysfs number (`base + offset`), name,
   consumer, direction, active level, bias/drive flags. Without the Python `gpiod` module the raw
   `gpioinfo` output is shown.

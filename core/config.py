@@ -57,6 +57,9 @@ BUILTIN_DEFAULTS = {
     'modbus': {},
     # HW Utils → Terminal: {"profiles": [{name, conn, eol, commands, view}], "current": name} (core/ttyterm.check_profiles).
     'tty': {},
+    # HW Utils → CAN: {"profiles": [{name, tx: [{uid, name, id, ext, rtr, data, period, on}], note}], "current": name}
+    # (core/net.check_profiles).
+    'can': {},
     # Network cameras (Settings → Video): [{name, url, username, password, transport}] (core/video_sources.py).
     'video_sources': [],
     # Device display (Settings → Display): Kivy script from UI/ on the board's screen (core/display_ui.check).
@@ -65,6 +68,8 @@ BUILTIN_DEFAULTS = {
     'modbus_sessions_dir': 'modbusSessions',
     # Saved terminal sessions (profile + macros + output + notes); relative to the project directory.
     'tty_sessions_dir': 'ttySessions',
+    # HW Utils → CAN: recorded traces (candump log files, folders); relative to the project directory.
+    'can_traces_dir': 'canTraces',
     # Backups (Settings → Backups, syntax in core/backups.py): patterns not archived, patterns kept on deploy.
     'backup_skip':     ['__pycache__/', '.git/', '.vscode/', '*.pyc'],
     'deploy_keep':     [],
@@ -84,7 +89,7 @@ BOOL_KEYS = ('show_demo_tests', 'backup_stop_service')
 LIST_KEYS = ('backup_skip', 'deploy_keep')
 
 # Keys written to the host section on save.
-HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'public', 'i2c_labels', 'modbus', 'tty', 'display', 'video_sources')
+HOST_KEYS = EDITABLE_KEYS + ('auth', 'public_service_actions', 'public', 'i2c_labels', 'modbus', 'tty', 'can', 'display', 'video_sources')
 
 CFG = {}        # effective config of this host
 _FILE = {}      # raw config.json content
@@ -276,6 +281,10 @@ def modbus_sessions_dir():
 
 def tty_sessions_dir():
     return _project_path(CFG.get('tty_sessions_dir') or 'ttySessions')
+
+
+def can_traces_dir():
+    return _project_path(CFG.get('can_traces_dir') or 'canTraces')
 
 
 def help_dir():

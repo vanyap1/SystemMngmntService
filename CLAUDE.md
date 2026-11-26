@@ -42,7 +42,9 @@ core/
   backups.py           project archives: skip / keep patterns, create + deploy as one background job (progress, cancel)
   gpio_ctl.py          manual GPIO control for the HW Utils popup: per-client claimed lines under a lease
   i2c.py               I²C tools for HW Utils: scan (i2cdetect), register read/write (i2ctransfer), labels
-  net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, cyclic send, lease)
+  net.py               interfaces/routes (ip -j), CAN link config, CanBus (raw socket, per-ID stats, cyclic send,
+                       recording, trace player, lease)
+  can_trace.py         CAN trace files (candump log) in canTraces/: tree, folders, rename, delete to .trash, upload, line format
   netcfg.py            Settings → Network: NetworkManager (nmcli) connections, Wi-Fi — every change under a checkpoint
   hostname.py          Settings → General: rename the machine (hostnamectl, /etc/hosts, config.rename_host moves the host section)
   netap.py             Settings → Network: Wi-Fi client ↔ access point, DHCP pool + MAC → IP reservations, clients, network map
@@ -94,7 +96,9 @@ static/
   js/power.js          power menu (reboot, shutdown, logout)                (logged in)
   js/updates.js        panel update button + popup                          (logged in)
   js/devices.js        HW Utils popup shell: tab registry, info panel, text popup (logged in)
-  js/devices_<tab>.js  popup tabs: nodes (Devices + /dev), buses, net, gpio, i2c, udev — Devices.register({...})
+  js/devices_<tab>.js  popup tabs: nodes (Devices + /dev), buses, net, gpio, i2c, udev, can — Devices.register({...})
+  js/can_analyzer.js   CAN tab: analyser popup of one ID (bits, values, signals with charts)
+  js/can_txedit.js     CAN tab: visual editor of a TX row (bits, bytes, signed / unsigned fields, sweep)
   js/<page>.js         page-only logic
 ```
 
@@ -182,6 +186,34 @@ static/
   Write (POST, explicit user action), locked while a test runs. Arguments are validated in `core/i2c.py`
   before `i2cdetect` / `i2ctransfer` run. Tests and `tests/devserver.py --fake-i2c` use the simulated bus in
   `tests/fake_i2c.py` — never probe the real buses of this board in tests (i2c-0 holds the PMIC).
+
+## CAN (HW Utils)
+- Layout: one top row (pages Monitor / Traces, link toggle + ⚙ bit timing popover, Record); elements of a page carry
+  `.can-page[data-page]` (`setPage`). Popovers (`.can-pop`, TX editor `#can-te`) stay inside the tab.
+- Own tab after Terminal: `static/js/devices_can.js` (`Devices.tabs.can`), API in `routes/net.py` (`/api/net/can/*`,
+  `/api/can/traces*`), `core/net.py` `CanBus` + `core/can_trace.py`. Network → *CAN tool* only switches to this tab.
+- Per-ID statistics, recording and the player live in `CanBus` (server side, reader thread, kernel `SO_TIMESTAMP`) —
+  never count or record in the browser (the frame buffer may overflow). Recording writes rx / tx / err only, never
+  replayed (`rp`) frames. Everything dies with the socket (lease): `_close()` stops the recording and the player.
+- Trace files: candump log format (`format_line` / `parse_line`, keep can-utils compatibility), folder
+  `config.can_traces_dir()` (git-ignored `canTraces/`, tests / devserver use a temp dir); paths through
+  `can_trace.check_path`; delete = move to `.trash`. File view: `can_trace.scan()` (cached by mtime/size, index every
+  INDEX_EVERY frames) + `read_frames()` — never load a whole trace into memory or the browser. Replay filter = ID keys
+  (`frame_key`: s:123 / x:… / err) in `skip`, kept per file in the browser (localStorage `can.skips`).
+- TX list = profiles in config.json `can` (HOST_KEYS, `net.check_profiles`), rows sent by server cyclic jobs tagged
+  with the row uid; editing a running row calls `update_cyclic` (frame swapped atomically, period re-planned via
+  `_wake`) — never stop / restart a job to change it. Notes tags `[[ID#data]]` (candump syntax).
+- Analyser: `static/js/can_analyzer.js` (`CanAnalyzer`, popup `#can-an` over the tab). Live data only from the server
+  watch (`CanBus.watch`, own deque filled in `_record`, WATCH_LEASE) — while it is open the tab does not poll its
+  list (`analyzing`). Decoding (LSB = little-endian, MSB = big-endian) lives only in the browser.
+- TX frame editor: `static/js/can_txedit.js` (`CanTxEdit`, popup `#can-te`) edits one row; fields in `row.fields`
+  (`net._check_fields`). All changes go through `Devices.tabs.can.rowChanged()` — its live update is a throttle (latest
+  state every 40 ms), never a debounce (a sweep faster than the delay would starve it).
+- Checksum / rolling counter of a TX row (`cs`, `cnt`): computed per transmission by the server (`net.apply_mods` in
+  `_cyclic`, `send`) — never in the browser (it does not see every frame). The editor's JS `checksum` only mirrors
+  `net.checksum` for display — keep both equal. Replay onto the bus is refused while a test / pyrun runs and is
+  stopped by `net.stop_all_cyclic()`. Tests: `tests/test_can_trace.py` (fake socket, patched `_send_raw`), by hand only
+  on vcan in a namespace (see HW Utils) — never replay onto a real bus while checking things.
 
 ## Modbus (HW Utils)
 - `core/modbus.py` (own framing: CRC, MBAP; no pymodbus — it is not on every host) + `routes/modbus.py` +

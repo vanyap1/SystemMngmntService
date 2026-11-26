@@ -12,6 +12,7 @@
                 <button type="button" class="dev-tab" data-tab="udev" onclick="Devices.setTab('udev')"><i class="fa-solid fa-gears"></i> udev</button>
                 <button type="button" class="dev-tab" data-tab="modbus" onclick="Devices.setTab('modbus')"><i class="fa-solid fa-arrow-right-arrow-left"></i> Modbus</button>
                 <button type="button" class="dev-tab" data-tab="tty" onclick="Devices.setTab('tty')"><i class="fa-solid fa-terminal"></i> Terminal</button>
+                <button type="button" class="dev-tab" data-tab="can" onclick="Devices.setTab('can')"><i class="fa-solid fa-bus"></i> CAN</button>
                 <button type="button" class="dev-tab" data-tab="clone" onclick="Devices.setTab('clone')"><i class="fa-solid fa-hard-drive"></i> Clone / Image</button>
             </div>
             <label class="check-row small" id="dev-auto-wrap" title="Refresh the current view periodically">
@@ -81,65 +82,9 @@
                 <!-- Network: interfaces + SocketCAN tool -->
                 <section class="dev-pane" id="devpane-net" hidden>
                     <div class="dev-toolbar">
-                        <div class="gpio-seg ud-views net-views">
-                            <button type="button" data-view="ifaces" onclick="Devices.tabs.net.setView('ifaces')"><i class="fa-solid fa-ethernet"></i> Interfaces</button>
-                            <button type="button" data-view="can" onclick="Devices.tabs.net.setView('can')"><i class="fa-solid fa-bus"></i> CAN bus</button>
-                        </div>
-                        <div class="ud-ctrl" data-for="ifaces">
-                            <input id="ni-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: name, address, driver…" oninput="Devices.render()">
-                        </div>
-                        <div class="ud-ctrl" data-for="can">
-                            <select id="can-iface" class="input input-sm" onchange="Devices.tabs.net.selectCan(this.value)"></select>
-                            <span id="can-state" class="small"></span>
-                        </div>
+                        <input id="ni-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: name, address, driver…" oninput="Devices.render()">
                     </div>
-
-                    <div class="ud-view" data-view="ifaces">
-                        <div class="dev-scroll" id="ni-body"><div class="tbl-empty">Loading…</div></div>
-                    </div>
-
-                    <div class="ud-view" data-view="can">
-                        <div class="can-bar" id="can-config">
-                            <label class="small muted">Bitrate</label>
-                            <select id="can-bitrate" class="input input-sm"></select>
-                            <label class="small muted">Sample point</label>
-                            <input id="can-sp" class="input input-sm can-num" placeholder="auto" title="e.g. 0.875; empty = driver default">
-                            <label class="small muted" title="Automatic restart after bus-off">Restart ms</label>
-                            <input id="can-restart" class="input input-sm can-num" value="100">
-                            <label class="check-row small" title="Receive only, never ACK or send"><input type="checkbox" id="can-listen"> Listen-only</label>
-                            <button type="button" class="btn btn-start btn-sm" onclick="Devices.tabs.net.link('open')"><i class="fa-solid fa-play"></i> Open</button>
-                            <button type="button" class="btn btn-stop btn-sm" onclick="Devices.tabs.net.link('close')"><i class="fa-solid fa-stop"></i> Close</button>
-                            <span class="spacer"></span>
-                            <span id="can-status" class="small mono"></span>
-                        </div>
-                        <div class="can-bar can-send">
-                            <label class="small muted">ID (hex)</label>
-                            <input id="can-id" class="input input-sm mono can-id" value="123">
-                            <label class="check-row small"><input type="checkbox" id="can-ext"> Ext</label>
-                            <label class="check-row small"><input type="checkbox" id="can-rtr"> RTR</label>
-                            <label class="small muted">Data (hex)</label>
-                            <input id="can-data" class="input input-sm mono can-data" placeholder="11 22 33 44" value="11 22 33 44">
-                            <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.net.send()" title="Enter in the data field"><i class="fa-solid fa-paper-plane"></i> Send</button>
-                            <span class="can-sep"></span>
-                            <label class="small muted">Repeat every</label>
-                            <input id="can-period" class="input input-sm can-num" value="100">
-                            <span class="small muted">ms</span>
-                            <button type="button" class="btn btn-warning btn-sm" onclick="Devices.tabs.net.startCyclic()"><i class="fa-solid fa-repeat"></i> Start repeat</button>
-                        </div>
-                        <div id="can-jobs" class="can-jobs" hidden></div>
-                        <div class="can-bar can-view-bar">
-                            <div class="gpio-seg can-modes">
-                                <button type="button" data-mode="trace" onclick="Devices.tabs.net.setMode('trace')">Trace</button>
-                                <button type="button" data-mode="byid" onclick="Devices.tabs.net.setMode('byid')">By ID</button>
-                            </div>
-                            <input id="can-filter" class="input input-sm dev-filter" type="text" placeholder="Filter: ID, data, rx/tx/err…" oninput="Devices.tabs.net.renderFrames(true)">
-                            <label class="check-row small"><input type="checkbox" id="can-pause" onchange="Devices.tabs.net.renderFrames(true)"> Pause</label>
-                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.net.clearFrames()"><i class="fa-solid fa-eraser"></i> Clear</button>
-                            <span class="spacer"></span>
-                            <span id="can-counts" class="small muted"></span>
-                        </div>
-                        <div class="dev-scroll" id="can-frames"></div>
-                    </div>
+                    <div class="dev-scroll" id="ni-body"><div class="tbl-empty">Loading…</div></div>
                 </section>
 
                 <!-- GPIO overview + control -->
@@ -392,6 +337,250 @@
                                     <button type="button" class="btn btn-ghost btn-sm" id="tt-note-edit" onclick="Devices.tabs.tty.noteToggle()"><i class="fa-solid fa-pen"></i> Edit</button></div>
                                 <div class="tt-note-view mono" id="tt-note-view" title="Double-click to edit"></div>
                                 <textarea class="input mono tt-note" id="tt-note" hidden placeholder="notes (kept in the profile and saved with the session)… e.g.  read the voltage: [[ADC:MEAS:EXT1:VOLT?1]]"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CAN (devices_can.js): Monitor (frames + TX list) and Traces (files, player); analyser, TX editor -->
+                <section class="dev-pane" id="devpane-can" hidden>
+                    <div class="can-bar can-top">
+                        <div class="gpio-seg can-pages">
+                            <button type="button" data-page="monitor" onclick="Devices.tabs.can.setPage('monitor')"><i class="fa-solid fa-table-list"></i> Monitor</button>
+                            <button type="button" data-page="traces" onclick="Devices.tabs.can.setPage('traces')"><i class="fa-solid fa-folder-tree"></i> Traces</button>
+                        </div>
+                        <select id="can-iface" class="input input-sm" onchange="Devices.tabs.can.selectCan(this.value)"></select>
+                        <span id="can-state" class="small"></span>
+                        <button type="button" class="btn btn-sm" id="can-link-btn" onclick="Devices.tabs.can.linkToggle()"></button>
+                        <div class="can-pop-wrap">
+                            <button type="button" class="btn-icon" onclick="Devices.tabs.can.linkMenu()" title="Bit timing: bitrate, sample point, restart, listen-only"><i class="fa-solid fa-gear"></i></button>
+                            <div class="can-pop can-link-pop" id="can-link-pop" hidden>
+                                <div class="can-pop-head">Bit timing — applied on Open</div>
+                                <div class="can-link-grid" id="can-config">
+                                    <label class="small muted">Bitrate</label><select id="can-bitrate" class="input input-sm"></select>
+                                    <label class="small muted">Sample point</label><input id="can-sp" class="input input-sm can-num" placeholder="auto" title="e.g. 0.875; empty = driver default">
+                                    <label class="small muted" title="Automatic restart after bus-off">Restart ms</label><input id="can-restart" class="input input-sm can-num" value="100">
+                                    <span></span><label class="check-row small" title="Receive only, never ACK or send"><input type="checkbox" id="can-listen"> Listen-only</label>
+                                </div>
+                                <div class="can-pop-row can-pop-foot">
+                                    <span class="hint">An open link is closed and reopened with these settings.</span><span class="spacer"></span>
+                                    <button type="button" class="btn btn-start btn-sm" onclick="Devices.tabs.can.link('open')"><i class="fa-solid fa-play"></i> Apply &amp; open</button>
+                                </div>
+                            </div>
+                        </div>
+                        <span id="can-status" class="small mono muted"></span>
+                        <span class="spacer"></span>
+                        <span id="can-play-ind" class="small mono"></span>
+                        <span id="can-rec-info" class="small mono"></span>
+                        <div class="can-pop-wrap can-rec-wrap">
+                            <button type="button" class="btn btn-danger btn-sm" id="can-rec-btn" onclick="Devices.tabs.can.recButton()"><i class="fa-solid fa-circle"></i> Record</button>
+                            <div class="can-pop can-pop-right" id="can-rec-pop" hidden></div>
+                        </div>
+                    </div>
+                    <div class="can-layout">
+                        <aside class="can-side can-page" data-page="traces">
+                            <div class="can-side-head">
+                                <span>Traces</span>
+                                <span class="spacer"></span>
+                                <button type="button" class="faction-btn" onclick="Devices.tabs.can.mkdir('')" title="New folder"><i class="fa-solid fa-folder-plus"></i></button>
+                                <label class="faction-btn" title="Upload a candump log (.log)"><i class="fa-solid fa-upload"></i><input type="file" accept=".log,text/plain" hidden onchange="Devices.tabs.can.upload(this, '')"></label>
+                                <button type="button" class="faction-btn" onclick="Devices.tabs.can.loadTree()" title="Refresh"><i class="fa-solid fa-rotate"></i></button>
+                            </div>
+                            <div class="can-tree" id="can-tree"></div>
+                        </aside>
+                        <div class="can-main">
+                            <!-- Traces: player + opened file -->
+                            <div class="can-bar can-rec-bar can-page" data-page="traces">
+                                <span id="can-play-file" class="can-play-file mono small"></span>
+                                <select id="can-play-mode" class="input input-sm" title="View only: frames appear in Monitor as RP, nothing is sent. Send to bus: the frames are transmitted.">
+                                    <option value="view">View only</option>
+                                    <option value="bus">Send to bus</option>
+                                </select>
+                                <button type="button" class="btn btn-start btn-sm" id="can-play-btn" onclick="Devices.tabs.can.playButton()" title="Play / pause"><i class="fa-solid fa-play"></i></button>
+                                <button type="button" class="btn btn-stop btn-sm" onclick="Devices.tabs.can.playCmd('stop')" title="Stop"><i class="fa-solid fa-stop"></i></button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.can.speedStep(-1)" title="Slower"><i class="fa-solid fa-backward"></i></button>
+                                <span id="can-speed" class="can-speed mono small">1×</span>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.can.speedStep(1)" title="Faster"><i class="fa-solid fa-forward"></i></button>
+                                <label class="check-row small"><input type="checkbox" id="can-loop" onchange="Devices.tabs.can.setLoop()"> Loop</label>
+                                <div class="can-progress" title="Position in the file"><div id="can-play-bar"></div></div>
+                                <span id="can-play-info" class="small mono muted"></span>
+                            </div>
+                            <div class="can-file-box can-page" data-page="traces" id="can-file"></div>
+
+                            <!-- Monitor: frames + TX list -->
+                            <div class="can-bar can-view-bar can-page" data-page="monitor">
+                                <div class="gpio-seg can-modes">
+                                    <button type="button" data-mode="byid" onclick="Devices.tabs.can.setMode('byid')" title="One row per ID: last data, cycle time, count">By ID</button>
+                                    <button type="button" data-mode="trace" onclick="Devices.tabs.can.setMode('trace')" title="Every frame in arrival order">Trace</button>
+                                </div>
+                                <input id="can-filter" class="input input-sm dev-filter" type="text" placeholder="ID: 3FD 610-61F !200 · rx tx · #00FF = data" oninput="Devices.tabs.can.renderFrames(true)"
+                                       title="Space-separated: 3FD = ID starting with 3FD (several IDs = any) · 610-61F = range · !200 = not this ID · rx / tx / rp / err = direction · #00FF = data contains these bytes · other words = error text">
+                                <label class="check-row small"><input type="checkbox" id="can-pause" onchange="Devices.tabs.can.renderFrames(true)"> Pause</label>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.can.clearFrames()"><i class="fa-solid fa-eraser"></i> Clear</button>
+                                <span class="spacer"></span>
+                                <span id="can-counts" class="small muted"></span>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.can.toggleTxArea()" title="Show / hide the TX list"><i class="fa-solid fa-list-check"></i> TX</button>
+                            </div>
+                            <div class="dev-scroll can-page" data-page="monitor" id="can-frames"></div>
+                            <div class="can-split can-page" data-page="monitor" id="can-split" title="Drag to resize"></div>
+                            <div class="can-txarea can-page" data-page="monitor" id="can-txarea">
+                                <div class="can-tx-part can-tx-list">
+                                    <div class="can-tx-head">
+                                        <span class="mb-sec-title"><i class="fa-solid fa-list-check"></i> TX</span>
+                                        <select class="input input-sm can-prof" id="can-prof" onchange="Devices.tabs.can.pickProfile(this.value)" title="TX list (profile): rows + notes, saved per host"></select>
+                                        <span class="can-icons">
+                                            <button type="button" class="btn-icon" onclick="Devices.tabs.can.profileCmd('new')" title="New list"><i class="fa-solid fa-plus"></i></button>
+                                            <button type="button" class="btn-icon" onclick="Devices.tabs.can.profileCmd('rename')" title="Rename list"><i class="fa-solid fa-pen"></i></button>
+                                            <button type="button" class="btn-icon" onclick="Devices.tabs.can.profileCmd('dup')" title="Duplicate list"><i class="fa-regular fa-clone"></i></button>
+                                            <button type="button" class="btn-icon" onclick="Devices.tabs.can.profileCmd('export')" title="Export as JSON"><i class="fa-solid fa-file-export"></i></button>
+                                            <label class="btn-icon" title="Import a JSON list"><i class="fa-solid fa-file-import"></i><input type="file" accept=".json,application/json" hidden onchange="Devices.tabs.can.importFile(this)"></label>
+                                            <button type="button" class="btn-icon hp-del" onclick="Devices.tabs.can.profileCmd('delete')" title="Delete list"><i class="fa-regular fa-trash-can"></i></button>
+                                        </span>
+                                        <span class="can-sep"></span>
+                                        <span class="can-quick" title="Quick send — Enter sends">
+                                            <input id="can-id" class="input input-sm mono can-id" value="123" title="ID (hex)">
+                                            <label class="can-flag" title="29-bit ID"><input type="checkbox" id="can-ext">X</label>
+                                            <label class="can-flag" title="Remote frame"><input type="checkbox" id="can-rtr">R</label>
+                                            <input id="can-data" class="input input-sm mono can-data" placeholder="11 22 33 44" value="11 22 33 44" title="Data (hex)">
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="Devices.tabs.can.send()" title="Send once"><i class="fa-solid fa-paper-plane"></i></button>
+                                            <button type="button" class="btn-icon text-info" id="can-quick-edit" onclick="Devices.tabs.can.editQuick(this)" title="Frame editor for the quick send: bits, fields, sweep, cyclic send"><i class="fa-solid fa-sliders"></i></button>
+                                            <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.can.addTx()" title="Add as a row"><i class="fa-solid fa-plus"></i> Row</button>
+                                        </span>
+                                        <span class="spacer"></span>
+                                        <span class="small muted" id="can-tx-sum"></span>
+                                        <button type="button" class="btn btn-ghost btn-sm" onclick="Devices.tabs.can.sendAllOnce()" title="Send every ticked row once, top to bottom"><i class="fa-solid fa-forward"></i> Once</button>
+                                        <button type="button" class="btn btn-warning btn-sm" id="can-tx-all" onclick="Devices.tabs.can.toggleAll()" title="Start every ticked row with a period / stop all"></button>
+                                        <button type="button" class="btn-icon" id="can-notes-btn" onclick="Devices.tabs.can.toggleNotes()" title="Show / hide the notes"><i class="fa-regular fa-note-sticky"></i></button>
+                                    </div>
+                                    <div class="can-tx-wrap"><table class="tbl mb-tbl can-tx"><thead><tr>
+                                        <th title="Ticked rows take part in Start all / Once"><i class="fa-solid fa-check"></i></th><th>Name</th><th>ID</th>
+                                        <th title="X = 29-bit ID, R = remote frame">Flags</th><th>Data (hex)</th><th title="Period, ms — 0 = only on demand">ms</th>
+                                        <th></th><th>State</th></tr></thead>
+                                        <tbody id="can-tx-rows"></tbody></table></div>
+                                </div>
+                                <div class="can-vsplit" id="can-vsplit" title="Drag to resize"></div>
+                                <div class="can-tx-part can-tx-notes" id="can-tx-notes">
+                                    <div class="can-tx-head"><span class="mb-sec-title"><i class="fa-regular fa-note-sticky"></i> Notes</span>
+                                        <span class="hint" title="Frames written as [[123#11 22]] become buttons: to the quick send, + row, ▶ send"><code>[[ID#data]]</code></span><span class="spacer"></span>
+                                        <button type="button" class="btn-icon" onclick="Devices.tabs.can.noteInsert()" title="Append the quick send frame as [[ID#data]]"><i class="fa-solid fa-plus"></i></button>
+                                        <button type="button" class="btn btn-ghost btn-sm" id="can-note-edit" onclick="Devices.tabs.can.noteToggle()"><i class="fa-solid fa-pen"></i> Edit</button></div>
+                                    <div class="tt-note-view mono" id="can-note-view" title="Double-click to edit"></div>
+                                    <textarea class="input mono tt-note" id="can-note" hidden placeholder="IDs, meanings of bytes, findings…  e.g.  ignition on: [[3FD#00 00 01 00 00 00 00 00]]   speed 60: [[4A6#00 3C]]"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- frame editor of one TX row (can_txedit.js): a popover next to the row -->
+                        <div class="can-te" id="can-te" hidden>
+                            <div class="can-te-head">
+                                <span id="can-te-title"></span>
+                                <label class="small muted">DLC</label>
+                                <select class="input input-sm" id="can-te-dlc" onchange="CanTxEdit.setDlc(+this.value)">
+                                    <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                                </select>
+                                <input class="input input-sm mono can-te-per" id="can-te-period" type="number" min="0" step="10" oninput="CanTxEdit.setPeriod(this.value)" title="Period, ms (0 = only on demand)">
+                                <span class="small muted">ms</span>
+                                <label class="small muted" title="Checksum written into the last byte of every frame by the server">CS</label>
+                                <select class="input input-sm" id="can-te-cs" onchange="CanTxEdit.setMods()" title="Toyota: (ID bytes + DLC + D0…Dn-2) &amp; 0xFF · sum8: data sum &amp; 0xFF · xor8: data XOR">
+                                    <option value="">none</option><option value="toyota">Toyota</option><option value="sum8">sum8</option><option value="xor8">xor8</option>
+                                </select>
+                                <label class="small muted" title="Rolling counter: +1 in every frame (from the value in the data), changed together with the checksum">Counter</label>
+                                <select class="input input-sm" id="can-te-cnt" onchange="CanTxEdit.setMods()">
+                                    <option value="">off</option><option value="0">B0</option><option value="1">B1</option><option value="2">B2</option><option value="3">B3</option>
+                                    <option value="4">B4</option><option value="5">B5</option><option value="6">B6</option><option value="7">B7</option>
+                                </select>
+                                <select class="input input-sm" id="can-te-cntbits" onchange="CanTxEdit.setMods()" title="Bits of the counter in its byte">
+                                    <option value="0-7">bits 0–7</option><option value="0-3">bits 0–3</option><option value="4-7">bits 4–7</option><option value="0-1">bits 0–1</option>
+                                </select>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="CanTxEdit.sendOnce()" title="Send once"><i class="fa-solid fa-play"></i></button>
+                                <button type="button" class="btn btn-warning btn-sm" id="can-te-cyc" onclick="CanTxEdit.toggleCyc()"></button>
+                                <span class="small" id="can-te-state"></span>
+                                <span class="spacer"></span>
+                                <button type="button" class="btn-icon" onclick="CanTxEdit.close()" title="Close (Esc) — the row keeps running"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="can-te-body">
+                                <div class="can-te-left">
+                                    <div id="can-te-grid"></div>
+                                    <div class="can-te-data mono" id="can-te-data"></div>
+                                </div>
+                                <div class="can-te-right">
+                                    <div class="can-te-fields" id="can-te-fields"></div>
+                                    <div class="can-te-addbar">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="CanTxEdit.toggleForm()"><i class="fa-solid fa-plus"></i> Field</button>
+                                        <button type="button" class="btn btn-ghost btn-sm" onclick="CanTxEdit.fromAnalyser()" title="Add the analyser's signals of this ID as fields"><i class="fa-solid fa-microscope"></i> From analyser</button>
+                                    </div>
+                                    <div class="can-an-form can-te-form" id="can-te-form" hidden>
+                                        <select class="input input-sm" id="can-te-type">
+                                            <option value="bit">bit</option><option value="u8">u8</option><option value="s8">s8</option>
+                                            <option value="u16" selected>u16</option><option value="s16">s16</option>
+                                            <option value="u32">u32</option><option value="s32">s32</option>
+                                        </select>
+                                        <label class="small muted">byte</label>
+                                        <select class="input input-sm" id="can-te-byte"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select>
+                                        <span id="can-te-bitwrap"><label class="small muted">bit</label>
+                                            <select class="input input-sm" id="can-te-bit"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></span>
+                                        <select class="input input-sm" id="can-te-order"><option value="le">LSB first</option><option value="be">MSB first</option></select>
+                                        <span id="can-te-numwrap" class="can-te-numwrap">
+                                            <label class="small muted" title="value = raw × scale + offset">×</label><input class="input input-sm mono can-an-num" id="can-te-scale" value="1">
+                                            <label class="small muted">+</label><input class="input input-sm mono can-an-num" id="can-te-offset" value="0">
+                                            <label class="small muted">min</label><input class="input input-sm mono can-an-num" id="can-te-min" placeholder="type">
+                                            <label class="small muted">max</label><input class="input input-sm mono can-an-num" id="can-te-max" placeholder="type">
+                                            <label class="small muted">step</label><input class="input input-sm mono can-an-num" id="can-te-step" value="1">
+                                        </span>
+                                        <input class="input input-sm can-an-name" id="can-te-name" placeholder="name">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="CanTxEdit.addFromForm()"><i class="fa-solid fa-check"></i> Add</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <i class="can-te-arrow" id="can-te-arrow"></i>
+                        </div>
+                        <!-- analyser of one ID (can_analyzer.js) -->
+                        <div class="can-an" id="can-an" hidden>
+                            <div class="can-an-head">
+                                <span id="can-an-title"></span>
+                                <span class="small" id="can-an-stats"></span>
+                                <span class="small text-error" id="can-an-err"></span>
+                                <span class="spacer"></span>
+                                <label class="small muted">Chart</label>
+                                <select class="input input-sm" onchange="CanAnalyzer.setWin(this.value)" title="Time window of the charts">
+                                    <option value="2">2 s</option><option value="10" selected>10 s</option><option value="30">30 s</option>
+                                    <option value="60">1 min</option><option value="300">5 min</option><option value="0">all</option>
+                                </select>
+                                <button type="button" class="btn btn-ghost btn-sm" id="can-an-pause" onclick="CanAnalyzer.togglePause()" title="Freeze the view (frames are still collected)"></button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="CanAnalyzer.clear()"><i class="fa-solid fa-eraser"></i> Clear</button>
+                                <button type="button" class="btn-icon" onclick="CanAnalyzer.close()" title="Close (Esc) — back to all IDs"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="can-an-body">
+                                <div class="can-an-col can-an-left">
+                                    <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-table-cells"></i> Bits</span><span class="hint">click a bit to plot it</span></div>
+                                    <div id="can-an-bits"></div>
+                                    <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-list"></i> Frames</span></div>
+                                    <div class="can-an-list" id="can-an-list"></div>
+                                </div>
+                                <div class="can-an-col can-an-right">
+                                    <div id="can-an-interp"></div>
+                                    <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-barcode"></i> All bits over time</span><span class="hint">rows B0.7 … B7.0 (byte lines), newest right, orange = changed</span></div>
+                                    <canvas class="can-an-heat" id="can-an-heat"></canvas>
+                                    <div class="mb-sec"><span class="mb-sec-title"><i class="fa-solid fa-chart-line"></i> Signals</span><span class="hint">click a bit in the grid, or add: LSB first = little-endian (Intel), MSB first = big-endian (Motorola)</span></div>
+                                    <div class="can-an-form">
+                                        <select class="input input-sm" id="can-an-type">
+                                            <option value="bit">bit</option><option value="u8">u8</option><option value="s8">s8</option>
+                                            <option value="u16" selected>u16</option><option value="s16">s16</option>
+                                            <option value="u32">u32</option><option value="s32">s32</option><option value="u64">u64</option>
+                                        </select>
+                                        <label class="small muted">byte</label>
+                                        <select class="input input-sm" id="can-an-byte"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select>
+                                        <span id="can-an-bitwrap"><label class="small muted">bit</label>
+                                            <select class="input input-sm" id="can-an-bit"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></span>
+                                        <select class="input input-sm" id="can-an-order"><option value="le">LSB first</option><option value="be">MSB first</option></select>
+                                        <label class="small muted" title="value × scale + offset">×</label>
+                                        <input class="input input-sm mono can-an-num" id="can-an-scale" value="1">
+                                        <label class="small muted">+</label>
+                                        <input class="input input-sm mono can-an-num" id="can-an-offset" value="0">
+                                        <input class="input input-sm can-an-name" id="can-an-name" placeholder="name (optional)">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="CanAnalyzer.addFromForm()"><i class="fa-solid fa-plus"></i> Signal</button>
+                                    </div>
+                                    <div class="can-an-sigs" id="can-an-sigs"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

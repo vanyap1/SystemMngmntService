@@ -254,6 +254,9 @@ testPlatform/data/
 # Saved Modbus sessions of HW Utils -> Modbus (research data of this station)
 modbusSessions/
 ttySessions/
+# Recorded CAN traces of HW Utils -> CAN (the folder itself is kept)
+canTraces/*
+!canTraces/.gitkeep
 # Simulated emergency stop button of the demo tests (touch to press)
 testPlatform/ESTOP
 

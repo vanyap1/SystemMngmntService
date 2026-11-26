@@ -10,12 +10,16 @@ PROTECTED_GET = ['/api/sysinfo', '/api/backups', '/api/backups/job', '/api/tree'
                  '/api/help/diagrams', '/api/git/repos', '/api/git/status', '/api/git/summary', '/api/git/credentials',
                  '/api/git/tree_status', '/api/update/status', '/api/update/job', '/api/i2c/buses', '/api/pyrun/poll',
                  '/api/sysclone/info', '/api/sysclone/job', '/api/sysclone/roots', '/api/modbus/info', '/api/modbus/sessions', '/api/tty/info', '/api/tty/sessions',
+                 '/api/can/traces', '/api/can/profiles',
                  '/api/display/status', '/api/display/scripts', '/api/display/backgrounds',
                  '/api/uiscreens', '/api/uiscreens/example_dashboard', '/api/video/sources']
 PROTECTED_GET_NOCHECK = ['/api/netcfg', '/api/netcfg/pending', '/api/netcfg/wifi', '/api/netcfg/connection?uuid=x',
-                         '/api/netcfg/ap', '/api/netcfg/ap/clients', '/api/netcfg/map', '/api/system/hostname']
+                         '/api/netcfg/ap', '/api/netcfg/ap/clients', '/api/netcfg/map', '/api/system/hostname',
+                         '/api/can/traces/download?path=x.log',
+                         '/api/can/traces/info?path=x.log', '/api/can/traces/frames?path=x.log']
 PROTECTED_POST = ['/api/exec', '/api/backups/deploy', '/api/backups/delete', '/api/backups/create', '/api/backups/cancel', '/api/backups/preview', '/api/backups/tree', '/api/settings',
-                  '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/tests/start',
+                  '/api/power/reboot', '/api/file', '/api/udev/action', '/api/net/can/send', '/api/net/can/record', '/api/net/can/play', '/api/net/can/watch',
+                  '/api/can/traces', '/api/can/traces/upload', '/api/can/profiles', '/api/tests/start',
                   '/api/help/doc', '/api/help/create', '/api/help/rename', '/api/help/delete', '/api/help/upload',
                   '/api/help/asset_delete', '/api/help/diagram/create', '/api/help/diagram/save',
                   '/api/help/diagram/rename', '/api/help/diagram/delete', '/api/git/commit', '/api/git/push',

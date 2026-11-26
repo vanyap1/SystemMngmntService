@@ -41,6 +41,7 @@ config.CONFIG_PATH = os.path.join(tmp, 'config.json')   # settings saves never r
 config.CFG['test_logs_dir'] = os.path.abspath(args.logs) if args.logs else os.path.join(tmp, 'testLogs')
 config.CFG['modbus_sessions_dir'] = os.path.join(tmp, 'modbusSessions')
 config.CFG['tty_sessions_dir'] = os.path.join(tmp, 'ttySessions')
+config.CFG['can_traces_dir'] = os.path.join(tmp, 'canTraces')
 if args.target:
     config.CFG['target_dir'] = os.path.abspath(args.target)
 if args.help_dir:
