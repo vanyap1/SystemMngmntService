@@ -4,12 +4,14 @@
    Model (help_dir/diagrams/<name>.json):
      { version: 1, title, width, height, background, grid, kinds: {key: Kind}, items: [Item] }
    Kind  (pin style):  { label, fill, stroke, text, dash, badge, sample, color }   ("free" = unused pin)
+                       base, look: light|solid|outline|custom – editor only: fill/stroke/text/color derived from base
    Items (z-order = array order), every item has a unique id:
      text   { x, y, text, size, weight, color, font: sans|mono, anchor: start|middle|end, rotate: 0|-90, italic }
      block  { x, y, w, h, title, lines[] ("`" prefix = monospace), style: light|dark|accent|note|plain,
               fill, stroke, titleColor, textColor, dashed, titleSize, lineSize, radius, align: left|center }
      chip   { x, y, w, h, body: module|outline, holes, ic: {show, title, subtitle}, caption, caption2,
               pinStyle: tags|simple, corner (left/right margin), corner2 (top/bottom), portW, fnW, numbers,
+              layout: 1|2|4 (sides with pins, editor only; missing = derived from the pins),
               pins: { left|right|top|bottom: [{ n, port, fn, kind, badge, note }] } }
      wire   { from, to: {id, side, t} | {x, y},  via: [[x, y]], route: ortho|straight, label, labelDx, labelDy,
               arrow: end|start|both|none, dashed, color, width, labelSize,

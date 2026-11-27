@@ -158,6 +158,21 @@
 /* ── Devices popup (partials/devices_modal.html, js/devices*.js) ── */
 .devices-modal-box { width: 1400px; max-width: 96vw; height: 88vh; max-height: 88vh; }
 .devices-body { display: flex; overflow: hidden; }
+/* HW Utils is a non-modal floating window (Devices.Win): no backdrop, the page under it stays usable */
+.modal-overlay.dev-float { background: none; pointer-events: none; padding: 0; z-index: 2400; }
+.modal-overlay.dev-float.open { display: block; }
+.dev-float .devices-modal-box { position: fixed; pointer-events: auto; max-width: none; max-height: none;
+    min-width: 520px; min-height: 280px; resize: both; box-shadow: 0 12px 40px rgba(0, 0, 0, .7); }
+.dev-float .devices-modal-box > .modal-head { cursor: move; user-select: none; }
+.dev-float .devices-modal-box > .modal-head :is(button, input, select, label) { cursor: pointer; }
+.dev-float.dragging { user-select: none; }
+.dev-float .devices-modal-box.max { left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important;
+    resize: none; border-radius: 0; }
+.dev-float .devices-modal-box.max > .modal-head { cursor: default; }
+.dev-float .devices-modal-box.flash { border-color: var(--accent); }
+@media (max-width: 700px) {
+    .dev-float .devices-modal-box { left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important; min-width: 0; resize: none; }
+}
 .dev-panes { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dev-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .dev-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px;
@@ -819,6 +834,10 @@ a.git-remote:hover { color: var(--info); }
 .mb-notes .mb-note-view, .mb-notes .mb-note-ta { flex: 1; min-height: 0; margin-bottom: 8px; }
 .mb-logpane .mb-log { min-height: 0; padding: 4px 10px; }
 .mb-log .tt-l.err { color: var(--danger); }
+.mb-log .tt-l.mb-dec { white-space: normal; width: auto; padding-left: 14ch; margin-bottom: 3px; color: var(--text); }
+.mb-dec .mb-dfmt { color: var(--text-mute); margin-right: 1ch; }
+.mb-dec .mb-dv { display: inline-block; font-family: var(--mono); margin-right: 2ch; white-space: pre; }
+.mb-dec .mb-dv i { font-style: normal; color: var(--text-mute); margin-right: .6ch; font-size: 10.5px; }
 .mb-log .mb-lname { color: var(--text-2); margin-right: 8px; }
 .mb-log .mb-lfn { color: var(--text-mute); margin-right: 8px; }
 .tt-send.mb-quick .mb-qcnt { width: 170px; }
@@ -956,3 +975,13 @@ a.git-remote:hover { color: var(--info); }
 .mon-job-head { display: flex; align-items: center; gap: 8px; }
 .mon-job-head > i { color: var(--info); }
 .mon-job.warn .mon-job-head > i { color: var(--warn); }
+
+/* Docs images: layout from the link fragment (#w=…&align=…), App.imgLayout */
+img.md-img-left, img.md-img-center, img.md-img-right { display: block; }
+img.md-img-left { margin-right: auto; }
+img.md-img-center { margin-left: auto; margin-right: auto; }
+img.md-img-right { margin-left: auto; }
+img.md-img-wrap-left { float: left; margin: 4px 18px 10px 0; }
+img.md-img-wrap-right { float: right; margin: 4px 0 10px 18px; }
+.md h1, .md h2, .md h3, .md h4, .md hr, .md pre, .md table, .hf-content h1, .hf-content h2, .hf-content h3, .hf-content hr { clear: both; }
+.md::after, .hf-content::after { content: ''; display: table; clear: both; }

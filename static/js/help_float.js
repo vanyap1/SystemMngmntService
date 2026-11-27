@@ -222,7 +222,7 @@ const HelpFloat = {
         tmp.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => { h.id = 'hf-' + this._slug(h.textContent, used); });
         tmp.querySelectorAll('img').forEach(img => {
             const r = this._resolve(img.getAttribute('src'));
-            if (r) img.src = this._fileUrl(r.path);
+            if (r) { img.src = this._fileUrl(r.path); App.imgLayout(img, r.hash); }
             img.loading = 'lazy';
             img.title = 'Click to open full size';
             img.onclick = () => window.open(img.src, '_blank');

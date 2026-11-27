@@ -33,7 +33,10 @@ const Devices = {
     },
 
     open() {
+        if (Devices.isOpen()) { Devices.Win.front(); return; }
         document.getElementById('devices-overlay').classList.add('open');
+        Devices.Win.place();
+        Devices.Win.save({ open: true });
         Devices._show(Devices.tab);
     },
 
@@ -42,6 +45,7 @@ const Devices = {
         const tab = Devices.current();
         if (tab.canLeave && !tab.canLeave()) return;
         document.getElementById('devices-overlay').classList.remove('open');
+        Devices.Win.save({ open: false });
         clearInterval(Devices.timer);
         Devices.timer = null;
         if (tab.onHide) tab.onHide();
@@ -53,6 +57,7 @@ const Devices = {
         if (old.canLeave && !old.canLeave()) return;
         if (old.onHide) old.onHide();
         Devices.tab = id;
+        Devices.Win.save({ tab: id });
         Devices._show(id);
     },
 
@@ -281,5 +286,79 @@ const Devices = {
         return true;
     },
 };
+
+/* Non-modal window: the page under it stays usable (docs, code editor). Dragged by its head, resized by the
+   corner, double-click on the head = maximise / restore. Position, size, tab and "open" survive page changes. */
+Devices.Win = {
+    KEY: 'devices.win',
+
+    box() { return document.querySelector('#devices-overlay .devices-modal-box'); },
+
+    state() {
+        try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch (e) { return {}; }
+    },
+
+    save(patch) {
+        try { localStorage.setItem(this.KEY, JSON.stringify({ ...this.state(), ...patch })); } catch (e) { /* storage unavailable */ }
+    },
+
+    place() {
+        const box = this.box(), st = this.state();
+        const w = Math.min(st.w || 1400, window.innerWidth - 16), h = Math.min(st.h || Math.round(window.innerHeight * .88), window.innerHeight - 16);
+        box.style.width = w + 'px';
+        box.style.height = h + 'px';
+        box.style.left = (st.x != null ? st.x : Math.max(0, (window.innerWidth - w) / 2)) + 'px';
+        box.style.top = (st.y != null ? st.y : Math.max(0, (window.innerHeight - h) / 2)) + 'px';
+        box.classList.toggle('max', !!st.max);
+        this.clamp();
+    },
+
+    clamp() {
+        const box = this.box(), r = box.getBoundingClientRect();
+        box.style.left = Math.min(Math.max(0, r.left), Math.max(0, window.innerWidth - 120)) + 'px';
+        box.style.top = Math.min(Math.max(0, r.top), Math.max(0, window.innerHeight - 40)) + 'px';
+    },
+
+    front() { this.box().classList.add('flash'); setTimeout(() => this.box().classList.remove('flash'), 400); },
+
+    init() {
+        const ov = document.getElementById('devices-overlay'), box = this.box(), head = box.querySelector('.modal-head');
+        head.addEventListener('pointerdown', e => {
+            if (e.button !== 0 || box.classList.contains('max') || e.target.closest('button, input, select, label, a')) return;
+            const r = box.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+            head.setPointerCapture(e.pointerId);
+            ov.classList.add('dragging');
+            const move = ev => {
+                box.style.left = Math.min(Math.max(0, ev.clientX - dx), window.innerWidth - 120) + 'px';
+                box.style.top = Math.min(Math.max(0, ev.clientY - dy), window.innerHeight - 40) + 'px';
+            };
+            const up = () => {
+                head.removeEventListener('pointermove', move);
+                ov.classList.remove('dragging');
+                this.save({ x: parseInt(box.style.left), y: parseInt(box.style.top) });
+            };
+            head.addEventListener('pointermove', move);
+            head.addEventListener('pointerup', up, { once: true });
+            head.addEventListener('pointercancel', up, { once: true });
+        });
+        head.addEventListener('dblclick', e => {
+            if (e.target.closest('button, input, select, label, a')) return;
+            const max = !box.classList.contains('max');
+            box.classList.toggle('max', max);
+            this.save({ max });
+        });
+        new ResizeObserver(() => {     // native CSS resize handle: remember the size
+            if (Devices.isOpen() && !box.classList.contains('max')) this.save({ w: box.offsetWidth, h: box.offsetHeight });
+        }).observe(box);
+        window.addEventListener('resize', () => { if (Devices.isOpen()) this.clamp(); });
+        // keys typed in HW Utils must not reach the page's shortcuts (diagram Delete, docs "e" …); Esc still does
+        box.addEventListener('keydown', e => { if (e.key !== 'Escape') e.stopPropagation(); });
+        const st = this.state();
+        if (st.tab) Devices.tab = st.tab;
+        // reopen after a page change, once every tab script has registered itself
+        if (st.open) document.addEventListener('DOMContentLoaded', () => { if (Devices.tabs[Devices.tab]) Devices.open(); else Devices.Win.save({ open: false }); });
+    },
+};
+Devices.Win.init();
 
 App.onEscape(() => { Devices.closeText(); });   // Esc closes the text popup only — HW Utils itself only by its × button

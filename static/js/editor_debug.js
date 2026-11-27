@@ -455,6 +455,7 @@ const PyDebug = {
     _keys(e) {
         if (!document.getElementById('dbg-bar')) return;
         if (e.target && e.target.closest && e.target.closest('.xterm')) return;   // F-keys belong to mc & co.
+        if (e.target && e.target.closest && e.target.closest('#devices-overlay')) return;   // typing in HW Utils
         const k = e.key;
         let fn = null;
         if (k === 'F5' && e.shiftKey) fn = () => this.stop();

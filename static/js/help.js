@@ -63,7 +63,15 @@ const Help = {
         document.addEventListener('keydown', e => this._keys(e));
         window.addEventListener('beforeunload', e => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
         window.addEventListener('popstate', () => this._fromUrl(false));
+        // a file pasted into the preview while editing goes to the editor's cursor like a paste into the editor
+        document.getElementById('hp-view').addEventListener('paste', e => {
+            const files = [...(e.clipboardData && e.clipboardData.files || [])];
+            if (!this.editing || !files.length) return;
+            e.preventDefault();
+            this.uploadFiles(files, null);
+        });
         App.onEscape(() => {
+            if (this.editing && this._imgSel != null) return this.selectImg(null);
             if (document.getElementById('hp-lightbox').classList.contains('open')) return this.closeLightbox();
             if (document.getElementById('hp-as-overlay').classList.contains('open')) return this.closeAssets();
             if (document.getElementById('hp-doc-overlay').classList.contains('open')) return this.closeDocModal();
@@ -79,7 +87,7 @@ const Help = {
     _keys(e) {
         const inField = e.target.closest('input, textarea, select, .monaco-editor');
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && this.editing) { e.preventDefault(); this.save(); return; }
-        if (inField || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-overlay.open') || Diagrams.isOpen()) return;
+        if (inField || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-overlay.open:not(.dev-float)') || Diagrams.isOpen()) return;
         if (e.key === '/') { e.preventDefault(); document.getElementById('hp-q').focus(); }
         else if (e.key === 'e' && this.current && !this.editing && !this.readonly) { e.preventDefault(); this.edit(); }
     },
@@ -349,7 +357,9 @@ const Help = {
     renderPreview(md) {
         const article = document.getElementById('hp-article');
         const tmp = document.createElement('div');
-        tmp.innerHTML = DOMPurify.sanitize(marked.parse(md || ''), { ADD_ATTR: ['target'] });
+        // while editing, image tokens are tagged (#mdimg=k) so a preview image maps back to its place in the source
+        const html = this.editing ? this._parseTagged(md || '') : marked.parse(md || '');
+        tmp.innerHTML = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
         const used = new Set(), toc = [];
         tmp.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
@@ -362,7 +372,11 @@ const Help = {
 
         tmp.querySelectorAll('img').forEach(img => {
             const r = this._resolve(img.getAttribute('src'));
-            if (r) img.src = this.fileUrl(r.path);
+            if (r) {
+                img.src = this.fileUrl(r.path);
+                const p = App.imgLayout(img, r.hash);
+                if (p.mdimg != null) img.dataset.mdimg = p.mdimg;
+            }
             img.loading = 'lazy';
             const dm = r && r.path.match(/^diagrams\/(.+)\.svg$/);
             if (dm && !img.closest('a')) {
@@ -440,6 +454,165 @@ const Help = {
 
         article.replaceChildren(...tmp.childNodes);
         this._renderToc(this.editing ? [] : toc);
+        this._imgBarPlace();
+    },
+
+    // ── Image layout in the preview (editing) ─────────────────
+
+    /** marked.parse with every image token tagged by its index; this._imgs = [{start, end, raw, text, href, title}]
+     *  (start = -1 when the source offset is unknown). */
+    _parseTagged(md) {
+        const tokens = marked.lexer(md), imgs = [];
+        let off = 0;
+        for (const top of tokens) {
+            const raw = top.raw || '';
+            let cur = 0;
+            const walk = t => {
+                if (!t || typeof t !== 'object') return;
+                if (t.type === 'image') {
+                    const i = raw.indexOf(t.raw, cur);
+                    imgs.push({ start: i < 0 ? -1 : off + i, end: i < 0 ? -1 : off + i + t.raw.length, raw: t.raw,
+                                text: t.text || '', href: t.href || '', title: t.title || '' });
+                    if (i >= 0) cur = i + t.raw.length;
+                    t.href = (t.href || '') + (String(t.href).includes('#') ? '&' : '#') + 'mdimg=' + (imgs.length - 1);
+                    return;
+                }
+                (t.tokens || []).forEach(walk);
+                (t.items || []).forEach(walk);
+                (t.header || []).forEach(walk);
+                (t.rows || []).forEach(r => r.forEach(walk));
+            };
+            walk(top);
+            off += raw.length;
+        }
+        if (off !== md.length) imgs.forEach(f => { f.start = -1; });
+        this._imgs = imgs;
+        return marked.parser(tokens);
+    },
+
+    _imgEl(k) { return document.querySelector(`#hp-article img[data-mdimg="${k}"]`); },
+
+    selectImg(k) {
+        this._imgSel = k;
+        document.querySelectorAll('#hp-article img.hp-img-sel').forEach(i => i.classList.remove('hp-img-sel'));
+        const img = k == null ? null : this._imgEl(k);
+        if (img) img.classList.add('hp-img-sel');
+        else this._imgSel = null;
+        this._imgBarPlace();
+    },
+
+    _imgBar() {
+        let bar = document.getElementById('hp-imgbar');
+        if (bar) return bar;
+        bar = document.createElement('div');
+        bar.id = 'hp-imgbar';
+        bar.className = 'hp-imgbar';
+        const al = [['left', 'fa-align-left', 'Left'], ['center', 'fa-align-center', 'Centre'], ['right', 'fa-align-right', 'Right'],
+                    ['wrap-left', 'fa-indent', 'Float left, text wraps'], ['wrap-right', 'fa-outdent', 'Float right, text wraps']];
+        bar.innerHTML = al.map(([v, ic, t]) => `<button type="button" data-align="${v}" title="${t}"><i class="fa-solid ${ic}"></i></button>`).join('') +
+            '<span class="hp-imgbar-sep"></span>' +
+            [25, 33, 50, 75, 100].map(w => `<button type="button" data-w="${w}">${w}%</button>`).join('') +
+            '<button type="button" data-w="" title="Original size (fits the column)">Auto</button>' +
+            '<span class="hp-imgbar-sep"></span><span class="hp-imgbar-w mono"></span>' +
+            '<button type="button" data-close title="Done (Esc)"><i class="fa-solid fa-xmark"></i></button>';
+        const grip = document.createElement('div');
+        grip.id = 'hp-imggrip';
+        grip.className = 'hp-imggrip';
+        grip.title = 'Drag to resize';
+        document.body.append(bar, grip);
+        bar.addEventListener('mousedown', e => e.preventDefault());       // keep the editor focus / selection
+        bar.addEventListener('click', e => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            if (b.dataset.close != null) return this.selectImg(null);
+            const p = this._imgCur();
+            if (!p) return;
+            if (b.dataset.align) this._imgSet({ align: p.align === b.dataset.align ? '' : b.dataset.align });
+            else if (b.dataset.w != null) this._imgSet({ w: b.dataset.w });
+        });
+        grip.addEventListener('mousedown', e => this._imgDrag(e));
+        document.getElementById('hp-view').addEventListener('scroll', () => this._imgBarPlace(), { passive: true });
+        window.addEventListener('resize', () => this._imgBarPlace());
+        return bar;
+    },
+
+    _imgCur() {
+        const f = this._imgs && this._imgs[this._imgSel];
+        return f ? App.imgParams(f.href.includes('#') ? f.href.slice(f.href.indexOf('#') + 1) : '') : null;
+    },
+
+    _imgBarPlace() {
+        const img = this.editing && this._imgSel != null && this.mode !== 'edit' ? this._imgEl(this._imgSel) : null;
+        const bar = document.getElementById('hp-imgbar'), grip = document.getElementById('hp-imggrip');
+        if (!img) { if (bar) bar.hidden = grip.hidden = true; return; }
+        if (!img.classList.contains('hp-img-sel')) img.classList.add('hp-img-sel');
+        if (!img.complete) img.addEventListener('load', () => this._imgBarPlace(), { once: true });
+        this._imgBar();
+        const b = document.getElementById('hp-imgbar'), g = document.getElementById('hp-imggrip');
+        const r = img.getBoundingClientRect(), v = document.getElementById('hp-view').getBoundingClientRect();
+        const visible = r.bottom > v.top && r.top < v.bottom;
+        b.hidden = g.hidden = !visible;
+        if (!visible) return;
+        const p = this._imgCur() || {};
+        b.querySelectorAll('[data-align]').forEach(x => x.classList.toggle('active', x.dataset.align === p.align));
+        b.querySelectorAll('[data-w]').forEach(x => x.classList.toggle('active', x.dataset.w === (p.w || '')));
+        b.querySelector('.hp-imgbar-w').textContent = `${Math.round(r.width)}×${Math.round(r.height)}`;
+        const top = Math.max(v.top + 4, r.top - b.offsetHeight - 6);
+        b.style.top = top + 'px';
+        b.style.left = Math.max(v.left + 4, Math.min(r.left, v.right - b.offsetWidth - 4)) + 'px';
+        g.style.left = (r.right - 7) + 'px';
+        g.style.top = (r.bottom - 7) + 'px';
+    },
+
+    /** Drag the corner grip: live width, committed as a percentage of the column on release. */
+    _imgDrag(e) {
+        const img = this._imgEl(this._imgSel);
+        if (!img) return;
+        e.preventDefault();
+        const col = img.parentElement.getBoundingClientRect().width || 1;
+        const x0 = e.clientX, w0 = img.getBoundingClientRect().width;
+        const right = img.classList.contains('md-img-right') || img.classList.contains('md-img-wrap-right');
+        const center = img.classList.contains('md-img-center');
+        let w = w0;
+        const move = ev => {
+            const dx = (ev.clientX - x0) * (right ? -1 : 1) * (center ? 2 : 1);
+            w = Math.max(24, Math.min(col, w0 + dx));
+            img.style.width = w + 'px';
+            this._imgBarPlace();
+        };
+        const up = () => {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            if (Math.abs(w - w0) >= 2) this._imgSet({ w: String(Math.round(w / col * 100)) });
+        };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    },
+
+    /** Rewrite the selected image link in the editor with new layout params (w / align; '' removes one). */
+    _imgSet(changes) {
+        const k = this._imgSel, f = this._imgs && this._imgs[k];
+        if (!f || f.start < 0) return toast('Cannot locate this image in the source — edit its link by hand', true);
+        const model = this.editor.getModel();
+        const range = monaco.Range.fromPositions(model.getPositionAt(f.start), model.getPositionAt(f.end));
+        if (model.getValueInRange(range) !== f.raw) { this.renderPreview(this.editor.getValue()); return toast('The text changed — try again', true); }
+        const hashAt = f.href.indexOf('#');
+        const base = hashAt < 0 ? f.href : f.href.slice(0, hashAt);
+        const p = Object.assign(this._imgCur() || {}, changes);
+        delete p.mdimg;
+        const frag = Object.entries(p).filter(([, v]) => v !== '' && v != null).map(([key, v]) => `${key}=${v}`).join('&');
+        let href = base + (frag ? '#' + frag : '');
+        if (/[\s()<>]/.test(href)) href = `<${href}>`;
+        const title = f.title ? ` "${f.title.replace(/"/g, '\\"')}"` : '';
+        const raw = `![${f.text}](${href}${title})`;
+        this.editor.pushUndoStop();
+        this.editor.executeEdits('img-layout', [{ range, text: raw }]);
+        this.editor.pushUndoStop();
+        clearTimeout(this._renderTimer);
+        this.renderPreview(this.editor.getValue());
+        this.selectImg(k);
+        const pos = model.getPositionAt(f.start);
+        this.editor.revealPositionInCenterIfOutsideViewport(pos);
     },
 
     _renderToc(items) {
@@ -514,6 +687,8 @@ const Help = {
             return;
         }
         const img = e.target.closest('img');
+        if (img && this.editing && img.dataset.mdimg != null) return this.selectImg(+img.dataset.mdimg);
+        if (this.editing && this._imgSel != null) this.selectImg(null);
         if (img && !img.closest('a')) return this.openLightbox(img.src);
         const a = e.target.closest('a');
         if (!a) return;
@@ -640,6 +815,7 @@ const Help = {
         this._bar();
         if (mode !== 'edit') this.renderPreview(this.editor.getValue());
         if (mode !== 'preview') this.editor.focus();
+        this._imgBarPlace();
     },
 
     cancel() {
@@ -649,6 +825,7 @@ const Help = {
     },
 
     _closeEditor() {
+        this.selectImg(null);
         this.editing = false;
         this.dirty = false;
     },

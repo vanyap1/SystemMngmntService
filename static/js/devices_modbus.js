@@ -24,6 +24,7 @@ Devices.register({
     FUNCS: [[3, '03 Read holding'], [4, '04 Read input'], [1, '01 Read coils'], [2, '02 Read discrete'],
             [6, '06 Write register'], [16, '16 Write registers'], [5, '05 Write coil'], [15, '15 Write coils']],
     FORMATS: [['u16', 'u16'], ['s16', 's16'], ['hex', 'hex'], ['bin', 'binary'], ['ascii', 'ascii'],
+              ['u8', 'u8 (2 per reg)'], ['s8', 's8 (2 per reg)'], ['u8sw', 'u8 low byte first'], ['digits', 'digits (byte each)'],
               ['u32', 'u32'], ['s32', 's32'], ['f32', 'float32'], ['u32sw', 'u32 swap'], ['s32sw', 's32 swap'], ['f32sw', 'float32 swap']],
 
     $(id) { return document.getElementById(id); },
@@ -201,6 +202,8 @@ Devices.register({
         const ex = {
             u16: ['100', '100, 0x10, 65535'], s16: ['-5', '-5, 120, -32768'], hex: ['0x00FF', '0x00FF, 0x1234'],
             bin: ['0b1010', '0b1010, 0b1'], ascii: ['AB', 'text (2 chars per register)'],
+            u8: ['12 34', '12 34 255 0  (2 bytes per register)'], s8: ['-1 5', '-1 5 -128 0  (2 bytes per register)'],
+            u8sw: ['12 34', '12 34 255 0  (low byte first)'], digits: ['38', '380671234567  (one digit per byte)'],
             u32: ['70000', '70000, 0x10000'], s32: ['-100000', '-100000, 42'], f32: ['12.5', '12.5, -0.75'],
             u32sw: ['70000', '70000, 0x10000'], s32sw: ['-100000', '-100000, 42'], f32sw: ['12.5', '12.5, -0.75'],
         }[m.fmt || 'u16'] || ['100', '100, 0x10'];
@@ -224,6 +227,15 @@ Devices.register({
         if (fmt === 'ascii') {
             const s = vals.map(v => String.fromCharCode(v >> 8, v & 255)).join('').replace(/[^\x20-\x7e]/g, '·');
             return [{ addr: a0, text: '"' + s + '"' }];
+        }
+        if (fmt === 'digits') {
+            const s = vals.map(v => [v >> 8, v & 255].map(b => b < 10 ? String(b) : `[${b}]`).join('')).join('');
+            return [{ addr: a0, text: s }];
+        }
+        if (['u8', 's8', 'u8sw'].includes(fmt)) {
+            const b8 = b => String(fmt === 's8' && b > 127 ? b - 256 : b);
+            return vals.map((v, i) => ({ addr: a0 + i,
+                text: (fmt === 'u8sw' ? [v & 255, v >> 8] : [v >> 8, v & 255]).map(b8).join(' ') }));
         }
         if (['u16', 's16', 'hex', 'bin'].includes(fmt)) {
             return vals.map((v, i) => ({ addr: a0 + i, text: fmt === 's16' ? String(v > 32767 ? v - 65536 : v)
@@ -261,8 +273,30 @@ Devices.register({
             for (let i = 0; i < s.length; i += 2) regs.push((s.charCodeAt(i) & 255) << 8 | (s.charCodeAt(i + 1) & 255));
             return regs;
         }
+        if (fmt === 'digits') {
+            const d = text.replace(/[\s+\-()]/g, '');
+            if (!d) throw new Error('no values');
+            if (!/^\d+$/.test(d)) throw new Error(`"${text}" is not a digit string`);
+            const bytes = [...d].map(Number);
+            if (bytes.length % 2) bytes.push(0);
+            const regs = [];
+            for (let i = 0; i < bytes.length; i += 2) regs.push(bytes[i] << 8 | bytes[i + 1]);
+            return regs;
+        }
         const toks = text.split(/[\s,;]+/).filter(Boolean);
         if (!toks.length) throw new Error('no values');
+        if (['u8', 's8', 'u8sw'].includes(fmt)) {
+            const bytes = toks.map(t => {
+                const v = this._num(t);
+                if (isNaN(v) || v < -128 || v > 255) throw new Error(`"${t}" is not an 8-bit value`);
+                return v & 255;
+            });
+            if (bytes.length % 2) bytes.push(0);
+            const regs = [];
+            for (let i = 0; i < bytes.length; i += 2)
+                regs.push(fmt === 'u8sw' ? bytes[i + 1] << 8 | bytes[i] : bytes[i] << 8 | bytes[i + 1]);
+            return regs;
+        }
         const regs = [], dv = new DataView(new ArrayBuffer(4)), base = fmt.replace('sw', ''), sw = fmt.endsWith('sw');
         for (const t of toks) {
             if (['u16', 's16', 'hex', 'bin'].includes(fmt)) {
@@ -593,12 +627,13 @@ Devices.register({
     noteExamples() {
         Devices.showText('Modbus tags in the notes', Promise.resolve([
             'Write [[function address count format uN]] to read, [[function address =values format uN]] to write.',
-            'Format (u16 if omitted): u16 s16 hex bin ascii u32 s32 f32 u32sw s32sw f32sw.  uN = unit id (u1 if omitted).',
+            'Format (u16 if omitted): u16 s16 hex bin ascii u8 s8 u8sw digits u32 s32 f32 u32sw s32sw f32sw.  uN = unit id (u1 if omitted).',
             'In the notes view: ⇩ fills the request line, ▶ runs it with the connection above.',
             '',
             '  firmware version     [[03 4 3 ascii]]         3 holding registers from 4 as text',
             '  status block         [[03 0 4]]               holding 0…3 as u16',
             '  status in hex        [[03 0 12 hex]]',
+            '  phone (digit / byte) [[03 30 6 digits]]       12 bytes, one digit each → "380671234567"',
             '  power (float)        [[04 10 2 f32]]          input registers 10–11 as float32',
             '  energy, unit 2       [[03 20 2 s32sw u2]]     signed 32-bit, word order CDAB',
             '  coils 0…7            [[01 0 8]]',
@@ -683,7 +718,7 @@ Devices.register({
     // ── Log ────────────────────────────────────────────────
 
     _logAdd(m, op, r) {
-        this.log.push({ t: new Date(), name: m.name || `unit ${op.unit}`, fn: op.fn, addr: op.addr, r });
+        this.log.push({ t: new Date(), name: m.name || `unit ${op.unit}`, fn: op.fn, addr: op.addr, fmt: m.fmt || 'u16', r });
         if (this.log.length > 500) this.log.splice(0, this.log.length - 500);
         this._renderLog();
     },
@@ -697,9 +732,20 @@ Devices.register({
             const rx = x.r.rx || !x.r.ok
                 ? `<div class="tt-l rx${x.r.ok ? '' : ' err'}">${head}<span class="tt-dir">‹</span>${x.r.tx ? '' : who}<span class="tt-hex">${esc(x.r.rx || '')}</span>` +
                   ` <span class="mb-ms">${x.r.ok ? (x.r.ms != null ? x.r.ms + ' ms' : '') : esc(x.r.error)}</span></div>` : '';
-            return tx + rx;
+            return tx + rx + this._logDecoded(x);
         }).join('') || '<div class="tbl-empty">Run a request: the TX / RX frames appear here.</div>';
         if (this.$('mb-log-scroll').checked) el.scrollTop = el.scrollHeight;
+    },
+
+    /** Decoded values of a read reply under its RX line (in the format the request used). */
+    _logDecoded(x) {
+        if (!x.r.ok || !Array.isArray(x.r.values) || !x.r.values.length) return '';
+        let items;
+        try { items = this.decode({ fn: x.fn, addr: String(x.addr), fmt: x.fmt || 'u16' }, x.r.values); } catch (e) { return ''; }
+        const fmt = this._isBits(x.fn) ? 'bits' : (this.FORMATS.find(f => f[0] === (x.fmt || 'u16')) || [, x.fmt])[1];
+        const body = items.length === 1 ? `<span class="mb-dv">${esc(items[0].text)}</span>`
+            : items.map(v => `<span class="mb-dv"><i>${v.addr}</i>${esc(v.text)}</span>`).join('');
+        return `<div class="tt-l mb-dec"><span class="mb-dfmt">= ${esc(fmt)}</span>${body}</div>`;
     },
 
     clearLog() { this.log = []; this._renderLog(); },

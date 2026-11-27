@@ -146,6 +146,8 @@ body.page-help { height: 100vh; overflow: hidden; }
 
 /* ── Modals ── */
 .hp-doc-box { width: 560px; }
+#hp-f-path { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }   /* a long path wraps, the buttons stay */
+.hp-doc-box .modal-foot .btn { flex-shrink: 0; }
 .hp-form { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .hp-as-box { width: 980px; height: 80vh; }
 .hp-as-q { width: 180px; }
@@ -234,10 +236,14 @@ body.page-help { height: 100vh; overflow: hidden; }
 .dg-kind-head svg { flex-shrink: 0; }
 .dg-kkey { width: 80px; flex: 1; }
 .dg-kind-row .input { min-width: 0; }
+.dg-kind-row select.input { flex: 1; }
+.dg-kind-more summary { cursor: pointer; user-select: none; }
+.dg-kind-more .dg-kind-row { margin-top: 5px; }
 .dg-kind-row input[type=color] { width: 30px; height: 22px; padding: 0; border: 1px solid var(--border-strong); background: none; border-radius: 4px; cursor: pointer; }
 
 .dg-pins-box { width: 1150px; height: 86vh; }
-#dg-pin-sides button { font-size: 11px; padding: 5px 10px; }
+#dg-pin-sides button, #dg-pin-layout button { font-size: 11px; padding: 5px 10px; }
+#dg-pin-sides button[hidden], #dg-pin-number[hidden] { display: none; }
 #dg-pin-sides button span { color: var(--text-mute); margin-left: 3px; }
 .dg-pins td { padding: 2px 4px; }
 .dg-pins td:first-child { text-align: right; padding-right: 8px; }
@@ -283,3 +289,17 @@ body.page-help { height: 100vh; overflow: hidden; }
 .hp-doc:hover .hp-dg-clone, .hp-doc .hp-dg-clone:focus-visible { opacity: 1; }
 .hp-dg-empty { color: var(--text-mute) !important; font-style: italic; }
 @media print { .hp-dg-edit { display: none !important; } }
+
+/* Image layout while editing: click an image in the preview → toolbar + corner grip (Help.selectImg) */
+#hp-body[class^="mode-"] .md img[data-mdimg] { cursor: pointer; }
+.md img.hp-img-sel { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hp-imgbar { position: fixed; z-index: 60; display: flex; align-items: center; gap: 2px; padding: 3px;
+    background: var(--bg-head); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 4px 14px rgba(0, 0, 0, .45); }
+.hp-imgbar[hidden], .hp-imggrip[hidden] { display: none; }
+.hp-imgbar button { background: none; border: 1px solid transparent; color: var(--text-dim); font-size: 11px; padding: 3px 7px; border-radius: 3px; cursor: pointer; }
+.hp-imgbar button:hover { color: var(--text); background: var(--bg-deep); }
+.hp-imgbar button.active { color: var(--accent); border-color: var(--accent); }
+.hp-imgbar-sep { width: 1px; height: 16px; background: var(--border-strong); margin: 0 4px; }
+.hp-imgbar-w { font-size: 10px; color: var(--text-mute); padding: 0 4px; }
+.hp-imggrip { position: fixed; z-index: 60; width: 14px; height: 14px; border-radius: 3px; background: var(--accent);
+    border: 2px solid var(--bg-head); cursor: nwse-resize; }

@@ -223,19 +223,28 @@
 </div>
 
 <!-- Diagram: pin table -->
-<div id="dg-pins-overlay" class="modal-overlay" onclick="if (event.target === this) Diagrams.closePins()">
+<div id="dg-pins-overlay" class="modal-overlay">
     <div class="modal-box dg-pins-box">
         <div class="modal-head">
             <span class="modal-title"><i class="fa-solid fa-microchip text-ok"></i> <span id="dg-pins-title"></span></span>
+            <div class="gpio-seg" id="dg-pin-layout" title="Package: pins on one side (SIP / header), two sides (DIP / SOIC) or four sides (QFP)">
+                <button type="button" data-layout="1" onclick="Diagrams.setPinLayout(1)">1 side</button>
+                <button type="button" data-layout="2" onclick="Diagrams.setPinLayout(2)">2 sides</button>
+                <button type="button" data-layout="4" onclick="Diagrams.setPinLayout(4)">4 sides</button>
+            </div>
             <div class="gpio-seg" id="dg-pin-sides">
                 <button type="button" data-side="left" onclick="Diagrams.setPinSide('left')">Left <span></span></button>
-                <button type="button" data-side="top" onclick="Diagrams.setPinSide('top')">Top <span></span></button>
-                <button type="button" data-side="right" onclick="Diagrams.setPinSide('right')">Right <span></span></button>
                 <button type="button" data-side="bottom" onclick="Diagrams.setPinSide('bottom')">Bottom <span></span></button>
+                <button type="button" data-side="right" onclick="Diagrams.setPinSide('right')">Right <span></span></button>
+                <button type="button" data-side="top" onclick="Diagrams.setPinSide('top')">Top <span></span></button>
             </div>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('total')" title="Set the number of pins: distributed over the sides counterclockwise from pin 1 and renumbered 1…N">
+                <i class="fa-solid fa-hashtag"></i> <span id="dg-pin-total"></span></button>
+            <label class="check-row small" title="Number the pins 1…N counterclockwise from pin 1 (top left) and renumber them after every add / delete / move">
+                <input type="checkbox" id="dg-pin-auto" onchange="Diagrams.setPinAuto(this.checked)"> Auto numbering</label>
             <span class="spacer"></span>
             <button class="btn btn-success btn-sm" onclick="Diagrams.pinCmd('add')"><i class="fa-solid fa-plus"></i> Add</button>
-            <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('number')" title="Renumber this side">1, 2, 3…</button>
+            <button class="btn btn-ghost btn-sm" id="dg-pin-number" onclick="Diagrams.pinCmd('number')" title="Renumber this side">1, 2, 3…</button>
             <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('reverse')" title="Reverse the order"><i class="fa-solid fa-arrow-down-up-across-line"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="Diagrams.pinCmd('copy')" title="Copy this side as TSV for Excel"><i class="fa-regular fa-copy"></i> TSV</button>
             <button class="btn btn-danger btn-sm" onclick="Diagrams.pinCmd('clear')" title="Delete all pins of this side"><i class="fa-regular fa-trash-can"></i></button>
@@ -245,12 +254,15 @@
         <div class="modal-foot">
             <span class="hint" id="dg-pins-order"></span>
             <span class="hint">· Paste rows from Excel / CSV into any cell (columns: pin, port, function, kind, dir, note). Empty “Dir” = from the kind. Changes apply live; Ctrl+Z after closing undoes them.</span>
+            <span class="spacer"></span>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.closePins()">Close</button>
+            <button class="btn btn-primary btn-sm" onclick="Diagrams.closePins(true)"><i class="fa-solid fa-floppy-disk"></i> Save &amp; close</button>
         </div>
     </div>
 </div>
 
 <!-- Diagram: unit ports (library symbol) -->
-<div id="dg-ports-overlay" class="modal-overlay" onclick="if (event.target === this) Diagrams.closePorts()">
+<div id="dg-ports-overlay" class="modal-overlay">
     <div class="modal-box dg-ports-box">
         <div class="modal-head">
             <span class="modal-title"><i class="fa-solid fa-cube text-ok"></i> <span id="dg-ports-title"></span></span>
@@ -265,6 +277,9 @@
         <div class="modal-foot">
             <span class="hint">Rows of one side are drawn in table order (left/right: top → bottom, top/bottom: left → right). Paste rows from Excel / CSV (name, type, side, note).
                 Wires follow a renamed port; units placed elsewhere are updated with “Update” there. Ctrl+Z after closing undoes the changes.</span>
+            <span class="spacer"></span>
+            <button class="btn btn-ghost btn-sm" onclick="Diagrams.closePorts()">Close</button>
+            <button class="btn btn-primary btn-sm" onclick="Diagrams.closePorts(true)"><i class="fa-solid fa-floppy-disk"></i> Save &amp; close</button>
         </div>
     </div>
 </div>

@@ -1,0 +1,725 @@
+{
+ "version": 1,
+ "title": "STM32_GSM2RS485_EV",
+ "width": 1700,
+ "height": 1350,
+ "background": "#fafaf9",
+ "grid": 10,
+ "kinds": {
+  "out": {
+   "label": "output",
+   "fill": "#1f2937",
+   "stroke": "#1f2937",
+   "text": "#ffffff",
+   "dash": "",
+   "badge": "OUT",
+   "sample": "OUT",
+   "color": "#1f2937"
+  },
+  "pwr": {
+   "label": "power",
+   "fill": "#f6eeee",
+   "stroke": "#b08a8a",
+   "text": "#7a2e2e",
+   "dash": "",
+   "badge": "",
+   "sample": "5V",
+   "color": "#dc2626"
+  },
+  "free": {
+   "label": "free",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "text": "#9ca3af",
+   "dash": "",
+   "badge": "",
+   "sample": "FREE",
+   "color": "#9ca3af"
+  },
+  "rs485": {
+   "label": "rs485",
+   "fill": "#e0f2fe",
+   "stroke": "#0284c7",
+   "text": "#075985",
+   "dash": "",
+   "badge": "",
+   "sample": "RS485",
+   "color": "#0284c7"
+  },
+  "SR595": {
+   "label": "SR595",
+   "fill": "#fdea21",
+   "stroke": "#c56a02",
+   "text": "#9f6109",
+   "dash": "",
+   "badge": "",
+   "sample": "SR595",
+   "color": "#e0ee11"
+  },
+  "GSM": {
+   "label": "GSM",
+   "dash": "",
+   "badge": "",
+   "sample": "GSM",
+   "base": "#16a34a",
+   "look": "solid",
+   "fill": "#16a34a",
+   "stroke": "#16a34a",
+   "text": "#ffffff",
+   "color": "#16a34a"
+  },
+  "32khz": {
+   "label": "32khz",
+   "dash": "",
+   "badge": "",
+   "sample": "32KHZ",
+   "base": "#d97706",
+   "look": "light",
+   "fill": "#faecdc",
+   "stroke": "#d97706",
+   "text": "#774103",
+   "color": "#d97706"
+  },
+  "8mhz": {
+   "label": "8mhz",
+   "dash": "",
+   "badge": "",
+   "sample": "8MHZ",
+   "base": "#9333ea",
+   "look": "light",
+   "fill": "#f0e2fc",
+   "stroke": "#9333ea",
+   "text": "#511c81",
+   "color": "#9333ea"
+  },
+  "HD44780": {
+   "label": "HD44780",
+   "dash": "",
+   "badge": "",
+   "sample": "HD44780",
+   "base": "#0d9488",
+   "look": "light",
+   "fill": "#ddf0ee",
+   "stroke": "#0d9488",
+   "text": "#07514b",
+   "color": "#0d9488"
+  },
+  "NFC": {
+   "label": "NFC",
+   "dash": "",
+   "badge": "",
+   "sample": "NFC",
+   "base": "#db2777",
+   "look": "light",
+   "fill": "#fae1ec",
+   "stroke": "#db2777",
+   "text": "#781541",
+   "color": "#db2777"
+  },
+  "NOR": {
+   "label": "NOR",
+   "dash": "",
+   "badge": "",
+   "sample": "NOR",
+   "base": "#4f46e5",
+   "look": "light",
+   "fill": "#e6e5fb",
+   "stroke": "#4f46e5",
+   "text": "#2b277e",
+   "color": "#4f46e5"
+  },
+  "BUZZ": {
+   "label": "BUZZ",
+   "dash": "",
+   "badge": "",
+   "sample": "BUZZ",
+   "base": "#4aeb14",
+   "look": "light",
+   "fill": "#e6fcde",
+   "stroke": "#4aeb14",
+   "text": "#29810b",
+   "color": "#4aeb14"
+  }
+ },
+ "items": [
+  {
+   "id": "tzr4rbg",
+   "type": "text",
+   "x": 60,
+   "y": 68,
+   "text": "STM32_GSM2RS485_EV",
+   "size": 32,
+   "weight": "700"
+  },
+  {
+   "id": "t5xy339",
+   "type": "text",
+   "x": 60,
+   "y": 98,
+   "text": "Pinout: port → function · grey = free / alternative functions",
+   "size": 16,
+   "color": "#6b7280"
+  },
+  {
+   "id": "lky1ncb",
+   "type": "legend",
+   "x": 60,
+   "y": 140,
+   "kinds": null,
+   "style": "tags"
+  },
+  {
+   "id": "cnjf4g5",
+   "type": "chip",
+   "x": 550,
+   "y": 380,
+   "w": 600,
+   "h": 600,
+   "body": "module",
+   "holes": true,
+   "ic": {
+    "show": true,
+    "title": "MCU",
+    "subtitle": "STM32F103RET6"
+   },
+   "caption": "Module · U1",
+   "caption2": "",
+   "pinStyle": "tags",
+   "corner": 90,
+   "portW": 66,
+   "fnW": 60,
+   "numbers": true,
+   "pins": {
+    "left": [
+     {
+      "n": 1,
+      "port": "VBAT",
+      "fn": "BAT+",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 2,
+      "port": "PC13",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "DCDC_EN DA2"
+     },
+     {
+      "n": 3,
+      "port": "PC14",
+      "fn": "OSC32",
+      "kind": "32khz",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 4,
+      "port": "PC15",
+      "fn": "OSC32",
+      "kind": "32khz",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 5,
+      "port": "PD0",
+      "fn": "OSC8M",
+      "kind": "8mhz",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 6,
+      "port": "PD1",
+      "fn": "OSC8M",
+      "kind": "8mhz",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 7,
+      "port": "NRST",
+      "fn": "!RST",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 8,
+      "port": "PC0",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 9,
+      "port": "PC1",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 10,
+      "port": "PC2",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 11,
+      "port": "PC3",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "DA6 EN"
+     },
+     {
+      "n": 12,
+      "port": "VSS",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 13,
+      "port": "VDD",
+      "fn": "3V3",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 14,
+      "port": "PA0",
+      "fn": "d8",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 15,
+      "port": "PA1",
+      "fn": "d7",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 16,
+      "port": "PA2",
+      "fn": "d6",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     }
+    ],
+    "bottom": [
+     {
+      "n": 17,
+      "port": "PA3",
+      "fn": "d5",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 18,
+      "port": "VSS",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 19,
+      "port": "VDD",
+      "fn": "3V3",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 20,
+      "port": "PA4",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 21,
+      "port": "PA5",
+      "fn": "RS",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 22,
+      "port": "PA6",
+      "fn": "RW",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 23,
+      "port": "PA7",
+      "fn": "EN",
+      "kind": "HD44780",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 24,
+      "port": "PC4",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 25,
+      "port": "PC5",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 26,
+      "port": "PB0",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 27,
+      "port": "PB1",
+      "fn": "p5",
+      "kind": "NFC",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 28,
+      "port": "PB2",
+      "fn": "p3",
+      "kind": "NFC",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 29,
+      "port": "PB10",
+      "fn": "p9",
+      "kind": "NFC",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 30,
+      "port": "PB11",
+      "fn": "p7",
+      "kind": "NFC",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 31,
+      "port": "VSS",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 32,
+      "port": "VDD",
+      "fn": "3V3",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     }
+    ],
+    "right": [
+     {
+      "n": 48,
+      "port": "VDD",
+      "fn": "3V3",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 47,
+      "port": "VSS",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 46,
+      "port": "PA13",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "SDWIO"
+     },
+     {
+      "n": 45,
+      "port": "PA12",
+      "fn": "RST",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 44,
+      "port": "PA11",
+      "fn": "CTS",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 43,
+      "port": "PA10",
+      "fn": "TXD",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 42,
+      "port": "PA9",
+      "fn": "RXD",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 41,
+      "port": "PA8",
+      "fn": "POW_DIS",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 40,
+      "port": "PC9",
+      "fn": "PWRKEY",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 39,
+      "port": "PC8",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 38,
+      "port": "PC7",
+      "fn": "RI",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 37,
+      "port": "PC6",
+      "fn": "BUZZ",
+      "kind": "BUZZ",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 36,
+      "port": "PB15",
+      "fn": "DATIN",
+      "kind": "NOR",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 35,
+      "port": "PB14",
+      "fn": "DATOUT",
+      "kind": "NOR",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 34,
+      "port": "PB13",
+      "fn": "CLK",
+      "kind": "NOR",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 33,
+      "port": "PB12",
+      "fn": "CS",
+      "kind": "NOR",
+      "badge": "",
+      "note": ""
+     }
+    ],
+    "top": [
+     {
+      "n": 64,
+      "port": "VDD",
+      "fn": "3V3",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 63,
+      "port": "VSS",
+      "fn": "GND",
+      "kind": "pwr",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 62,
+      "port": "PB9",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 61,
+      "port": "PB8",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 60,
+      "port": "BOOT0",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "GND"
+     },
+     {
+      "n": 59,
+      "port": "PB7",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 58,
+      "port": "PB6",
+      "fn": "LAT",
+      "kind": "SR595",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 57,
+      "port": "PB5",
+      "fn": "DAT",
+      "kind": "SR595",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 56,
+      "port": "PB4",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 55,
+      "port": "PB3",
+      "fn": "SHIFT",
+      "kind": "SR595",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 54,
+      "port": "PD2",
+      "fn": "485-REDE",
+      "kind": "rs485",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 53,
+      "port": "PC12",
+      "fn": "BTN",
+      "kind": "free",
+      "badge": "",
+      "note": "Need PullUP"
+     },
+     {
+      "n": 52,
+      "port": "PC11",
+      "fn": "485-RX",
+      "kind": "rs485",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 51,
+      "port": "PC10",
+      "fn": "485-TX",
+      "kind": "rs485",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 50,
+      "port": "PA15",
+      "fn": "DCD",
+      "kind": "GSM",
+      "badge": "",
+      "note": ""
+     },
+     {
+      "n": 49,
+      "port": "PA14",
+      "fn": "",
+      "kind": "free",
+      "badge": "",
+      "note": "SWCLK"
+     }
+    ]
+   }
+  },
+  {
+   "id": "tfy64cf",
+   "type": "text",
+   "x": 1060,
+   "y": 580,
+   "text": "Text",
+   "size": 16,
+   "color": "#1f2937"
+  }
+ ]
+}

@@ -18,7 +18,7 @@ Documents are Markdown files in `help/`. Folders in `help/` become sections in t
 | Folder | Content |
 |---|---|
 | `help/*.md`, `help/<folder>/*.md` | documents (up to 3 folder levels) |
-| `help/img/` | images — paste (Ctrl+V) or drop them into the editor |
+| `help/img/` | images — paste (Ctrl+V) or drop them into the editor; while editing, click an image in the preview to align it (left / centre / right / text wrap) and scale it (presets or drag the corner) — stored in the link as `img/a.png#w=50&align=center` (w = % of the column, or `400px`) |
 | `help/docs/` | attached files — drop them into the editor or use the 📎 button |
 | `help/diagrams/` | pinouts / block diagrams — **Diagrams** group in the sidebar, embedded as `.svg` |
 | `help/examples/` | raw notes, not shown in the sidebar |
@@ -56,7 +56,7 @@ Hovering a diagram in a page shows **Edit diagram**. Example: [Orange Pi 3B](har
 | start a wire on a line, or `Ctrl`-drag from it | branch: it takes the colour, width and dash of that line |
 | drop a wire end on a line | joins it (junction dot) |
 | double-click a wire / bend point | add / remove a bend point |
-| double-click a chip | pin table — paste rows from Excel (pin, port, function, kind, dir, note) |
+| double-click a chip | pin table — package 1 / 2 / 4 sides, total pin count (spread counterclockwise from pin 1, renumbered), paste rows from Excel (pin, port, function, kind, dir, note); *Save & close* writes the diagram |
 | Space-drag / right-drag, wheel | pan, zoom · `F` fit · `Alt` no snapping |
 | `Ctrl+D`, `Del`, `Ctrl+Z` / `Ctrl+Y`, `Ctrl+S` | duplicate, delete, undo / redo, save |
 

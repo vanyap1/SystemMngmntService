@@ -170,6 +170,9 @@ static/
   reads — subprocesses (`lsblk`, `ip`) run per request and are cached.
 
 ## HW Utils popup (formerly "Devices"; the JS object and ids are still `Devices` / `devices_*`)
+- A non-modal floating window (`Devices.Win`, overlay class `dev-float`, z-index below real modals): no backdrop, the
+  page stays usable; drag / resize / maximise, state in localStorage `devices.win` (reopens after page changes). Keys
+  typed inside it stop at the box (except Esc); page key handlers ignore `.modal-overlay.open.dev-float`.
 - Routes: `routes/devices.py` (devices, buses, GPIO), `routes/udev.py` (service, events, rules, udevadm tools),
   `routes/net.py` (interfaces, CAN), `routes/i2c.py` (I²C tools, `core/i2c.py`), `routes/sysclone.py` (Clone / Image,
   `core/sysclone.py` + `core/smb.py` + `tools/clone-system.sh`, tab `devices_clone.js`). Only CAN links may be reconfigured there — never touch other interfaces (SSH/web) from HW Utils.

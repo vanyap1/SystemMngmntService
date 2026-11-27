@@ -41,6 +41,26 @@ const App = {
     /** Register a callback for the Escape key (close modals, menus...). */
     onEscape(fn) { App._escapeHandlers.push(fn); },
 
+    /** Docs image layout from its link fragment, e.g. `img/a.png#w=50&align=center` (other Markdown viewers ignore
+     *  the fragment). w = percent of the column ("50") or pixels ("400px"); align = left|center|right|wrap-left|wrap-right.
+     *  No "%" in the link: it is not valid in a URL. */
+    IMG_ALIGNS: ['left', 'center', 'right', 'wrap-left', 'wrap-right'],
+    imgParams(hash) {
+        const out = {};
+        String(hash || '').split('&').forEach(kv => {
+            const [k, v = ''] = kv.split('=');
+            if (k) out[k] = v;
+        });
+        return out;
+    },
+    imgLayout(img, hash) {
+        const p = App.imgParams(hash);
+        if (/^\d{1,3}(\.\d+)?$/.test(p.w || '')) img.style.width = Math.min(100, parseFloat(p.w)) + '%';
+        else if (/^\d{1,5}px$/.test(p.w || '')) img.style.width = parseInt(p.w, 10) + 'px';
+        if (App.IMG_ALIGNS.includes(p.align)) img.classList.add('md-img-' + p.align);
+        return p;
+    },
+
     fmtBytes(b) {
         if (b >= 1073741824) return (b / 1073741824).toFixed(1) + ' GB';
         if (b >= 1048576)    return (b / 1048576).toFixed(1) + ' MB';
@@ -79,6 +99,14 @@ function toast(msg, isError) {
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') App._escapeHandlers.forEach(fn => fn(e));
 });
+
+// A click on a modal backdrop closes it only when the press also started there: selecting text in a field and
+// releasing the button outside the box fires a click on the overlay, which must not close the popup.
+let _pressTarget = null;
+document.addEventListener('mousedown', e => { _pressTarget = e.target; }, true);
+document.addEventListener('click', e => {
+    if (e.target.classList && e.target.classList.contains('modal-overlay') && _pressTarget !== e.target) e.stopPropagation();
+}, true);
 
 // Dismissible flash messages
 document.addEventListener('click', e => {

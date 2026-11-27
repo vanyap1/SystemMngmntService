@@ -432,7 +432,9 @@ runs only while the page polls `/api/monitor` (30 s lease); the browser polls ev
 
 ## HW Utils popup
 
-The **HW Utils** button in the top bar (logged in) opens a popup with ten tabs. With *Auto* on, the
+The **HW Utils** button in the top bar (logged in) opens a floating window with ten tabs. It does not dim or block the
+page: drag it by its head, resize it by the bottom-right corner, double-click the head to maximise / restore. Position,
+size and the open tab are remembered, and an open window reopens after moving to another page (Docs, Code). With *Auto* on, the
 current view refreshes every 2–3 s; new devices are highlighted, added/removed ones are listed in the
 footer (plus a toast, except `/dev/pts`, `/dev/shm`). All groups, trees, chips, bus sections and rules
 directories start collapsed (a filter expands what matches; *Expand* / *Collapse* buttons). Clicking a device opens a side panel with its udev
@@ -545,7 +547,7 @@ properties and actions: *Attributes* (`udevadm info -a`), *Test rules* (`udevadm
 - **Modbus** — master for Modbus RTU on a serial port (USB-RS485, UART), RTU frames over TCP / UDP (transparent
   serial servers such as ebyte / USR) and Modbus TCP / UDP devices (`core/modbus.py`, stdlib + pyserial). A table of
   request rows ("macros": name, unit, function 01–06 / 15 / 16, 0-based address, count or values, format u16 / s16 /
-  hex / binary / ascii / u32 / s32 / float32 with word swap) in two tables: **manual requests** (set the data, run
+  hex / binary / ascii / u8 / s8 (two bytes per register, also low byte first) / digits (one digit per byte, e.g. a phone number) / u32 / s32 / float32 with word swap) in two tables: **manual requests** (set the data, run
   with ▶) and **timer rows**, each with its own period and on/off switch — *Start timers* runs them (rows that are
   due go out together, the next request only after the answer), *Stop timers* stops them; ▶ runs any row at any
   time. *Run all* runs both tables once. Timers run only while the tab is open. The TX / RX frames run full width
@@ -731,7 +733,7 @@ A Markdown knowledge base kept in `help_dir` (`help/`), **Docs** in the top bar 
   button, table of contents with scroll tracking, image zoom, print. `?doc=<path>#<heading>` links to a section.
 - Search (`/`): every word must occur; results show matching lines, the opened page highlights them.
 - Edit (`E`): Monaco with live preview (editor / split / preview), formatting toolbar, `Ctrl+S` / `B` / `I` / `K`,
-  paste or drop images and files to upload and link them, link to another page; saving detects concurrent changes.
+  paste or drop images and files to upload and link them (click an image in the preview to align / scale it: `#w=50&align=center` in the link), link to another page; saving detects concurrent changes.
 - Links are relative to the page (`img/x.png`, `../docs/f.zip`, `other.md#section`), so the files also render
   in VS Code or Git. Rename/move rewrites the `img/` and `docs/` links for the new folder depth.
 - Rendering uses vendored marked + DOMPurify + highlight.js; served files get a sandbox CSP.

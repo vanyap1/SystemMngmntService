@@ -99,6 +99,10 @@ const Diagrams = {
         this.$('dg-lib-q').addEventListener('input', () => this.renderLib());
         App.onEscape(() => {
             if (!this.$('dg-lib').hidden) return this.closeLib();
+            // Esc in a cell of a table popup only leaves the cell (a stray Esc must not close the editor)
+            const field = document.activeElement && document.activeElement.closest('#dg-pins-overlay, #dg-ports-overlay') &&
+                document.activeElement.closest('input, select, textarea');
+            if (field) return field.blur();
             if (this.$('dg-ports-overlay').classList.contains('open')) return this.closePorts();
             if (this.$('dg-pins-overlay').classList.contains('open')) return this.closePins();
             if (this.$('dg-new-overlay').classList.contains('open')) return this.closeNew();
@@ -960,7 +964,7 @@ const Diagrams = {
     // ── Keyboard ───────────────────────────────────────────────
 
     _keys(e) {
-        if (!this.doc || document.querySelector('.modal-overlay.open')) return;
+        if (!this.doc || document.querySelector('.modal-overlay.open:not(.dev-float)')) return;
         const inField = e.target.closest('input, textarea, select, [contenteditable]');
         const ctrl = e.ctrlKey || e.metaKey;
         // letters by physical key: shortcuts work with any keyboard layout (Ukrainian "с" = C)
@@ -1164,7 +1168,8 @@ const Diagrams = {
                   'a bend point, double-click a bend point to remove it. Drag an end onto a block / port to attach it, onto another line to join it ' +
                   '(Alt = free). Ctrl+drag from a line = a branch. Without an own colour the wire takes the colour of its port type.' }];
             case 'chip': return [{ t: 'button', label: 'Edit pins…', act: 'openPins', cls: 'btn-primary' },
-                { t: 'info', text: this.R.SIDES.map(s => `${s}: ${(it.pins[s] || []).length}`).join(' · ') },
+                { t: 'info', text: `${this._pinsCcw(it).length} pins, ${this._pinLayout(it)} side(s) — ` +
+                    this.R.SIDES.filter(s => (it.pins[s] || []).length).map(s => `${s}: ${it.pins[s].length}`).join(' · ') },
                 sel('Pin style', 'pinStyle', [['tags', 'Tags (port · function · dir · note)'], ['simple', 'Simple (coloured text)']]),
                 sel('Body', 'body', [['module', 'Dark module'], ['outline', 'Light outline']]),
                 { label: 'Mounting holes', p: 'holes', t: 'check' }, { label: 'Pin numbers', p: 'numbers', t: 'check' },
@@ -1341,6 +1346,8 @@ const Diagrams = {
     _kindHtml(k, kd) {
         const fk = this.R.esc;
         const sw = (f, title) => `<input type="color" data-kind="${esc(k)}" data-kf="${f}" value="${esc(kd[f] || '#ffffff')}" title="${title}">`;
+        const look = this._kindLook(kd);
+        const looks = [['light', 'Light tag'], ['solid', 'Solid tag'], ['outline', 'Outline tag']];
         return `<div class="dg-kind"><div class="dg-kind-head">` +
             `<svg width="64" height="22" viewBox="-2 -12 68 24">${this.R._tag(0, 64, kd.sample || k, kd, 11)}</svg>` +
             `<input class="input input-sm mono dg-kkey" value="${fk(k)}" disabled title="Kind key (used in the pin table)">` +
@@ -1349,8 +1356,61 @@ const Diagrams = {
             `<input class="input input-sm" data-kind="${esc(k)}" data-kf="label" value="${esc(kd.label || '')}" placeholder="legend label">` +
             `<input class="input input-sm mono" data-kind="${esc(k)}" data-kf="sample" value="${esc(kd.sample || '')}" placeholder="sample" title="Legend sample text">` +
             `<input class="input input-sm mono" data-kind="${esc(k)}" data-kf="badge" value="${esc(kd.badge || '')}" placeholder="dir" title="Direction text next to the tag (OUT, IN…)">` +
-            `</div><div class="dg-kind-row">${sw('fill', 'Tag fill')}${sw('stroke', 'Tag border')}${sw('text', 'Tag text')}${sw('color', 'Colour in simple style / swatch')}` +
-            `<label class="check-row small" title="Dashed tag border"><input type="checkbox" data-kind="${esc(k)}" data-kf="dash"${kd.dash ? ' checked' : ''}> dashed</label></div></div>`;
+            `</div><div class="dg-kind-row">` +
+            `<input type="color" data-kind="${esc(k)}" data-kf="base" value="${esc(this._kindBase(kd))}" title="Base colour (tag fill, border, text and swatch follow it)">` +
+            `<select class="input input-sm" data-kind="${esc(k)}" data-kf="look" title="How the tag uses the base colour">` +
+            looks.map(([v, l]) => `<option value="${v}"${v === look ? ' selected' : ''}>${l}</option>`).join('') +
+            (look === 'custom' ? '<option value="custom" selected>Custom</option>' : '') + '</select>' +
+            `<label class="check-row small" title="Dashed tag border"><input type="checkbox" data-kind="${esc(k)}" data-kf="dash"${kd.dash ? ' checked' : ''}> dashed</label></div>` +
+            `<details class="dg-kind-more"><summary class="small faint">Fine-tune colours</summary><div class="dg-kind-row">` +
+            `${sw('fill', 'Tag fill')}${sw('stroke', 'Tag border')}${sw('text', 'Tag text')}${sw('color', 'Colour in simple style / swatch')}</div></details></div>`;
+    },
+
+    // ── Pin kind colours: one base colour, the rest derived ───
+
+    KIND_PALETTE: ['#0284c7', '#16a34a', '#d97706', '#9333ea', '#dc2626', '#0d9488', '#db2777', '#4f46e5',
+                   '#65a30d', '#ea580c', '#0891b2', '#a16207', '#7c3aed', '#be123c', '#0369a1', '#15803d'],
+
+    _rgb(hex) { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); const n = m ? parseInt(m[1], 16) : 0; return [n >> 16, (n >> 8) & 255, n & 255]; },
+    _hex(rgb) { return '#' + rgb.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join(''); },
+    _mix(a, b, t) { const A = this._rgb(a), B = this._rgb(b); return this._hex(A.map((v, i) => v + (B[i] - v) * t)); },
+    _hue(hex) {
+        const [r, g, b] = this._rgb(hex).map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+        if (d < 0.08) return null;                                  // grey: no hue
+        const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        return (h * 60 + 360) % 360;
+    },
+    _luma(hex) { const [r, g, b] = this._rgb(hex); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; },
+
+    _kindBase(kd) { return kd.base || kd.color || kd.stroke || '#6b7280'; },
+
+    /** Colours of a kind from its base colour and look (light / solid / outline). */
+    _kindColors(base, look) {
+        const dark = this._mix(base, '#000000', 0.45);
+        if (look === 'solid') return { fill: base, stroke: base, text: this._luma(base) > 0.6 ? '#1f2937' : '#ffffff', color: base };
+        if (look === 'outline') return { fill: '#ffffff', stroke: base, text: this._mix(base, '#000000', 0.25), color: base };
+        return { fill: this._mix(base, '#ffffff', 0.86), stroke: base, text: dark, color: base };
+    },
+
+    /** Look that reproduces the kind's colours from its base, else "custom" (hand-tuned or older diagrams). */
+    _kindLook(kd) {
+        if (kd.look && kd.look !== 'custom') {
+            const c = this._kindColors(this._kindBase(kd), kd.look);
+            if (['fill', 'stroke', 'text', 'color'].every(f => (kd[f] || '').toLowerCase() === c[f])) return kd.look;
+        }
+        return kd.look === undefined && !kd.base ? (kd.fill === kd.stroke ? 'solid' : (kd.fill || '').toLowerCase() === '#ffffff' ? 'outline' : 'light') : 'custom';
+    },
+
+    /** A base colour whose hue differs from every existing kind (palette first, then the widest gap). */
+    _nextKindColor() {
+        const hues = Object.values(this.doc.kinds).map(kd => this._hue(this._kindBase(kd))).filter(h => h != null);
+        const far = h => Math.min(360, ...hues.map(u => Math.min(Math.abs(h - u), 360 - Math.abs(h - u))));
+        const free = this.KIND_PALETTE.find(c => far(this._hue(c)) >= 25);
+        if (free) return free;
+        let best = 0, gap = -1;
+        for (let h = 0; h < 360; h += 5) if (far(h) > gap) { gap = far(h); best = h; }
+        const f = n => { const k = (n + best / 30) % 12; return 0.5 - 0.42 * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+        return this._hex([f(0), f(8), f(4)].map(v => v * 255));   // HSL(best, 100 %, 50 %)
     },
 
     _propInput(e, isChange) {
@@ -1365,8 +1425,17 @@ const Diagrams = {
             if (p === 'title') this._bar();
         } else if (t.dataset.kind != null) {
             const kd = this.doc.kinds[t.dataset.kind], f = t.dataset.kf;
-            kd[f] = t.type === 'checkbox' ? (t.checked ? '5 3' : '') : t.value;
-            if (isChange) this.renderProps();
+            if (f === 'look' && t.value === 'custom') kd.look = 'custom';
+            else if (f === 'base' || f === 'look') {
+                if (f === 'base') kd.base = t.value; else kd.look = t.value;
+                if (!kd.base) kd.base = this._kindBase(kd);
+                const look = kd.look && kd.look !== 'custom' ? kd.look : this._kindLook(Object.assign({}, kd, { look: undefined, base: undefined }));
+                if (look !== 'custom') { kd.look = look; Object.assign(kd, this._kindColors(kd.base, look)); }
+            } else {
+                kd[f] = t.type === 'checkbox' ? (t.checked ? '5 3' : '') : t.value;
+                if (['fill', 'stroke', 'text', 'color'].includes(f)) kd.look = 'custom';
+            }
+            if (isChange) this.renderProps();            // not on input: re-rendering would close an open colour picker
         } else if (t.dataset.legendKind != null) {
             const it = this.R.byId(this.doc, this.sel[0]);
             const on = new Set(it.kinds || []);
@@ -1451,7 +1520,9 @@ const Diagrams = {
                 if (!key) return;
                 if (!/^[\w-]+$/.test(key) || this.doc.kinds[key]) return toast('Invalid or existing key', true);
                 this.snapshot();
-                this.doc.kinds[key] = { label: key, fill: '#e0f2fe', stroke: '#0284c7', text: '#075985', dash: '', badge: '', sample: key.toUpperCase(), color: '#0284c7' };
+                const base = this._nextKindColor();
+                this.doc.kinds[key] = Object.assign({ label: key, dash: '', badge: '', sample: key.toUpperCase(), base, look: 'light' },
+                                                    this._kindColors(base, 'light'));
                 break;
             }
             case 'delKind': {
@@ -1478,15 +1549,71 @@ const Diagrams = {
         this.$('dg-pins-title').textContent = 'Pins — ' + (c.caption || (c.ic && c.ic.title) || 'chip');
         this.$('dg-pins-overlay').classList.add('open');
         this._propUndo = false;
+        const sides = this._pinSides(c);
+        if (!sides.includes(this.pinSide)) this.pinSide = sides.find(sd => (c.pins[sd] || []).length) || sides[0];
         this.renderPins();
     },
 
-    closePins() {
+    closePins(save) {
         this.$('dg-pins-overlay').classList.remove('open');
         this.renderProps();
+        if (save) this.save();
     },
 
     setPinSide(s) { this.pinSide = s; this.renderPins(); },
+
+    /** Package layout of a chip: 1, 2 or 4 sides with pins (`layout`, else derived from the pins). */
+    _pinLayout(c) {
+        if ([1, 2, 4].includes(c.layout)) return c.layout;
+        const used = this.R.SIDES.filter(sd => (c.pins[sd] || []).length);
+        if (used.length <= 1) return 1;
+        if (used.length === 2 && (used.join() === 'left,right' || used.join() === 'top,bottom')) return 2;
+        return 4;
+    },
+
+    /** Sides edited for the layout, in tab order. One side: the one holding pins (else left); two: left/right or top/bottom. */
+    _pinSides(c) {
+        const n = this._pinLayout(c), has = sd => (c.pins[sd] || []).length > 0;
+        if (n === 4) return ['left', 'bottom', 'right', 'top'];
+        if (n === 2) return !has('left') && !has('right') && (has('top') || has('bottom')) ? ['bottom', 'top'] : ['left', 'right'];
+        return [this.R.SIDES.find(has) || 'left'];
+    },
+
+    /** All pins in package order: counterclockwise from pin 1 (left ↓, bottom →, right ↑, top ←). */
+    _pinsCcw(c) {
+        const P = sd => c.pins[sd] || [];
+        return [...P('left'), ...P('bottom'), ...P('right').slice().reverse(), ...P('top').slice().reverse()];
+    },
+
+    /** Spread `list` (package order) over `sides` (as returned by _pinSides) counterclockwise. */
+    _pinsSpread(c, list, sides) {
+        const ccw = ['left', 'bottom', 'right', 'top'].filter(sd => sides.includes(sd));
+        const base = Math.floor(list.length / ccw.length), extra = list.length % ccw.length;
+        this.R.SIDES.forEach(sd => { c.pins[sd] = []; });
+        let k = 0;
+        ccw.forEach((sd, j) => {
+            const part = list.slice(k, k += base + (j < extra ? 1 : 0));
+            c.pins[sd] = sd === 'right' || sd === 'top' ? part.reverse() : part;
+        });
+    },
+
+    setPinLayout(n) {
+        const c = this._chip();
+        if (!c) return;
+        if (this._pinLayout(c) === n) {                 // already this shape: only remember it, keep the pins where they are
+            if (c.layout !== n) { this.snapshot(); c.layout = n; this.markDirty(); }
+            return this.renderPins();
+        }
+        this.snapshot();
+        const list = this._pinsCcw(c);
+        c.layout = n;
+        const sides = n === 2 && this._pinSides(c)[0] === 'bottom' ? ['bottom', 'top'] : n === 2 ? ['left', 'right'] :
+            n === 1 ? ['left'] : this.R.SIDES;
+        this._pinsSpread(c, list, sides);
+        this.pinSide = this._pinSides(c)[0];
+        this._pinChanged(true);
+        if (list.length) toast(`${list.length} pins spread over ${n} side${n > 1 ? 's' : ''} (pin 1 top left, counterclockwise)`);
+    },
 
     _refreshPins() { if (this.$('dg-pins-overlay').classList.contains('open')) { if (this._chip()) this.renderPins(); else this.closePins(); } },
 
@@ -1494,20 +1621,29 @@ const Diagrams = {
         const c = this._chip();
         if (!c) return;
         c.pins = c.pins || {};
+        const sides = this._pinSides(c), layout = this._pinLayout(c);
+        if (!sides.includes(this.pinSide)) this.pinSide = sides[0];
+        document.querySelectorAll('#dg-pin-layout button').forEach(b => b.classList.toggle('active', +b.dataset.layout === layout));
         document.querySelectorAll('#dg-pin-sides button').forEach(b => {
-            b.classList.toggle('active', b.dataset.side === this.pinSide);
-            b.querySelector('span').textContent = (c.pins[b.dataset.side] || []).length;
+            const sd = b.dataset.side, n = (c.pins[sd] || []).length;
+            b.hidden = !sides.includes(sd) && !n;           // a side outside the layout stays visible while it still holds pins
+            b.classList.toggle('active', sd === this.pinSide);
+            b.querySelector('span').textContent = n;
         });
-        const pins = c.pins[this.pinSide] || [];
+        this.$('dg-pin-total').textContent = `${this._pinsCcw(c).length} pins`;
+        const auto = c.autoNum !== false;
+        this.$('dg-pin-auto').checked = auto;
+        this.$('dg-pin-number').hidden = auto;
+        const pins = this._pins();
         const kinds = Object.keys(this.doc.kinds);
         const kindSel = (v, i) => `<select class="input input-sm" data-i="${i}" data-f="kind">` +
             [...new Set([...kinds, v || 'free'])].map(k => `<option value="${esc(k)}"${k === (v || 'free') ? ' selected' : ''}>${esc(k)}</option>`).join('') + '</select>';
-        const order = { left: 'top → bottom', right: 'top → bottom', top: 'left → right', bottom: 'left → right' }[this.pinSide];
-        this.$('dg-pins-order').textContent = `Row order on the drawing: ${order}`;
+        const order = { left: 'top → bottom', bottom: 'left → right', right: 'bottom → top', top: 'right → left' }[this.pinSide];
+        this.$('dg-pins-order').textContent = `Rows on the drawing: ${order} (counterclockwise, like a chip)`;
         this.$('dg-pins-body').innerHTML = !pins.length ? '<div class="tbl-empty">No pins on this side. Add rows or paste them from a spreadsheet.</div>' :
             '<table class="tbl dg-pins"><thead><tr><th>#</th><th>Pin</th><th>Port</th><th>Function / net</th><th>Kind</th><th>Dir</th><th>Note</th><th></th></tr></thead><tbody>' +
             pins.map((p, i) => `<tr data-i="${i}"><td class="faint small">${i + 1}</td>` +
-                `<td><input class="input input-sm mono dg-pn" data-i="${i}" data-f="n" value="${esc(p.n == null ? '' : p.n)}"></td>` +
+                `<td><input class="input input-sm mono dg-pn" data-i="${i}" data-f="n" value="${esc(p.n == null ? '' : p.n)}"${auto ? ' readonly tabindex="-1" title="Auto numbering is on"' : ''}></td>` +
                 `<td><input class="input input-sm mono" data-i="${i}" data-f="port" value="${esc(p.port || '')}"></td>` +
                 `<td><input class="input input-sm mono" data-i="${i}" data-f="fn" value="${esc(p.fn || '')}"></td>` +
                 `<td>${kindSel(p.kind, i)}</td>` +
@@ -1520,9 +1656,36 @@ const Diagrams = {
             '</tbody></table>';
     },
 
-    _pins() { const c = this._chip(); return c ? (c.pins[this.pinSide] = c.pins[this.pinSide] || []) : []; },
+    /** Sides stored against the counterclockwise pin order (right: top → bottom, top: left → right). */
+    _pinRev(sd) { return sd === 'right' || sd === 'top'; },
 
-    _pinChanged(rerender) {
+    /** Rows of the current side in pin order (counterclockwise). The same pin objects as stored; after adding /
+     *  removing / moving rows pass the list to _pinChanged(true, list) so it is written back. */
+    _pins() {
+        const c = this._chip();
+        if (!c) return [];
+        const list = c.pins[this.pinSide] = c.pins[this.pinSide] || [];
+        return this._pinRev(this.pinSide) ? list.slice().reverse() : list;
+    },
+
+    /** Auto numbering: 1…N counterclockwise from pin 1 (top of the left side). */
+    _pinRenumber(c) {
+        if (c && c.autoNum !== false) this._pinsCcw(c).forEach((p, k) => { p.n = k + 1; });
+    },
+
+    setPinAuto(on) {
+        const c = this._chip();
+        if (!c) return;
+        this.snapshot();
+        if (on) delete c.autoNum; else c.autoNum = false;
+        this._pinRenumber(c);
+        this._pinChanged(true);
+    },
+
+    _pinChanged(rerender, list) {
+        const c = this._chip();
+        if (c && list) c.pins[this.pinSide] = this._pinRev(this.pinSide) ? list.slice().reverse() : list;
+        if (c && rerender) this._pinRenumber(c);
         this.markDirty();
         this._schedule();
         if (rerender) this.renderPins();
@@ -1548,7 +1711,7 @@ const Diagrams = {
         if (act === 'down' && i < pins.length - 1) [pins[i + 1], pins[i]] = [pins[i], pins[i + 1]];
         if (act === 'del') pins.splice(i, 1);
         if (act === 'ins') pins.splice(i + 1, 0, this._nextPin(pins, i));
-        this._pinChanged(true);
+        this._pinChanged(true, pins);
     },
 
     _nextPin(pins, i) {
@@ -1559,7 +1722,23 @@ const Diagrams = {
 
     pinCmd(cmd) {
         const pins = this._pins();
-        if (cmd === 'add') {
+        if (cmd === 'total') {
+            const c = this._chip(), list = this._pinsCcw(c);
+            const ans = prompt(`Number of pins of the package (now ${list.length}).\n` +
+                'They are spread over the sides counterclockwise from pin 1 (top left) and renumbered 1…N; ' +
+                'existing rows keep their port / function in that order.', String(list.length || 8));
+            if (ans == null) return;
+            const total = parseInt(ans, 10);
+            if (!(total >= 1 && total <= 400)) return toast('1 … 400 pins', true);
+            const lost = list.slice(total).filter(p => p.port || p.fn || p.note).length;
+            if (lost && !confirm(`${lost} pin(s) with a port / function past pin ${total} will be deleted. Continue?`)) return;
+            this.snapshot();
+            const out = list.slice(0, total);
+            while (out.length < total) out.push({ n: 0, port: '', fn: '', kind: 'free', badge: '', note: '' });
+            out.forEach((p, k) => { p.n = k + 1; });
+            this._pinsSpread(c, out, this._pinSides(c));
+            if (!c.layout) c.layout = this._pinLayout(c);
+        } else if (cmd === 'add') {
             const count = Math.max(1, Math.min(200, parseInt(prompt('How many pins to add?', '1'), 10) || 0));
             if (!count) return;
             this.snapshot();
@@ -1580,7 +1759,7 @@ const Diagrams = {
             Help.copyText(pins.map(p => this.PIN_FIELDS.map(f => p[f] == null ? '' : p[f]).join('\t')).join('\n'));
             return toast('Copied as TSV (paste into Excel)');
         }
-        this._pinChanged(true);
+        this._pinChanged(true, cmd === 'total' ? undefined : pins);
     },
 
     /** Paste spreadsheet rows (TSV, or ; / , separated) starting at the focused cell; adds rows as needed. */
@@ -1611,7 +1790,7 @@ const Diagrams = {
             });
             if (col0 <= 2 && !cells[2 - col0] && p.kind !== 'free' && !p.fn) p.kind = 'free';
         });
-        this._pinChanged(true);
+        this._pinChanged(true, pins);
         toast(`${lines.length} row(s) pasted`);
     },
 
@@ -1815,9 +1994,10 @@ const Diagrams = {
         this.renderPorts();
     },
 
-    closePorts() {
+    closePorts(save) {
         this.$('dg-ports-overlay').classList.remove('open');
         this.renderProps();
+        if (save) this.save();
     },
 
     renderPorts() {
